@@ -140,7 +140,7 @@ export type ShareDriveItemInput = z.infer<typeof ShareDriveItemSchema>
 // CALENDAR SCHEMAS
 // ============================================================================
 
-export const CreateCalendarEventSchema = z.object({
+const CalendarEventBaseSchema = z.object({
   title: z.string()
     .min(1, 'Título é obrigatório')
     .max(200, 'Título muito longo (máx. 200 caracteres)'),
@@ -158,7 +158,9 @@ export const CreateCalendarEventSchema = z.object({
   location: z.string().max(200, 'Localização muito longa').optional(),
 
   attendees: z.array(z.string().uuid()).max(50, 'Máximo 50 participantes').optional(),
-}).refine(
+})
+
+export const CreateCalendarEventSchema = CalendarEventBaseSchema.refine(
   (data) => data.endTime > data.startTime,
   {
     message: 'Data de término deve ser após data de início',
@@ -166,7 +168,7 @@ export const CreateCalendarEventSchema = z.object({
   }
 )
 
-export const UpdateCalendarEventSchema = CreateCalendarEventSchema.partial()
+export const UpdateCalendarEventSchema = CalendarEventBaseSchema.partial()
 
 export type CreateCalendarEventInput = z.infer<typeof CreateCalendarEventSchema>
 export type UpdateCalendarEventInput = z.infer<typeof UpdateCalendarEventSchema>
@@ -211,8 +213,8 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown): {
 /**
  * Formata erros do Zod para mensagens legíveis
  */
-export function formatZodErrors(error: z.ZodError): string[] {
-  return error.errors.map(err => {
+export function formatZodErrors(error: z.ZodError<any>): string[] {
+  return error.issues.map(err => {
     const path = err.path.join('.')
     return path ? `${path}: ${err.message}` : err.message
   })
