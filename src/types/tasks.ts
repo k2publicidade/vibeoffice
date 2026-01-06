@@ -15,7 +15,7 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   dueDate?: Date
-  assignedTo: string // User ID
+  assignedTo: string | null // User ID (null se não atribuído)
   sector: Sector
   createdBy: string // User ID
   createdAt: Date

@@ -68,8 +68,8 @@ export default function ChatPage() {
     setShowChatList(true)
   }
 
-  const handleNewConversation = (user: { id: string; name: string }) => {
-    const newRoom = createDM(user.id, user.name)
+  const handleNewConversation = async (user: { id: string; name: string }) => {
+    const newRoom = await createDM(user.id, user.name)
     setCurrentRoom(newRoom)
     setShowNewConversationModal(false)
   }

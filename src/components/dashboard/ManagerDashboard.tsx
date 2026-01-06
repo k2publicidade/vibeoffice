@@ -23,10 +23,14 @@ import {
   Briefcase,
 } from 'lucide-react'
 import Link from 'next/link'
-import { mockUsers, mockTasks, mockTickets, mockCalendarEvents } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
+import { useTasks } from '@/hooks/useTasks'
+import { useTickets } from '@/hooks/useTickets'
+import { useCalendar } from '@/hooks/useCalendar'
 import { cn } from '@/lib/utils'
 import { format, isToday, isTomorrow, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { Loader2 } from 'lucide-react'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -47,17 +51,37 @@ interface ManagerDashboardProps {
 }
 
 export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps) {
+  const { users, isLoading: usersLoading } = useUsers()
+  const { tasks, isLoading: tasksLoading } = useTasks()
+  const { tickets, isLoading: ticketsLoading } = useTickets()
+  const { events, isLoading: eventsLoading } = useCalendar()
+
+  const isLoading = usersLoading || tasksLoading || ticketsLoading || eventsLoading
+
   // Membros do setor
   const teamMembers = useMemo(() => {
-    return mockUsers.filter(u => u.sector === userSector)
-  }, [userSector])
+    return users?.filter(u => u.sector === userSector) || []
+  }, [users, userSector])
 
   const teamMemberIds = useMemo(() => teamMembers.map(m => m.id), [teamMembers])
 
   // Estatísticas do setor
   const stats = useMemo(() => {
+    if (!tasks || !tickets || !events) {
+      return {
+        totalMembers: 0,
+        totalTasks: 0,
+        completedTasks: 0,
+        inProgressTasks: 0,
+        overdueTasks: 0,
+        taskCompletionRate: 0,
+        openTickets: 0,
+        upcomingEvents: 0,
+      }
+    }
+
     // Tarefas do setor
-    const sectorTasks = mockTasks.filter(t => teamMemberIds.includes(t.assignedTo))
+    const sectorTasks = tasks.filter(t => t.assignedTo && teamMemberIds.includes(t.assignedTo))
     const completedTasks = sectorTasks.filter(t => t.status === 'done').length
     const inProgressTasks = sectorTasks.filter(t => t.status === 'in_progress').length
     const overdueTasks = sectorTasks.filter(t => {
@@ -66,7 +90,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
     }).length
 
     // Tickets do setor
-    const sectorTickets = mockTickets.filter(t =>
+    const sectorTickets = tickets.filter(t =>
       t.category === userSector || teamMemberIds.includes(t.requester)
     )
     const openTickets = sectorTickets.filter(t => t.status !== 'completed').length
@@ -74,7 +98,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
     // Eventos do setor
     const now = new Date()
     const weekEnd = addDays(now, 7)
-    const upcomingEvents = mockCalendarEvents.filter(e => {
+    const upcomingEventsCount = events.filter(e => {
       const eventDate = new Date(e.startTime)
       return eventDate >= now && eventDate <= weekEnd &&
         (e.type === 'sector' || e.attendees.some(a => teamMemberIds.includes(a)))
@@ -90,14 +114,16 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
         ? Math.round((completedTasks / sectorTasks.length) * 100)
         : 0,
       openTickets,
-      upcomingEvents,
+      upcomingEvents: upcomingEventsCount,
     }
-  }, [teamMemberIds, teamMembers.length, userSector])
+  }, [tasks, tickets, events, teamMemberIds, teamMembers.length, userSector])
 
   // Performance individual da equipe
   const teamPerformance = useMemo(() => {
+    if (!tasks) return []
+
     return teamMembers.map(member => {
-      const memberTasks = mockTasks.filter(t => t.assignedTo === member.id)
+      const memberTasks = tasks.filter(t => t.assignedTo === member.id)
       const completed = memberTasks.filter(t => t.status === 'done').length
       const total = memberTasks.length
       const overdue = memberTasks.filter(t => {
@@ -113,12 +139,14 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
         completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
       }
     }).sort((a, b) => b.completionRate - a.completionRate)
-  }, [teamMembers])
+  }, [tasks, teamMembers])
 
   // Tarefas recentes do setor
   const recentTasks = useMemo(() => {
-    return mockTasks
-      .filter(t => teamMemberIds.includes(t.assignedTo) && t.status !== 'done')
+    if (!tasks) return []
+
+    return tasks
+      .filter(t => t.assignedTo && teamMemberIds.includes(t.assignedTo) && t.status !== 'done')
       .sort((a, b) => {
         // Priorizar por data de vencimento
         if (!a.dueDate && !b.dueDate) return 0
@@ -127,12 +155,14 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
       })
       .slice(0, 5)
-  }, [teamMemberIds])
+  }, [tasks, teamMemberIds])
 
   // Próximos eventos do setor
   const upcomingEvents = useMemo(() => {
+    if (!events) return []
+
     const now = new Date()
-    return mockCalendarEvents
+    return events
       .filter(e => {
         const eventDate = new Date(e.startTime)
         return eventDate >= now &&
@@ -140,12 +170,21 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
       })
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
       .slice(0, 4)
-  }, [teamMemberIds])
+  }, [events, teamMemberIds])
 
   const getDateLabel = (date: Date) => {
     if (isToday(date)) return 'Hoje'
     if (isTomorrow(date)) return 'Amanhã'
     return format(date, "EEE, d MMM", { locale: ptBR })
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#fc7a67]" />
+      </div>
+    )
   }
 
   return (
@@ -259,7 +298,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
                     <div key={member.id} className="space-y-2">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                          <AvatarImage src={member.avatar} />
+                          <AvatarImage src={member.avatar ?? undefined} />
                           <AvatarFallback className="bg-[#fc7a67] text-black text-sm">
                             {member.name.charAt(0)}
                           </AvatarFallback>
@@ -371,7 +410,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               {recentTasks.length > 0 ? (
                 recentTasks.map((task) => {
-                  const assignee = mockUsers.find(u => u.id === task.assignedTo)
+                  const assignee = users?.find(u => u.id === task.assignedTo)
                   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date()
 
                   return (
@@ -401,7 +440,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
                       <div className="flex items-center justify-between mt-3">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={assignee?.avatar} />
+                            <AvatarImage src={assignee?.avatar ?? undefined} />
                             <AvatarFallback className="bg-[#262626] text-xs">
                               {assignee?.name.charAt(0)}
                             </AvatarFallback>

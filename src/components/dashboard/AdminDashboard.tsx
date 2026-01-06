@@ -19,9 +19,13 @@ import {
   ArrowRight,
   BarChart3,
   Activity,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { mockUsers, mockTasks, mockTickets, mockCalendarEvents } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
+import { useTasks } from '@/hooks/useTasks'
+import { useTickets } from '@/hooks/useTickets'
+import { useCalendar } from '@/hooks/useCalendar'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -44,53 +48,78 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ userName }: AdminDashboardProps) {
+  const { users, isLoading: usersLoading } = useUsers()
+  const { tasks, isLoading: tasksLoading } = useTasks()
+  const { tickets, isLoading: ticketsLoading } = useTickets()
+  const { events, isLoading: eventsLoading } = useCalendar()
+
+  const isLoading = usersLoading || tasksLoading || ticketsLoading || eventsLoading
+
   const stats = useMemo(() => {
+    if (!users || !tasks || !tickets || !events) {
+      return {
+        totalUsers: 0,
+        usersBySector: {},
+        usersByRole: {},
+        totalTasks: 0,
+        completedTasks: 0,
+        overdueTasks: 0,
+        taskCompletionRate: 0,
+        totalTickets: 0,
+        openTickets: 0,
+        highPriorityTickets: 0,
+        upcomingEvents: 0,
+      }
+    }
+
     // Contagem de usuários por setor
-    const usersBySector = mockUsers.reduce((acc, user) => {
+    const usersBySector = users.reduce((acc, user) => {
       acc[user.sector] = (acc[user.sector] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
     // Contagem de usuários por role
-    const usersByRole = mockUsers.reduce((acc, user) => {
+    const usersByRole = users.reduce((acc, user) => {
       acc[user.role] = (acc[user.role] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
     // Tasks
-    const totalTasks = mockTasks.length
-    const completedTasks = mockTasks.filter(t => t.status === 'done').length
-    const overdueTasks = mockTasks.filter(t => {
+    const totalTasks = tasks.length
+    const completedTasks = tasks.filter(t => t.status === 'done').length
+    const overdueTasks = tasks.filter(t => {
       if (!t.dueDate || t.status === 'done') return false
       return new Date(t.dueDate) < new Date()
     }).length
 
     // Tickets
-    const totalTickets = mockTickets.length
-    const openTickets = mockTickets.filter(t => t.status === 'open').length
-    const highPriorityTickets = mockTickets.filter(t => t.priority === 'high' && t.status !== 'completed').length
+    const totalTickets = tickets.length
+    const openTickets = tickets.filter(t => t.status === 'open').length
+    const highPriorityTickets = tickets.filter(t => t.priority === 'high' && t.status !== 'completed').length
 
     // Eventos
-    const upcomingEvents = mockCalendarEvents.filter(e => new Date(e.startTime) > new Date()).length
+    const upcomingEvents = events.filter(e => new Date(e.startTime) > new Date()).length
 
     return {
-      totalUsers: mockUsers.length,
+      totalUsers: users.length,
       usersBySector,
       usersByRole,
       totalTasks,
       completedTasks,
       overdueTasks,
-      taskCompletionRate: Math.round((completedTasks / totalTasks) * 100),
+      taskCompletionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
       totalTickets,
       openTickets,
       highPriorityTickets,
       upcomingEvents,
     }
-  }, [])
+  }, [users, tasks, tickets, events])
 
   // Top 5 setores com mais tarefas pendentes
   const sectorPerformance = useMemo(() => {
-    const sectorStats = mockUsers.reduce((acc, user) => {
+    if (!users || !tasks) return []
+
+    const sectorStats = users.reduce((acc, user) => {
       if (!acc[user.sector]) {
         acc[user.sector] = { users: 0, tasks: 0, completed: 0 }
       }
@@ -98,8 +127,8 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
       return acc
     }, {} as Record<string, { users: number; tasks: number; completed: number }>)
 
-    mockTasks.forEach(task => {
-      const user = mockUsers.find(u => u.id === task.assignedTo)
+    tasks.forEach(task => {
+      const user = users.find(u => u.id === task.assignedTo)
       if (user && sectorStats[user.sector]) {
         sectorStats[user.sector].tasks++
         if (task.status === 'done') {
@@ -116,24 +145,37 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
       }))
       .sort((a, b) => b.tasks - a.tasks)
       .slice(0, 5)
-  }, [])
+  }, [users, tasks])
 
   // Tickets recentes de alta prioridade
   const urgentTickets = useMemo(() => {
-    return mockTickets
+    if (!tickets) return []
+
+    return tickets
       .filter(t => t.priority === 'high' && t.status !== 'completed')
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 4)
-  }, [])
+  }, [tickets])
 
   // Novos usuários (últimos 30 dias)
   const recentUsers = useMemo(() => {
+    if (!users) return []
+
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    return mockUsers
+    return users
       .filter(u => new Date(u.createdAt) > thirtyDaysAgo)
       .slice(0, 5)
-  }, [])
+  }, [users])
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#fc7a67]" />
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -386,7 +428,7 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
                       className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#1a1a1a] transition-colors"
                     >
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={user.avatar} />
+                        <AvatarImage src={user.avatar ?? undefined} />
                         <AvatarFallback className="bg-[#fc7a67] text-black">
                           {user.name.charAt(0)}
                         </AvatarFallback>

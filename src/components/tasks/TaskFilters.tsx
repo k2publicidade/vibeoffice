@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { X, Search, AlertTriangle, Calendar, Clock } from 'lucide-react'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 import { cn } from '@/lib/utils'
 
 interface TaskFiltersProps {
@@ -52,6 +52,7 @@ const dateFilters: { value: DateFilter; label: string; icon?: React.ReactNode }[
 ]
 
 export function TaskFilters({ filters, onFiltersChange, stats }: TaskFiltersProps) {
+  const { users } = useUsers()
   const hasFilters = Object.values(filters).some(v => v !== undefined && v !== '')
 
   const handleFilterChange = (key: keyof TaskFilters, value: string) => {
@@ -218,7 +219,7 @@ export function TaskFilters({ filters, onFiltersChange, stats }: TaskFiltersProp
             </SelectTrigger>
             <SelectContent className="bg-[#1a1a1a] border-[#2a2a2a]">
               <SelectItem value={ALL_VALUE}>Todas as pessoas</SelectItem>
-              {mockUsers.map((user) => (
+              {(users || []).map((user) => (
                 <SelectItem key={user.id} value={user.id}>
                   {user.name}
                 </SelectItem>

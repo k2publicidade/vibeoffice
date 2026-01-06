@@ -3,7 +3,9 @@
 import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { TrendingUp, TrendingDown } from 'lucide-react'
-import { mockTasks, mockTickets, mockChatRooms, mockUsers } from '@/lib/mock-data'
+import { useTasks } from '@/hooks/useTasks'
+import { useTickets } from '@/hooks/useTickets'
+import { useUsers } from '@/hooks/useUsers'
 
 interface StatCardProps {
   title: string
@@ -42,20 +44,26 @@ function StatCard({ title, value, trend }: StatCardProps) {
 }
 
 export function QuickStats() {
+  const { tasks } = useTasks()
+  const { tickets } = useTickets()
+  const { users } = useUsers()
+
   // Calcular estatísticas (memoizado para evitar recalcular a cada render)
   const stats = useMemo(() => {
-    const completedTasks = mockTasks.filter(t => t.status === 'done').length
-    const taskCompletionRate = Math.round((completedTasks / mockTasks.length) * 100)
-    const openTickets = mockTickets.filter(t => t.status === 'open').length
-    const totalMessages = mockChatRooms.reduce((sum, room) => sum + (room.messageCount || 0), 0)
-    const activeUsers = mockUsers.length
+    const completedTasks = tasks?.filter(t => t.status === 'done').length || 0
+    const taskCompletionRate = tasks && tasks.length > 0
+      ? Math.round((completedTasks / tasks.length) * 100)
+      : 0
+    const openTickets = tickets?.filter(t => t.status === 'open').length || 0
+    const totalMessages = 0 // TODO: quando chat tiver contadores reais
+    const activeUsers = users?.length || 0
 
     // Tendências fixas para consistência
     const taskTrend = 12
     const ticketTrend = 8
 
     return { completedTasks, taskCompletionRate, openTickets, totalMessages, activeUsers, taskTrend, ticketTrend }
-  }, [])
+  }, [tasks, tickets, users])
 
   const { taskCompletionRate, openTickets, totalMessages, activeUsers, taskTrend, ticketTrend } = stats
 

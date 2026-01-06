@@ -49,3 +49,6 @@ nul
 prompt.md
 chat.md
 multiselect.md
+
+# Auto Claude data directory
+.auto-claude/

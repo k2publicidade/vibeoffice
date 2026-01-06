@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Clock, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { mockTickets } from '@/lib/mock-data'
+import { useTickets } from '@/hooks/useTickets'
 
 const statusConfig = {
   open: {
@@ -31,8 +31,10 @@ const statusConfig = {
 }
 
 export function RecentTickets() {
+  const { tickets } = useTickets()
+
   // Pegar últimos 5 tickets abertos ou em análise
-  const recentTickets = mockTickets
+  const recentTickets = (tickets || [])
     .filter(t => t.status !== 'completed')
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5)
@@ -42,7 +44,7 @@ export function RecentTickets() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Tickets Recentes</span>
-          <Badge variant="secondary">{mockTickets.filter(t => t.status !== 'completed').length} abertos</Badge>
+          <Badge variant="secondary">{(tickets || []).filter(t => t.status !== 'completed').length} abertos</Badge>
         </CardTitle>
         <CardDescription>
           Solicitações aguardando ação

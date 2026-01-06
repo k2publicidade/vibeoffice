@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { mockTasks } from '@/lib/mock-data'
+import { useTasks } from '@/hooks/useTasks'
 
 interface TaskBySector {
   sector: string
@@ -21,8 +21,10 @@ interface TaskBySector {
 }
 
 export function TasksChart() {
+  const { tasks } = useTasks()
+
   // Calcular dados de tarefas por setor
-  const tasksBySector = mockTasks.reduce((acc, task) => {
+  const tasksBySector = (tasks || []).reduce((acc, task) => {
     const existing = acc.find(item => item.sector === task.sector)
     if (existing) {
       existing.total += 1

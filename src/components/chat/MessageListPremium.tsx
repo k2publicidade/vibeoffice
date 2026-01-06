@@ -4,9 +4,10 @@ import { useEffect, useRef } from 'react'
 import { Message } from '@/types/chat'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 interface MessageListPremiumProps {
   messages: Message[]
@@ -20,6 +21,7 @@ export function MessageListPremium({
   isLoading,
 }: MessageListPremiumProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { users } = useUsers()
 
   // Auto scroll para a última mensagem
   useEffect(() => {
@@ -53,7 +55,7 @@ export function MessageListPremium({
         <AnimatePresence>
           {messages.map((message) => {
             const isOwn = message.userId === 'current-user'
-            const user = mockUsers.find(u => u.id === message.userId)
+            const user = users?.find(u => u.id === message.userId)
 
             const timeString = new Date(message.timestamp).toLocaleTimeString('pt-BR', {
               hour: '2-digit',
@@ -73,7 +75,7 @@ export function MessageListPremium({
               >
                 {!isOwn && (
                   <Avatar className="w-8 h-8 shrink-0 border-2 border-[#ff0300]/20">
-                    <AvatarImage src={user?.avatar} />
+                    <AvatarImage src={user?.avatar ?? undefined} />
                     <AvatarFallback className="bg-[#fc7a67] text-black text-[10px] font-bold">
                       {user?.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
@@ -135,4 +137,3 @@ export function MessageListPremium({
     </ScrollArea>
   )
 }
-import { cn } from '@/lib/utils'

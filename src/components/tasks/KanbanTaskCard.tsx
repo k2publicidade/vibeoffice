@@ -5,7 +5,7 @@ import { Task } from '@/types/tasks'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { InitialsAvatar } from '@/components/ui/initials-avatar'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 import { Calendar, Flag, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -42,7 +42,8 @@ export const KanbanTaskCard = memo(function KanbanTaskCard({
   onClick,
   isDragging = false,
 }: KanbanTaskCardProps) {
-  const assignee = mockUsers.find(u => u.id === task.assignedTo)
+  const { users } = useUsers()
+  const assignee = users?.find(u => u.id === task.assignedTo)
   const priority = priorityConfig[task.priority]
   const dueDate = task.dueDate ? new Date(task.dueDate) : null
   const isOverdue = dueDate && dueDate < new Date() && task.status !== 'done'

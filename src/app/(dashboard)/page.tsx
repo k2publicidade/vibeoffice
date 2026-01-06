@@ -15,7 +15,7 @@ import { ScheduleMeetingModal } from '@/components/dashboard/ScheduleMeetingModa
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard'
 import { ManagerDashboard } from '@/components/dashboard/ManagerDashboard'
 import { Skeleton } from '@/components/ui/skeleton'
-import { mockUsers, mockCalendarEvents } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 import { motion } from 'framer-motion'
 import { addDays, format } from 'date-fns'
 
@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false)
+  const { users } = useUsers()
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -89,11 +90,11 @@ export default function DashboardPage() {
       startsIn: 'Em 19 min',
       time: '10:00',
       duration: '35 min',
-      attendees: mockUsers.slice(0, 4).map((u) => ({
+      attendees: users?.slice(0, 4).map((u) => ({
         id: u.id,
         name: u.name,
-        avatar: u.avatar,
-      })),
+        avatar: u.avatar ?? undefined,
+      })) || [],
     }
 
     // Efficiency data
@@ -121,11 +122,11 @@ export default function DashboardPage() {
             time: '10:00',
             duration: '60 min',
             date: now,
-            attendees: mockUsers.slice(0, 3).map((u) => ({
+            attendees: users?.slice(0, 3).map((u) => ({
               id: u.id,
               name: u.name,
-              avatar: u.avatar,
-            })),
+              avatar: u.avatar ?? undefined,
+            })) || [],
           },
           {
             id: '2',
@@ -133,11 +134,11 @@ export default function DashboardPage() {
             time: '15:30',
             duration: '30 min',
             date: now,
-            attendees: mockUsers.slice(2, 5).map((u) => ({
+            attendees: users?.slice(2, 5).map((u) => ({
               id: u.id,
               name: u.name,
-              avatar: u.avatar,
-            })),
+              avatar: u.avatar ?? undefined,
+            })) || [],
           },
         ],
       },
@@ -150,11 +151,11 @@ export default function DashboardPage() {
             time: '15:30',
             duration: '30 min',
             date: addDays(now, 1),
-            attendees: mockUsers.slice(1, 3).map((u) => ({
+            attendees: users?.slice(1, 3).map((u) => ({
               id: u.id,
               name: u.name,
-              avatar: u.avatar,
-            })),
+              avatar: u.avatar ?? undefined,
+            })) || [],
           },
         ],
       },
@@ -168,11 +169,11 @@ export default function DashboardPage() {
         endDate: new Date('2024-03-26'),
         type: 'Férias',
         status: 'processing' as const,
-        assignedTo: {
-          id: mockUsers[0].id,
-          name: mockUsers[0].name,
-          avatar: mockUsers[0].avatar,
-        },
+        assignedTo: users?.[0] ? {
+          id: users[0].id,
+          name: users[0].name,
+          avatar: users[0].avatar ?? undefined,
+        } : { id: '', name: 'Não atribuído', avatar: undefined },
       },
       {
         id: '2',
@@ -180,11 +181,11 @@ export default function DashboardPage() {
         endDate: new Date('2024-03-26'),
         type: 'Atestado',
         status: 'processing' as const,
-        assignedTo: {
-          id: mockUsers[1].id,
-          name: mockUsers[1].name,
-          avatar: mockUsers[1].avatar,
-        },
+        assignedTo: users?.[1] ? {
+          id: users[1].id,
+          name: users[1].name,
+          avatar: users[1].avatar ?? undefined,
+        } : { id: '', name: 'Não atribuído', avatar: undefined },
       },
     ]
 
@@ -212,7 +213,7 @@ export default function DashboardPage() {
       leaveStats,
       news,
     }
-  }, [])
+  }, [users])
 
   if (status === 'loading') {
     return (
@@ -273,11 +274,11 @@ export default function DashboardPage() {
         open={isMeetingModalOpen}
         onClose={() => setIsMeetingModalOpen(false)}
         onSave={handleSaveMeeting}
-        availableParticipants={mockUsers.slice(0, 6).map((u) => ({
+        availableParticipants={users?.slice(0, 6).map((u) => ({
           id: u.id,
           name: u.name,
-          avatar: u.avatar,
-        }))}
+          avatar: u.avatar ?? undefined,
+        })) || []}
       />
 
       {/* Row 1: Meeting Card + Efficiency */}

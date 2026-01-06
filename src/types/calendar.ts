@@ -15,6 +15,7 @@ export interface CalendarEvent {
   endTime: Date
   type: EventType
   sector?: Sector // For sector events
+  location?: string | null
   attendees: string[] // User IDs
   createdBy: string // User ID
   createdAt: Date

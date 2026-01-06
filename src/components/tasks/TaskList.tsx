@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 import { Calendar, Flag, Trash2, Edit2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -34,6 +34,8 @@ const statusConfig = {
 }
 
 export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
+  const { users } = useUsers()
+
   if (tasks.length === 0) {
     return (
       <div className="text-center py-12">
@@ -58,7 +60,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
         </TableHeader>
         <TableBody>
           {tasks.map((task) => {
-            const assignee = mockUsers.find(u => u.id === task.assignedTo)
+            const assignee = users?.find(u => u.id === task.assignedTo)
             const priority = priorityConfig[task.priority as keyof typeof priorityConfig]
             const status = statusConfig[task.status as keyof typeof statusConfig]
             const dueDate = new Date(task.dueDate || new Date())
@@ -90,7 +92,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
                   {assignee ? (
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={assignee.avatar} alt={assignee.name} />
+                        <AvatarImage src={assignee.avatar ?? undefined} alt={assignee.name} />
                         <AvatarFallback className="bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white text-xs">
                           {initials}
                         </AvatarFallback>

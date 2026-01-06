@@ -50,7 +50,7 @@ interface TicketDetailModalProps {
   comments: TicketComment[]
   onAddComment: (content: string, isInternal: boolean) => void
   onDeleteComment: (commentId: string) => void
-  getUserById: (userId: string) => { name: string; avatar?: string } | null
+  getUserById: (userId: string) => Promise<{ name: string; avatar?: string } | null>
 }
 
 const statusConfig = {
@@ -219,7 +219,8 @@ export function TicketDetailModal({
               <div>
                 <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Solicitante</p>
                 <p className="text-sm font-medium text-zinc-300 truncate">
-                  {getUserById(ticket.requester)?.name || 'Desconhecido'}
+                  {/* TODO: Implementar cache de usuários */}
+                  Usuário
                 </p>
               </div>
             </motion.div>
@@ -255,7 +256,8 @@ export function TicketDetailModal({
                     </motion.div>
                   ) : (
                     comments.map((comment, index) => {
-                      const user = getUserById(comment.userId)
+                      // TODO: Implementar cache de usuários
+                      // const user = await getUserById(comment.userId)
                       const isCurrentUser = comment.userId === 'current-user'
 
                       return (
@@ -272,16 +274,16 @@ export function TicketDetailModal({
                           )}
                         >
                           <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarImage src={user?.avatar} />
+                            <AvatarImage src={undefined} />
                             <AvatarFallback className="bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white text-xs">
-                              {getInitials(user?.name || 'U')}
+                              {getInitials('Usuário')}
                             </AvatarFallback>
                           </Avatar>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-sm font-medium text-zinc-200">
-                                {user?.name || 'Usuário'}
+                                Usuário
                               </span>
                               <span className="text-xs text-zinc-500">
                                 {formatCommentTime(comment.createdAt)}

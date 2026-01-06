@@ -114,11 +114,15 @@ export default function DrivePage() {
   }
 
   // Handlers de compartilhamento
-  const handleShareUser = (userId: string, permission: SharePermission) => {
+  const handleShareUser = async (userId: string, permission: SharePermission) => {
     if (!shareItem_) return
-    shareItem({ itemId: shareItem_.id, userId, permission })
-    const user = getUserById(userId)
-    toast.success(`Compartilhado com ${user?.name || 'usuário'}`)
+    try {
+      await shareItem({ itemId: shareItem_.id, userId, permission })
+      const user = await getUserById(userId)
+      toast.success(`Compartilhado com ${user?.name || 'usuário'}`)
+    } catch (error) {
+      toast.error('Funcionalidade ainda não implementada')
+    }
   }
 
   const handleUnshareUser = (userId: string) => {

@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, Edit2, Calendar as CalendarIcon } from 'lucide-react'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
 
 interface TaskDialogProps {
@@ -56,6 +56,7 @@ export function TaskDialog({
   onOpenChange,
   defaultStatus,
 }: TaskDialogProps) {
+  const { users } = useUsers()
   const [open, setOpen] = useState(isOpen || false)
   const [formData, setFormData] = useState(() => getInitialFormData(task, defaultStatus))
 
@@ -151,7 +152,7 @@ export function TaskDialog({
                 <SelectValue placeholder="Selecione uma pessoa" />
               </SelectTrigger>
               <SelectContent>
-                {mockUsers.map((user) => (
+                {(users || []).map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.name}
                   </SelectItem>

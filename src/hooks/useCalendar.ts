@@ -8,6 +8,7 @@ import { isSameDay, isToday, isBefore, isAfter, startOfMonth, endOfMonth, eachDa
 
 export interface UseCalendarReturn {
   events: CalendarEvent[]
+  isLoading: boolean
   getEventsByDate: (date: Date) => CalendarEvent[]
   getEventsByMonth: (date: Date) => CalendarEvent[]
   getUpcomingEvents: (days?: number) => CalendarEvent[]
@@ -50,8 +51,10 @@ export function useCalendar(): UseCalendarReturn {
           endTime: new Date(event.end_time),
           type: event.type as 'personal' | 'sector' | 'company',
           location: event.location,
-          participants: event.participants || [],
+          attendees: event.attendees || [],
           createdBy: event.created_by,
+          createdAt: new Date(event.created_at),
+          updatedAt: new Date(event.created_at), // DB não tem updated_at, usando created_at
         }))
       )
     } catch (error) {
@@ -119,7 +122,7 @@ export function useCalendar(): UseCalendarReturn {
           end_time: event.endTime.toISOString(),
           type: event.type,
           location: event.location,
-          participants: event.participants || [],
+          attendees: event.attendees || [],
           created_by: user.id,
         })
         .select()
@@ -135,8 +138,10 @@ export function useCalendar(): UseCalendarReturn {
         endTime: new Date(data.end_time),
         type: data.type as 'personal' | 'sector' | 'company',
         location: data.location,
-        participants: data.participants || [],
+        attendees: data.attendees || [],
         createdBy: data.created_by,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.created_at), // DB não tem updated_at
       }
 
       setEvents((prev) => [...prev, newEvent])
@@ -155,7 +160,7 @@ export function useCalendar(): UseCalendarReturn {
           end_time: updates.endTime?.toISOString(),
           type: updates.type,
           location: updates.location,
-          participants: updates.participants,
+          attendees: updates.attendees,
         })
         .eq('id', id)
         .select()
@@ -174,7 +179,8 @@ export function useCalendar(): UseCalendarReturn {
                 endTime: new Date(data.end_time),
                 type: data.type as 'personal' | 'sector' | 'company',
                 location: data.location,
-                participants: data.participants || [],
+                attendees: data.attendees || [],
+                updatedAt: new Date(), // DB não tem updated_at, usando data atual
               }
             : event
         )
@@ -209,6 +215,7 @@ export function useCalendar(): UseCalendarReturn {
 
   return {
     events,
+    isLoading,
     getEventsByDate,
     getEventsByMonth,
     getUpcomingEvents,

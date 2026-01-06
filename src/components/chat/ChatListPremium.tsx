@@ -26,7 +26,7 @@ interface ChatListPremiumProps {
   onNewConversation?: () => void
   unreadCounts?: Record<string, number>
   lastMessages?: Record<string, { content: string; timestamp: Date }>
-  getDMUserInfo?: (room: ChatRoom) => ChatUser | null
+  getDMUserInfo?: (room: ChatRoom) => Promise<ChatUser | null>
 }
 
 export function ChatListPremium({
@@ -177,7 +177,8 @@ export function ChatListPremium({
                     const isSelected = selectedRoom?.id === room.id
                     const unreadCount = unreadCounts[room.id] || 0
                     const lastMessage = lastMessages[room.id]
-                    const dmUser = getDMUserInfo?.(room)
+                    // TODO: Implementar cache de usuários DM para evitar Promise no render
+                    // const dmUser = await getDMUserInfo?.(room)
 
                     return (
                       <button
@@ -190,7 +191,7 @@ export function ChatListPremium({
                       >
                         <div className="relative shrink-0">
                           <Avatar className="w-10 h-10 border-2 border-[#ff0300]/20">
-                            <AvatarImage src={dmUser?.avatar} />
+                            <AvatarImage src={undefined} />
                             <AvatarFallback className="bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white font-bold">
                               {room.name[0]}
                             </AvatarFallback>

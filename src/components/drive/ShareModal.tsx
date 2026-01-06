@@ -58,7 +58,7 @@ interface ShareModalProps {
   onTogglePublic: () => void
   onCopyLink: () => string
   availableUsers: { id: string; name: string; email: string; avatar?: string; sector: string }[]
-  getUserById: (userId: string) => { name: string; avatar?: string; email: string } | null
+  getUserById: (userId: string) => Promise<{ name: string; avatar?: string; email: string } | null>
 }
 
 const permissionConfig: Record<SharePermission, { label: string; icon: React.ReactNode; description: string }> = {
@@ -314,7 +314,8 @@ export function ShareModal({
                 <div className="space-y-2">
                   <AnimatePresence mode="popLayout">
                     {shares.map((share) => {
-                      const user = getUserById(share.userId)
+                      // Buscar usuário na lista local em vez de Promise
+                      const user = availableUsers.find(u => u.id === share.userId)
                       if (!user) return null
 
                       return (
@@ -326,7 +327,7 @@ export function ShareModal({
                           className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/30 border border-zinc-700/30 group"
                         >
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src={user.avatar} />
+                            <AvatarImage src={user.avatar ?? undefined} />
                             <AvatarFallback className="bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white text-sm">
                               {getInitials(user.name)}
                             </AvatarFallback>

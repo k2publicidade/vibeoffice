@@ -8,7 +8,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { mockUsers } from "@/lib/mock-data"
+import { useUsers } from "@/hooks/useUsers"
 import { Calendar, AlertCircle } from "lucide-react"
 
 interface PremiumTaskCardProps {
@@ -31,7 +31,8 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
         transition,
     }
 
-    const assignee = mockUsers.find(u => u.id === task.assignedTo)
+    const { users } = useUsers()
+    const assignee = users?.find(u => u.id === task.assignedTo)
     const dueDate = task.dueDate ? new Date(task.dueDate) : null
     const isOverdue = dueDate && dueDate < new Date() && task.status !== 'done'
 

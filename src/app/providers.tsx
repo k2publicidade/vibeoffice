@@ -5,20 +5,40 @@
 
 'use client'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { SessionProvider } from 'next-auth/react'
 import { ThemeProvider } from 'next-themes'
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 
 interface ProvidersProps {
   children: ReactNode
 }
 
 export function Providers({ children }: ProvidersProps) {
+  // Criar QueryClient no estado do componente para evitar recriação em re-renders
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 1000 * 60 * 5, // 5 minutos
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  )
+
   return (
-    <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false}>
-        {children}
-      </ThemeProvider>
-    </SessionProvider>
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false}>
+          {children}
+        </ThemeProvider>
+      </SessionProvider>
+      {/* DevTools apenas em desenvolvimento */}
+      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+    </QueryClientProvider>
   )
 }

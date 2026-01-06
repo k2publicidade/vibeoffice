@@ -85,8 +85,8 @@ export function useTickets(): UseTicketsReturn {
           status: t.status,
           priority: t.priority,
           requester: t.requester,
-          createdBy: t.created_by,
-          assignedTo: t.assigned_to,
+          createdBy: t.created_by ?? undefined,
+          assignedTo: t.assigned_to ?? undefined,
           createdAt: new Date(t.created_at),
           updatedAt: new Date(t.updated_at),
         }))
@@ -117,7 +117,7 @@ export function useTickets(): UseTicketsReturn {
           attachments: c.attachments,
           createdAt: new Date(c.created_at),
           updatedAt: c.updated_at ? new Date(c.updated_at) : undefined,
-          editedBy: c.edited_by,
+          editedBy: c.edited_by ?? undefined,
         }))
       )
     } catch (error) {
@@ -190,8 +190,8 @@ export function useTickets(): UseTicketsReturn {
         status: data.status,
         priority: data.priority,
         requester: data.requester,
-        createdBy: data.created_by,
-        assignedTo: data.assigned_to,
+        createdBy: data.created_by ?? undefined,
+        assignedTo: data.assigned_to ?? undefined,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
       }
@@ -228,8 +228,8 @@ export function useTickets(): UseTicketsReturn {
       status: data.status,
       priority: data.priority,
       requester: data.requester,
-      createdBy: data.created_by,
-      assignedTo: data.assigned_to,
+      createdBy: data.created_by ?? undefined,
+      assignedTo: data.assigned_to ?? undefined,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     }
@@ -350,7 +350,7 @@ export function useTickets(): UseTicketsReturn {
         attachments: data.attachments,
         createdAt: new Date(data.created_at),
         updatedAt: data.updated_at ? new Date(data.updated_at) : undefined,
-        editedBy: data.edited_by,
+        editedBy: data.edited_by ?? undefined,
       }
 
       setComments(prev =>

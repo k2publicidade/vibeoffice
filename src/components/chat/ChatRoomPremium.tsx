@@ -29,7 +29,7 @@ interface ChatRoomPremiumProps {
   typingUsers?: string[]
   isLoading?: boolean
   onBack?: () => void
-  getDMUserInfo?: (room: ChatRoomType) => ChatUser | null
+  getDMUserInfo?: (room: ChatRoomType) => Promise<ChatUser | null>
 }
 
 export function ChatRoomPremium({
@@ -59,7 +59,8 @@ export function ChatRoomPremium({
 
   const currentChatName = room.name
   const isOnline = room.type === 'dm'
-  const dmUser = room.type === 'dm' ? getDMUserInfo?.(room) : null
+  // TODO: Implementar cache de usuários DM para evitar Promise no render
+  // const dmUser = room.type === 'dm' ? await getDMUserInfo?.(room) : null
 
   return (
     <div className="flex-1 flex flex-col bg-black overflow-hidden">
@@ -80,7 +81,7 @@ export function ChatRoomPremium({
 
           {room.type === 'dm' ? (
             <Avatar className="w-10 h-10 border-2 border-[#fc7a67]">
-              <AvatarImage src={dmUser?.avatar} />
+              <AvatarImage src={undefined} />
               <AvatarFallback className="bg-[#fc7a67] text-black font-bold">
                 {currentChatName[0]}
               </AvatarFallback>

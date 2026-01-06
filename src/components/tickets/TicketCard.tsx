@@ -4,7 +4,7 @@ import { Ticket } from '@/types/tickets'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 import { Calendar, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 interface TicketCardProps {
@@ -26,7 +26,8 @@ const priorityConfig = {
 }
 
 export function TicketCard({ ticket, onClick }: TicketCardProps) {
-  const assignee = mockUsers.find(u => u.id === ticket.assignedTo)
+  const { users } = useUsers()
+  const assignee = users?.find(u => u.id === ticket.assignedTo)
   const status = statusConfig[ticket.status as keyof typeof statusConfig]
   const priority = priorityConfig[ticket.priority as keyof typeof priorityConfig]
 
@@ -86,7 +87,7 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
 
           {assignee && (
             <Avatar className="h-6 w-6">
-              <AvatarImage src={assignee.avatar} alt={assignee.name} />
+              <AvatarImage src={assignee.avatar ?? undefined} alt={assignee.name} />
               <AvatarFallback className="bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white text-xs">
                 {initials}
               </AvatarFallback>

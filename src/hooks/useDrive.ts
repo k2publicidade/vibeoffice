@@ -34,20 +34,20 @@ export interface UseDriveReturn {
   getFolderPath: (folderId: string | null) => DriveItem[]
   uploadFile: (input: UploadFileInput) => Promise<DriveItem>
   uploadFiles: (files: File[], parentId?: string | null) => Promise<DriveItem[]>
-  createFolder: (input: CreateFolderInput) => DriveItem
-  deleteItem: (itemId: string) => void
-  renameItem: (itemId: string, newName: string) => void
+  createFolder: (input: CreateFolderInput) => Promise<DriveItem>
+  deleteItem: (itemId: string) => Promise<void>
+  renameItem: (itemId: string, newName: string) => Promise<void>
   // Funções de compartilhamento
-  shareItem: (input: ShareItemInput) => void
-  unshareItem: (itemId: string, userId: string) => void
-  updateShare: (itemId: string, userId: string, permission: SharePermission) => void
+  shareItem: (input: ShareItemInput) => Promise<void>
+  unshareItem: (itemId: string, userId: string) => Promise<void>
+  updateShare: (itemId: string, userId: string, permission: SharePermission) => Promise<void>
   getItemShares: (itemId: string) => SharedAccess[]
   getSharedWithMe: () => SharedWithMe[]
   togglePublicAccess: (itemId: string) => void
   copyShareLink: (itemId: string) => string
   // Usuários para compartilhamento
   availableUsers: { id: string; name: string; email: string; avatar?: string; sector: string }[]
-  getUserById: (userId: string) => { name: string; avatar?: string; email: string } | null
+  getUserById: (userId: string) => Promise<{ name: string; avatar?: string; email: string } | null>
   isLoading: boolean
   isUploading: boolean
 }
@@ -83,12 +83,12 @@ export function useDrive(): UseDriveReturn {
           id: item.id,
           name: item.name,
           type: item.type as 'file' | 'folder',
-          parentId: item.parent_id || undefined,
-          size: item.size || undefined,
-          mimeType: item.mime_type || undefined,
-          storagePath: item.storage_path || undefined,
+          parentId: item.parent_id ?? undefined,
+          size: item.size ?? undefined,
+          mimeType: item.mime_type ?? undefined,
+          url: item.storage_path ?? undefined, // URL do Supabase Storage
           uploadedBy: item.uploaded_by,
-          sharedWith: item.shared_with || [],
+          sharedWith: [], // TODO: Implementar tabela de compartilhamento
           isPublic: item.is_public || false,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at),
@@ -106,7 +106,7 @@ export function useDrive(): UseDriveReturn {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email, avatar, sector')
-        .ne('id', user!.id) // Exclui o usuário atual
+        .neq('id', user!.id) // Exclui o usuário atual
         .order('name')
 
       if (error) throw error
@@ -258,12 +258,12 @@ export function useDrive(): UseDriveReturn {
         id: data.id,
         name: data.name,
         type: 'file',
-        parentId: data.parent_id || undefined,
-        size: data.size,
-        mimeType: data.mime_type,
-        storagePath: data.storage_path,
+        parentId: data.parent_id ?? undefined,
+        size: data.size ?? undefined,
+        mimeType: data.mime_type ?? undefined,
+        url: data.storage_path ?? undefined, // URL do Supabase Storage
         uploadedBy: data.uploaded_by,
-        sharedWith: data.shared_with || [],
+        sharedWith: [], // TODO: Implementar compartilhamento
         isPublic: data.is_public || false,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
@@ -319,9 +319,9 @@ export function useDrive(): UseDriveReturn {
       id: data.id,
       name: data.name,
       type: 'folder',
-      parentId: data.parent_id || undefined,
+      parentId: data.parent_id ?? undefined,
       uploadedBy: data.uploaded_by,
-      sharedWith: data.shared_with || [],
+      sharedWith: [], // TODO: Implementar compartilhamento
       isPublic: data.is_public || false,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
@@ -338,10 +338,10 @@ export function useDrive(): UseDriveReturn {
 
     try {
       // Se for arquivo, deletar do Storage também
-      if (item.type === 'file' && item.storagePath) {
+      if (item.type === 'file' && item.url) {
         const { error: storageError } = await supabase.storage
           .from('drive-files')
-          .remove([item.storagePath])
+          .remove([item.url])
 
         if (storageError) console.error('Error deleting from storage:', storageError)
       }
@@ -387,93 +387,71 @@ export function useDrive(): UseDriveReturn {
     if (!user) throw new Error('User not authenticated')
 
     const item = items.find(i => i.id === input.itemId)
-    if (!item) return
-
-    const existingShares = item.sharedWith || []
-    const alreadyShared = existingShares.some((s: any) => s.userId === input.userId)
-
-    let updatedShares: SharedAccess[]
-    if (alreadyShared) {
-      // Atualiza permissão
-      updatedShares = existingShares.map((s: any) =>
-        s.userId === input.userId
-          ? { ...s, permission: input.permission }
-          : s
-      )
-    } else {
-      // Adiciona novo compartilhamento
-      const newShare: SharedAccess = {
-        userId: input.userId,
-        permission: input.permission,
-        sharedAt: new Date(),
-        sharedBy: user.id,
-      }
-      updatedShares = [...existingShares, newShare]
+    if (!item || item.uploadedBy !== user.id) {
+      throw new Error('Only owner can share items')
     }
 
-    const { error } = await supabase
-      .from('drive_items')
-      .update({ shared_with: updatedShares })
-      .eq('id', input.itemId)
+    // Verificar se já existe compartilhamento
+    const { data: existing } = await supabase
+      .from('shared_access')
+      .select('id')
+      .eq('item_id', input.itemId)
+      .eq('user_id', input.userId)
+      .single()
 
-    if (error) throw error
+    if (existing) {
+      // Atualizar permissão existente
+      const { error } = await supabase
+        .from('shared_access')
+        .update({ permission: input.permission })
+        .eq('id', existing.id)
 
-    setItems(prev =>
-      prev.map(item =>
-        item.id === input.itemId
-          ? { ...item, sharedWith: updatedShares, updatedAt: new Date() }
-          : item
-      )
-    )
+      if (error) throw error
+    } else {
+      // Criar novo compartilhamento
+      const { error } = await supabase
+        .from('shared_access')
+        .insert({
+          item_id: input.itemId,
+          user_id: input.userId,
+          shared_by: user.id,
+          permission: input.permission,
+        })
+
+      if (error) throw error
+    }
+
+    // Refetch items para atualizar UI
+    await fetchItems()
   }, [user, items])
 
   // Remover compartilhamento
   const unshareItem = useCallback(async (itemId: string, userId: string) => {
-    const item = items.find(i => i.id === itemId)
-    if (!item) return
-
-    const updatedShares = (item.sharedWith || []).filter((s: any) => s.userId !== userId)
-
     const { error } = await supabase
-      .from('drive_items')
-      .update({ shared_with: updatedShares })
-      .eq('id', itemId)
+      .from('shared_access')
+      .delete()
+      .eq('item_id', itemId)
+      .eq('user_id', userId)
 
     if (error) throw error
 
-    setItems(prev =>
-      prev.map(item =>
-        item.id === itemId
-          ? { ...item, sharedWith: updatedShares, updatedAt: new Date() }
-          : item
-      )
-    )
-  }, [items])
+    // Refetch items para atualizar UI
+    await fetchItems()
+  }, [])
 
   // Atualizar permissão de compartilhamento
   const updateShare = useCallback(async (itemId: string, userId: string, permission: SharePermission) => {
-    const item = items.find(i => i.id === itemId)
-    if (!item) return
-
-    const updatedShares = (item.sharedWith || []).map((s: any) =>
-      s.userId === userId ? { ...s, permission } : s
-    )
-
     const { error } = await supabase
-      .from('drive_items')
-      .update({ shared_with: updatedShares })
-      .eq('id', itemId)
+      .from('shared_access')
+      .update({ permission })
+      .eq('item_id', itemId)
+      .eq('user_id', userId)
 
     if (error) throw error
 
-    setItems(prev =>
-      prev.map(item =>
-        item.id === itemId
-          ? { ...item, sharedWith: updatedShares, updatedAt: new Date() }
-          : item
-      )
-    )
-  }, [items])
+    // Refetch items para atualizar UI
+    await fetchItems()
+  }, [])
 
   // Obter compartilhamentos de um item
   const getItemShares = useCallback((itemId: string): SharedAccess[] => {

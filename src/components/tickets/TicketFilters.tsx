@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { X, CircleDot, Clock, PlayCircle, CheckCircle2 } from 'lucide-react'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 
 interface TicketFiltersProps {
   filters: TicketFilters
@@ -59,6 +59,7 @@ const priorityLabels: Record<string, string> = {
 }
 
 export function TicketFilters({ filters, onFiltersChange }: TicketFiltersProps) {
+  const { users } = useUsers()
   const hasFilters =
     (filters.status && filters.status.length > 0) ||
     filters.priority ||
@@ -240,7 +241,7 @@ export function TicketFilters({ filters, onFiltersChange }: TicketFiltersProps) 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_VALUE}>Todas as pessoas</SelectItem>
-              {mockUsers.map((user) => (
+              {(users || []).map((user) => (
                 <SelectItem key={user.id} value={user.id}>
                   {user.name}
                 </SelectItem>

@@ -8,6 +8,11 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { mockTasks, mockTickets, mockChatRooms, mockMessages, mockDriveItems, mockCourses, mockCourseProgress, mockCalendarEvents } from '../src/lib/mock-data'
+import { config } from 'dotenv'
+import { resolve } from 'path'
+
+// Carregar variáveis de ambiente do .env.local
+config({ path: resolve(process.cwd(), '.env.local') })
 
 // Supabase Admin Client (usa service_role_key para bypass de RLS)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -26,10 +31,37 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   },
 })
 
+// Mapeamento de IDs mockados para UUIDs reais do banco
+let userIdMap: Record<string, string> = {}
+
+async function getUserMapping() {
+  console.log('👥 Buscando usuários do banco...')
+
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('id, email')
+    .order('email')
+
+  if (error) throw error
+
+  // Mapear emails para UUIDs (assumindo que os emails nos mocks correspondem aos do banco)
+  // Os usuários foram criados pela migration com emails: eu@vibedistro.com, joao.silva@vibedistro.com, etc.
+  userIdMap = users.reduce((acc, user, index) => {
+    acc[`user-${String(index + 1).padStart(3, '0')}`] = user.id
+    return acc
+  }, {} as Record<string, string>)
+
+  console.log(`  ✅ ${users.length} usuários mapeados\n`)
+  return userIdMap
+}
+
 async function main() {
   console.log('🌱 Iniciando seed do banco Supabase...\n')
 
   try {
+    // Primeiro, buscar o mapeamento de usuários
+    await getUserMapping()
+
     await seedTasks()
     await seedTickets()
     await seedChat()
@@ -47,17 +79,16 @@ async function main() {
 async function seedTasks() {
   console.log('📋 Seeding Tasks...')
 
-  const { data, error } = await supabase.from('tasks').insert(
+  const { error } = await supabase.from('tasks').insert(
     mockTasks.map((task) => ({
-      id: task.id,
       title: task.title,
       description: task.description,
       status: task.status,
       priority: task.priority,
       due_date: task.dueDate?.toISOString(),
-      assigned_to: task.assignedTo,
+      assigned_to: task.assignedTo ? userIdMap[task.assignedTo] : null,
       sector: task.sector,
-      created_by: task.createdBy,
+      created_by: userIdMap[task.createdBy],
       tags: task.tags || [],
       created_at: task.createdAt.toISOString(),
       updated_at: task.updatedAt.toISOString(),
@@ -80,9 +111,9 @@ async function seedTickets() {
       category: ticket.category,
       status: ticket.status,
       priority: ticket.priority,
-      requester: ticket.requester,
-      created_by: ticket.createdBy,
-      assigned_to: ticket.assignedTo,
+      requester: userIdMap[ticket.requester],
+      created_by: ticket.createdBy ? userIdMap[ticket.createdBy] : userIdMap[ticket.requester],
+      assigned_to: ticket.assignedTo ? userIdMap[ticket.assignedTo] : null,
       created_at: ticket.createdAt.toISOString(),
       updated_at: ticket.updatedAt.toISOString(),
     }))
@@ -95,7 +126,7 @@ async function seedTickets() {
   const sampleComments = mockTickets.slice(0, 5).flatMap((ticket, idx) => [
     {
       ticket_id: ticket.id,
-      user_id: ticket.createdBy,
+      user_id: ticket.createdBy ? userIdMap[ticket.createdBy] : userIdMap[ticket.requester],
       content: `Este é um comentário de exemplo no ticket "${ticket.title}".`,
       is_internal: false,
       attachments: [],
@@ -103,7 +134,7 @@ async function seedTickets() {
     },
     {
       ticket_id: ticket.id,
-      user_id: ticket.assignedTo || ticket.createdBy,
+      user_id: ticket.assignedTo ? userIdMap[ticket.assignedTo] : (ticket.createdBy ? userIdMap[ticket.createdBy] : userIdMap[ticket.requester]),
       content: 'Estou analisando este chamado. Retorno em breve com uma solução.',
       is_internal: true,
       attachments: [],
@@ -128,7 +159,7 @@ async function seedChat() {
       id: room.id,
       name: room.name,
       type: room.type,
-      participants: room.participants,
+      participants: room.participants.map(p => userIdMap[p]),
       created_at: room.createdAt.toISOString(),
       updated_at: room.updatedAt.toISOString(),
     }))
@@ -142,7 +173,7 @@ async function seedChat() {
     mockMessages.map((msg) => ({
       id: msg.id,
       room_id: msg.roomId,
-      user_id: msg.userId,
+      user_id: userIdMap[msg.userId],
       content: msg.content,
       timestamp: msg.timestamp.toISOString(),
     }))
@@ -165,8 +196,8 @@ async function seedDrive() {
       size: item.size,
       mime_type: item.mimeType,
       storage_path: item.type === 'file' ? `mock/${item.id}/${item.name}` : null,
-      uploaded_by: item.uploadedBy,
-      shared_with: item.sharedWith || [],
+      uploaded_by: userIdMap[item.uploadedBy],
+      shared_with: item.sharedWith && Array.isArray(item.sharedWith) ? item.sharedWith.map((access) => userIdMap[access.userId]) : [],
       is_public: item.isPublic || false,
       created_at: item.createdAt.toISOString(),
       updated_at: item.updatedAt.toISOString(),
@@ -187,11 +218,8 @@ async function seedCourses() {
       title: course.title,
       description: course.description,
       instructor: course.instructor,
-      duration: course.duration,
-      sector: course.sector,
-      thumbnail: course.thumbnail,
+      thumbnail: null, // Campo existe na tabela mas não nos mocks
       created_at: course.createdAt.toISOString(),
-      updated_at: course.updatedAt.toISOString(),
     }))
   )
 
@@ -204,11 +232,9 @@ async function seedCourses() {
       id: lesson.id,
       course_id: course.id,
       title: lesson.title,
-      description: lesson.description,
-      duration: lesson.duration,
       video_url: lesson.videoUrl,
       content: lesson.content,
-      order_index: idx,
+      order: idx, // Campo 'order' na migration, não 'order_index'
     }))
   )
 
@@ -220,7 +246,7 @@ async function seedCourses() {
   // Inserir progresso de cursos
   const { error: progressError } = await supabase.from('course_progress').insert(
     mockCourseProgress.map((progress) => ({
-      user_id: progress.userId,
+      user_id: userIdMap[progress.userId],
       course_id: progress.courseId,
       completed_lessons: progress.completedLessons || [],
       last_accessed_at: progress.lastAccessedAt?.toISOString(),
@@ -242,9 +268,10 @@ async function seedCalendar() {
       start_time: event.startTime.toISOString(),
       end_time: event.endTime.toISOString(),
       type: event.type,
-      location: event.location,
-      participants: event.participants || [],
-      created_by: event.createdBy,
+      sector: event.sector || null,
+      location: null, // Campo não existe nos mocks
+      attendees: event.attendees ? event.attendees.map(userId => userIdMap[userId]) : [],
+      created_by: userIdMap[event.createdBy],
     }))
   )
 

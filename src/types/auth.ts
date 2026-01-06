@@ -10,7 +10,7 @@ export interface User {
   id: string
   name: string
   email: string
-  avatar: string
+  avatar: string | null
   sector: Sector
   role: Role
   createdAt: Date

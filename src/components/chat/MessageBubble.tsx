@@ -3,7 +3,7 @@
 import { memo } from 'react'
 import { Message } from '@/types/chat'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 
 interface MessageBubbleProps {
   message: Message
@@ -11,7 +11,8 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble = memo(function MessageBubble({ message, isCurrentUser }: MessageBubbleProps) {
-  const user = mockUsers.find(u => u.id === message.userId)
+  const { users } = useUsers()
+  const user = users?.find(u => u.id === message.userId)
   const initials = user?.name
     .split(' ')
     .map(n => n[0])
@@ -27,7 +28,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isCurrentUse
     <div className={`flex gap-2 mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
       {!isCurrentUser && (
         <Avatar className="h-8 w-8 flex-shrink-0">
-          <AvatarImage src={user?.avatar} alt={user?.name} />
+          <AvatarImage src={user?.avatar ?? undefined} alt={user?.name} />
           <AvatarFallback className="bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white text-xs">
             {initials}
           </AvatarFallback>

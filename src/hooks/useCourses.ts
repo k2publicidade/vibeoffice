@@ -50,7 +50,7 @@ export function useCourses(): UseCoursesReturn {
             .from('lessons')
             .select('*')
             .eq('course_id', course.id)
-            .order('order_index')
+            .order('order')
 
           if (lessonsError) throw lessonsError
 
@@ -59,19 +59,16 @@ export function useCourses(): UseCoursesReturn {
             title: course.title,
             description: course.description || '',
             instructor: course.instructor || '',
-            duration: course.duration || 0,
-            sector: course.sector,
-            thumbnail: course.thumbnail,
-            lessons: lessonsData.map((lesson) => ({
+            lessons: lessonsData.map((lesson, index) => ({
               id: lesson.id,
+              courseId: course.id,
               title: lesson.title,
-              description: lesson.description || '',
-              duration: lesson.duration || 0,
-              videoUrl: lesson.video_url,
+              videoUrl: lesson.video_url ?? undefined,
               content: lesson.content || '',
+              order: lesson.order ?? index,
             })),
             createdAt: new Date(course.created_at),
-            updatedAt: new Date(course.updated_at),
+            updatedAt: new Date(course.created_at), // DB não tem updated_at
           }
         })
       )
@@ -97,10 +94,12 @@ export function useCourses(): UseCoursesReturn {
 
       setProgress(
         data.map((p) => ({
+          id: p.id,
           userId: p.user_id,
           courseId: p.course_id,
           completedLessons: p.completed_lessons || [],
-          lastAccessedAt: p.last_accessed_at ? new Date(p.last_accessed_at) : undefined,
+          progress: 0, // Calculado dinamicamente via getProgressPercentage
+          lastAccessedAt: p.last_accessed_at ? new Date(p.last_accessed_at) : new Date(),
         }))
       )
     } catch (error) {
@@ -204,9 +203,11 @@ export function useCourses(): UseCoursesReturn {
             return [
               ...prev,
               {
+                id: `${user.id}-${courseId}`, // ID temporário (será substituído ao recarregar)
                 userId: user.id,
                 courseId,
                 completedLessons: newCompletedLessons,
+                progress: 0, // Calculado dinamicamente
                 lastAccessedAt: new Date(),
               },
             ]

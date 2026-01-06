@@ -8,13 +8,14 @@ import { MonthView } from '@/components/calendar/MonthView'
 import { DayView } from '@/components/calendar/DayView'
 import { AgendaView } from '@/components/calendar/AgendaView'
 import { CreateEventModal } from '@/components/calendar/CreateEventModal'
-import { mockUsers } from '@/lib/mock-data'
+import { useUsers } from '@/hooks/useUsers'
 
 export default function CalendarPage() {
   const {
     events,
     getEventsByType,
   } = useCalendar()
+  const { users } = useUsers()
 
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<'month' | 'week' | 'day' | 'agenda'>('week')
@@ -68,11 +69,11 @@ export default function CalendarPage() {
           ? 'hsl(22, 94%, 48%)'
           : 'hsl(142, 76%, 36%)',
         attendees: event.attendees
-          .map(id => mockUsers.find(u => u.id === id))
+          .map(id => users?.find(u => u.id === id))
           .filter(Boolean)
-          .map(u => ({ id: u!.id, name: u!.name, avatar: u!.avatar })),
+          .map(u => ({ id: u!.id, name: u!.name, avatar: u!.avatar ?? undefined })),
       }))
-  }, [events, filters])
+  }, [events, filters, users])
 
   const handleFilterChange = (id: string, checked: boolean) => {
     setFilters(prev =>
@@ -106,10 +107,10 @@ export default function CalendarPage() {
   }
 
   // Available attendees for create modal
-  const availableAttendees = mockUsers.slice(0, 8).map(u => ({
+  const availableAttendees = (users || []).slice(0, 8).map(u => ({
     id: u.id,
     name: u.name,
-    avatar: u.avatar,
+    avatar: u.avatar ?? undefined,
   }))
 
   return (
