@@ -9,7 +9,8 @@ VIBEDISTRO Intranet/CRM é uma aplicação Next.js 14+ completa para gestão int
 ## Stack Tecnológica
 
 - **Framework:** Next.js 14.2+ (App Router) com TypeScript
-- **Autenticação:** NextAuth.js v5 (beta) com provider customizado mockado
+- **Backend:** Supabase (PostgreSQL + Auth + Storage + Realtime)
+- **Autenticação:** Supabase Auth (substituiu NextAuth.js)
 - **UI:** Shadcn/UI + Radix UI + Tailwind CSS
 - **Ícones:** Lucide React
 - **Formulários:** React Hook Form + Zod
@@ -35,42 +36,93 @@ npm start
 
 # Linting
 npm run lint
+
+# Supabase - Seed do banco de dados
+npm run db:seed
 ```
 
-## Estrutura de Dados Mockados
+## Configuração do Supabase
 
-**IMPORTANTE:** Este projeto usa dados **100% mockados** para simular um backend real. Todos os dados estão centralizados em `src/lib/mock-data.ts`.
+### Variáveis de Ambiente
 
-### Integrações Futuras
+Certifique-se de ter as seguintes variáveis no arquivo `.env.local`:
 
-Todos os arquivos que precisarão de integração com backend real estão marcados com comentários:
-
-```typescript
-// TODO: Integrar com API real em [URL_DA_API]
-// TODO: Substituir mock por chamada ao backend
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
-Áreas principais que precisarão de integração:
-1. **Autenticação:** Trocar NextAuth CredentialsProvider por OAuth2/JWT real
-2. **Chat:** Implementar WebSocket real (Socket.io ou similar)
-3. **Drive:** Integrar com S3/Azure Blob Storage para upload real
-4. **APIs:** Todas as API routes atualmente retornam dados mockados
+### Migrations
+
+As migrations SQL estão em `docs/supabase-migrations.sql` e incluem:
+
+1. **Enums**: Definições de tipos customizados
+2. **Users**: Tabela de usuários (sincronizada com Supabase Auth)
+3. **Tasks**: Sistema de tarefas
+4. **Tickets**: Sistema de chamados + comentários
+5. **Chat**: Salas de chat + mensagens (com Realtime)
+6. **Drive**: Arquivos e pastas (com Supabase Storage)
+7. **Courses**: Cursos + lições + progresso
+8. **Calendar**: Eventos de calendário
+
+### Supabase Storage
+
+- **Bucket**: `drive-files` (público com RLS)
+- **RLS Policies**: Upload/download/delete baseado em autenticação
+
+### Seed do Banco
+
+Para popular o banco com dados de teste:
+
+```bash
+npm run db:seed
+```
+
+Este comando executa `scripts/seed-supabase.ts` que popula todas as tabelas com dados mockados.
+
+## Dados Mock vs Supabase
+
+**Status Atual:** O projeto foi **migrado para Supabase** (completo em Janeiro/2026).
+
+- ✅ **Autenticação**: Supabase Auth (substituiu NextAuth mock)
+- ✅ **Chat**: Mensagens com Supabase Realtime subscriptions
+- ✅ **Drive**: Upload real para Supabase Storage
+- ✅ **Banco de Dados**: PostgreSQL via Supabase
+- ⚠️ **Mock Data**: `src/lib/mock-data.ts` ainda existe para referência e seed, mas **não é usado pelos hooks**
+
+### Hooks Migrados (usam Supabase)
+
+Todos os hooks foram migrados para Supabase queries:
+
+1. **useAuth** - Supabase Auth + tabela users
+2. **useTasks** - CRUD na tabela tasks
+3. **useTickets** - CRUD em tickets + ticket_comments
+4. **useChat** - chat_rooms + messages com Realtime
+5. **useDrive** - drive_items + Supabase Storage
+6. **useCourses** - courses + lessons + course_progress
+7. **useCalendar** - calendar_events
 
 ## Arquitetura de Autenticação
 
-### NextAuth.js v5 com Provider Mockado
+### Supabase Auth (migrado de NextAuth.js)
 
-- **Arquivo principal:** `src/app/api/auth/[...nextauth]/route.ts`
-- **Middleware:** `src/middleware.ts` protege rotas do grupo `(dashboard)`
-- **Hook:** `src/hooks/useAuth.ts` para acessar sessão
-- **Credenciais de teste:**
-  - Email: qualquer email de `mockUsers` em `src/lib/mock-data.ts`
-  - Senha: `password123` (para todos os usuários mockados)
+- **Auth Backend:** Supabase Auth gerencia sessões e usuários
+- **Middleware:** `src/middleware.ts` protege rotas com Supabase SSR
+- **Hook:** `src/hooks/useAuth.ts` para acessar sessão e user profile
+- **Auth Service:** `src/lib/auth.ts` - funções server-side (getSession, signIn, signOut)
+
+### Usuários de Teste
+
+20 usuários foram criados via migration `009_seed_mock_users.sql`:
+
+- **Email**: eu@vibedistro.com, joao.silva@vibedistro.com, maria.santos@vibedistro.com, etc.
+- **Senha**: `password123` (para todos os usuários)
 
 ### Estrutura de Usuário
 
 Cada usuário tem:
-- `id`, `name`, `email`, `avatar`
+- `id` (UUID), `email`, `name`, `avatar`
 - `sector`: Um dos 7 setores (A&R, Marketing, Financeiro, Jurídico, Administrativo, TI/Suporte, Atendimento ao Artista)
 - `role`: Admin, Gerente ou Colaborador
 
@@ -79,6 +131,14 @@ Cada usuário tem:
 - **Admin:** Acesso total a todos os módulos e setores
 - **Gerente:** Acesso total ao seu setor + leitura em outros
 - **Colaborador:** Acesso limitado ao seu setor
+
+### Como Funciona
+
+1. **Login**: `useAuth().signIn(email, password)` → Supabase Auth
+2. **Sessão**: Supabase SSR gerencia cookies de sessão
+3. **Middleware**: Redireciona para `/login` se não autenticado
+4. **Profile**: useAuth busca dados de `public.users` após login
+5. **RLS**: Row Level Security protege dados por usuário
 
 ## Organização de Código
 
@@ -95,26 +155,39 @@ Cada usuário tem:
 - **Enums:** PascalCase (ex: `TaskStatus`)
 - **Constantes:** UPPER_SNAKE_CASE (ex: `API_ENDPOINTS`)
 
-### Padrão de API Routes
+### Padrão Supabase
 
-Todas as API routes seguem este padrão:
+Os hooks do projeto seguem este padrão:
 
+1. **Imports**: `supabase` client + `useAuth` hook
+2. **State**: useState para dados + isLoading
+3. **useEffect**: Fetch dados quando user estiver autenticado
+4. **Queries**: `supabase.from('table').select().eq()...`
+5. **CRUD**: Métodos async que atualizam banco + estado local
+6. **Filters**: useMemo para derivar dados filtrados do state
+
+Exemplo simplificado:
 ```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+export function useTasks() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const { user } = useAuth()
 
-export async function GET(request: NextRequest) {
-  // 1. Verificar autenticação
-  const session = await getServerSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  useEffect(() => {
+    if (!user) return
+    fetchTasks()
+  }, [user])
+
+  async function fetchTasks() {
+    const { data } = await supabase.from('tasks').select('*')
+    setTasks(data.map(t => ({ /* mapear campos */ })))
   }
 
-  // 2. Buscar dados mockados (filtrar por permissões)
-  const data = mockData.filter(/* filtros baseados em session.user */);
+  const createTask = async (taskData) => {
+    const { data } = await supabase.from('tasks').insert(taskData).select().single()
+    setTasks(prev => [data, ...prev])
+  }
 
-  // 3. Retornar resposta
-  return NextResponse.json(data);
+  return { tasks, createTask }
 }
 ```
 
@@ -141,14 +214,14 @@ npx shadcn-ui@latest add [component-name]
 ### 2. Chat (`/chat`)
 - Salas por setor (7 canais)
 - DMs entre usuários
-- Simulação de tempo real com `MockChatSimulator`
-- Auto-scroll, indicador de "digitando"
+- **Mensagens em tempo real** com Supabase Realtime subscriptions
+- Auto-scroll, histórico de mensagens
 
 ### 3. Drive (`/drive`)
 - Navegação hierárquica de pastas
-- Upload/download mockado
-- Controle de acesso por setor
-- Preview de arquivos
+- **Upload/download REAL** com Supabase Storage
+- Controle de acesso por setor (via RLS)
+- Compartilhamento de arquivos (JSONB shared_with)
 
 ### 4. Tarefas (`/tasks`)
 - Visualização Kanban (drag & drop)
@@ -190,15 +263,26 @@ npx shadcn-ui@latest add [component-name]
 6. **Error handling** com toast notifications (Sonner)
 7. **Acessibilidade:** ARIA labels, navegação por teclado
 
-## TODOs Globais para Produção
+## Status da Migração Supabase
 
-Antes de ir para produção, substituir:
+✅ **COMPLETO** (Janeiro 2026):
 
-1. **Autenticação mockada** por OAuth2/JWT real
-2. **Mock data** por chamadas de API reais
-3. **Chat simulator** por WebSocket real
-4. **Upload mockado** por integração S3/Azure Blob
-5. **Variáveis de ambiente** com valores de produção
+1. ✅ **Autenticação**: Supabase Auth implementado
+2. ✅ **Banco de Dados**: PostgreSQL com 8 migrations
+3. ✅ **Realtime**: Chat com subscriptions em tempo real
+4. ✅ **Storage**: Upload/download real de arquivos
+5. ✅ **Hooks**: Todos os 6 hooks migrados
+6. ✅ **Seed**: Script de dados mockados criado
+
+## TODOs Futuros (Opcional)
+
+Para melhorias futuras:
+
+1. **RLS Policies**: Refinar políticas de segurança por setor/role
+2. **Testes**: Implementar Jest + React Testing Library
+3. **Performance**: Adicionar indexes no banco para queries complexas
+4. **Monitoramento**: Integrar Sentry para error tracking
+5. **CI/CD**: Configurar GitHub Actions para deploy automático
 
 ## Estrutura de Testes (Futura)
 
