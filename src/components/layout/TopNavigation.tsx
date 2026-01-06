@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ const navItems = [
 
 export function TopNavigation({ onMenuClick }: TopNavigationProps) {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { user } = useAuth()
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -37,9 +37,8 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
   }
 
   const getUserRole = () => {
-    const user = session?.user as { sector?: string; role?: string } | undefined
-    if (user?.role === 'admin') return 'Administrador'
-    if (user?.role === 'manager') return 'Gerente'
+    if (user?.role === 'Admin') return 'Administrador'
+    if (user?.role === 'Gerente') return 'Gerente'
     return user?.sector || 'Colaborador'
   }
 
@@ -74,11 +73,11 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
 
         {/* Right: User Info */}
         <div className="flex items-center gap-4">
-          {session?.user && (
+          {user && (
             <div className="hidden sm:flex items-center gap-3">
               {/* User info text */}
               <div className="text-right">
-                <p className="text-sm font-semibold leading-tight">{session.user.name}</p>
+                <p className="text-sm font-semibold leading-tight">{user.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {getUserRole()}
                 </p>

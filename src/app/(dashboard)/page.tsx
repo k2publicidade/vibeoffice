@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
@@ -42,17 +42,17 @@ const itemVariants = {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false)
   const { users } = useUsers()
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!user && !isLoading) {
       router.push('/login')
     }
-  }, [status, router])
+  }, [user, isLoading, router])
 
   const handleSaveRequest = (request: {
     type: string
@@ -215,7 +215,7 @@ export default function DashboardPage() {
     }
   }, [users])
 
-  if (status === 'loading') {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-12 w-96" />
@@ -232,12 +232,12 @@ export default function DashboardPage() {
     )
   }
 
-  if (!session) return null
+  if (!user) return null
 
   // Obter role e sector do usuário
-  const userRole = (session.user as { role?: string })?.role || 'Colaborador'
-  const userSector = (session.user as { sector?: string })?.sector || 'A&R'
-  const userName = session.user?.name || 'Usuário'
+  const userRole = user.role || 'Colaborador'
+  const userSector = user.sector || 'Administrativo'
+  const userName = user.name || 'Usuário'
 
   // Renderizar dashboard baseado no role
   if (userRole === 'Admin') {

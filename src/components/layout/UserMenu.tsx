@@ -1,6 +1,6 @@
 'use client'
 
-import { signOut, useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { LogOut, Settings, User } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -14,18 +14,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 
 export function UserMenu() {
-  const { data: session } = useSession()
+  const { user, signOut } = useAuth()
 
-  if (!session?.user) return null
+  if (!user) return null
 
-  const initials = session.user.name
+  const initials = user.name
     ?.split(' ')
     .map(n => n[0])
     .join('')
     .toUpperCase()
 
   const handleLogout = async () => {
-    await signOut({ redirect: true, redirectTo: '/login' })
+    await signOut()
   }
 
   return (
@@ -33,7 +33,7 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={session.user.image || ''} alt={session.user.name || ''} />
+            <AvatarImage src={user.avatar || ''} alt={user.name || ''} />
             <AvatarFallback className="bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white">{initials}</AvatarFallback>
           </Avatar>
         </Button>
@@ -41,12 +41,12 @@ export function UserMenu() {
       <DropdownMenuContent align="end" className="w-56">
         <div className="flex items-center justify-start gap-2 p-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={session.user.image || ''} alt={session.user.name || ''} />
+            <AvatarImage src={user.avatar || ''} alt={user.name || ''} />
             <AvatarFallback className="bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{session.user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </div>
         <DropdownMenuSeparator />

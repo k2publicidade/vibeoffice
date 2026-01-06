@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { CardSpotlight } from '@/components/ui/card-spotlight'
 import { RadialGlowBackground } from '@/components/ui/radial-glow-background'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -32,17 +32,15 @@ const itemVariants = {
 }
 
 export default function ProfilePage() {
-    const { data: session } = useSession()
+    const { user } = useAuth()
 
-    if (!session?.user) return null
+    if (!user) return null
 
-    const initials = session.user.name
+    const initials = user.name
         ?.split(' ')
         .map(n => n[0])
         .join('')
         .toUpperCase()
-
-    const user = session.user as { sector?: string; role?: string; email?: string }
 
     const stats = [
         { label: 'Projetos', value: '12', color: 'text-[#fc7a67]' },
@@ -65,7 +63,7 @@ export default function ProfilePage() {
                         <div className="relative group">
                             <div className="absolute -inset-1 blur-xl bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] opacity-20 group-hover:opacity-40 transition-opacity" />
                             <Avatar className="h-32 w-32 border-2 border-[#2a2a2a] ring-4 ring-black">
-                                <AvatarImage src={session.user.image || ''} alt={session.user.name || ''} />
+                                <AvatarImage src={user.avatar || ''} alt={user.name || ''} />
                                 <AvatarFallback className="bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-4xl font-bold text-white">
                                     {initials}
                                 </AvatarFallback>
@@ -79,14 +77,14 @@ export default function ProfilePage() {
                         <div className="flex-1 text-center md:text-left space-y-4">
                             <div>
                                 <div className="flex flex-col md:flex-row md:items-center gap-3">
-                                    <h1 className="text-3xl font-extrabold text-white tracking-tight">{session.user.name}</h1>
+                                    <h1 className="text-3xl font-extrabold text-white tracking-tight">{user.name}</h1>
                                     <Badge className="w-fit mx-auto md:mx-0 bg-[#fc7a67]/10 text-[#fc7a67] border-[#fc7a67]/20">
-                                        {user.role === 'admin' ? 'Administrador' : user.sector || 'Colaborador'}
+                                        {user.role === 'Admin' ? 'Administrador' : user.sector || 'Colaborador'}
                                     </Badge>
                                 </div>
                                 <p className="text-gray-400 mt-1 flex items-center justify-center md:justify-start gap-2">
                                     <Mail className="h-3.5 w-3.5" />
-                                    {session.user.email}
+                                    {user.email}
                                 </p>
                             </div>
 

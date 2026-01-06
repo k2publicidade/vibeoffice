@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { ArrowRight, Users } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ interface WelcomeHeaderProps {
 }
 
 export function WelcomeHeader({ onNewRequest, onScheduleMeeting }: WelcomeHeaderProps) {
-  const { data: session } = useSession()
+  const { user } = useAuth()
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -20,7 +20,7 @@ export function WelcomeHeader({ onNewRequest, onScheduleMeeting }: WelcomeHeader
     return 'Boa noite'
   }
 
-  const firstName = session?.user?.name?.split(' ')[0] || 'Usuário'
+  const firstName = user?.name?.split(' ')[0] || 'Usuário'
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
