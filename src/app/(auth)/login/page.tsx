@@ -6,6 +6,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,11 +55,16 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-4">
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl">
-              VD
-            </div>
+            <Image
+              src="/logo.png"
+              alt="VIBEDISTRO Logo"
+              width={120}
+              height={60}
+              priority
+              className="h-auto w-auto"
+            />
           </div>
           <h1 className="text-3xl font-bold text-foreground">VIBEDISTRO</h1>
           <p className="text-muted-foreground">Intranet & CRM</p>
