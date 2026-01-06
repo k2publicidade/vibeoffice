@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from './useAuth'
 import type { CalendarEvent } from '@/types/calendar'
-import { mockCalendarEvents } from '@/lib/mock-data'
 import { isSameDay, isToday, isBefore, isAfter, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
 export interface UseCalendarReturn {
@@ -19,7 +20,46 @@ export interface UseCalendarReturn {
 }
 
 export function useCalendar(): UseCalendarReturn {
-  const [events, setEvents] = useState<CalendarEvent[]>(mockCalendarEvents)
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+
+  // Fetch inicial de events
+  useEffect(() => {
+    if (!user) return
+
+    fetchEvents()
+  }, [user])
+
+  async function fetchEvents() {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .order('start_time', { ascending: true })
+
+      if (error) throw error
+
+      setEvents(
+        data.map((event) => ({
+          id: event.id,
+          title: event.title,
+          description: event.description || '',
+          startTime: new Date(event.start_time),
+          endTime: new Date(event.end_time),
+          type: event.type as 'personal' | 'sector' | 'company',
+          location: event.location,
+          participants: event.participants || [],
+          createdBy: event.created_by,
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching calendar events:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const getEventsByDate = useCallback(
     (date: Date) => {
@@ -67,31 +107,92 @@ export function useCalendar(): UseCalendarReturn {
   )
 
   const createEvent = useCallback(
-    (event: Omit<CalendarEvent, 'id'>) => {
+    async (event: Omit<CalendarEvent, 'id'>) => {
+      if (!user) throw new Error('User not authenticated')
+
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert({
+          title: event.title,
+          description: event.description,
+          start_time: event.startTime.toISOString(),
+          end_time: event.endTime.toISOString(),
+          type: event.type,
+          location: event.location,
+          participants: event.participants || [],
+          created_by: user.id,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
       const newEvent: CalendarEvent = {
-        ...event,
-        id: `event-${Date.now()}`,
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        startTime: new Date(data.start_time),
+        endTime: new Date(data.end_time),
+        type: data.type as 'personal' | 'sector' | 'company',
+        location: data.location,
+        participants: data.participants || [],
+        createdBy: data.created_by,
       }
+
       setEvents((prev) => [...prev, newEvent])
     },
-    []
+    [user]
   )
 
   const updateEvent = useCallback(
-    (id: string, updates: Partial<CalendarEvent>) => {
+    async (id: string, updates: Partial<CalendarEvent>) => {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .update({
+          title: updates.title,
+          description: updates.description,
+          start_time: updates.startTime?.toISOString(),
+          end_time: updates.endTime?.toISOString(),
+          type: updates.type,
+          location: updates.location,
+          participants: updates.participants,
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+
       setEvents((prev) =>
-        prev.map((event) => (event.id === id ? { ...event, ...updates } : event))
+        prev.map((event) =>
+          event.id === id
+            ? {
+                ...event,
+                title: data.title,
+                description: data.description || '',
+                startTime: new Date(data.start_time),
+                endTime: new Date(data.end_time),
+                type: data.type as 'personal' | 'sector' | 'company',
+                location: data.location,
+                participants: data.participants || [],
+              }
+            : event
+        )
       )
     },
     []
   )
 
-  const deleteEvent = useCallback(
-    (id: string) => {
-      setEvents((prev) => prev.filter((event) => event.id !== id))
-    },
-    []
-  )
+  const deleteEvent = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    setEvents((prev) => prev.filter((event) => event.id !== id))
+  }, [])
 
   const getEventsByType = useCallback(
     (type: CalendarEvent['type']) => {
