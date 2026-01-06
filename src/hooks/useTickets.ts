@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from './useAuth'
 import { Ticket, TicketComment } from '@/types/tickets'
-import { mockTickets, mockTicketComments, mockUsers } from '@/lib/mock-data'
 
 export interface TicketFilters {
   status?: string[]  // Suporta multi-seleção
@@ -35,26 +36,94 @@ export interface UseTicketsReturn {
   filters: TicketFilters
   stats: TicketStats
   setFilters: (filters: TicketFilters) => void
-  createTicket: (ticket: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>) => Ticket
-  updateTicket: (id: string, updates: Partial<Ticket>) => Ticket | null
-  deleteTicket: (id: string) => boolean
+  createTicket: (ticket: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Ticket>
+  updateTicket: (id: string, updates: Partial<Ticket>) => Promise<Ticket | null>
+  deleteTicket: (id: string) => Promise<boolean>
   getTicketById: (id: string) => Ticket | null
   getTicketsByStatus: (status: string) => Ticket[]
   // Funções de comentários
   getCommentsByTicketId: (ticketId: string) => TicketComment[]
-  addComment: (input: AddCommentInput) => TicketComment
-  deleteComment: (commentId: string) => boolean
-  updateComment: (commentId: string, content: string) => TicketComment | null
+  addComment: (input: AddCommentInput) => Promise<TicketComment>
+  deleteComment: (commentId: string) => Promise<boolean>
+  updateComment: (commentId: string, content: string) => Promise<TicketComment | null>
   // Usuário
-  getUserById: (userId: string) => { name: string; avatar?: string } | null
+  getUserById: (userId: string) => Promise<{ name: string; avatar?: string } | null>
   isLoading: boolean
 }
 
 export function useTickets(): UseTicketsReturn {
-  const [tickets, setTickets] = useState<Ticket[]>(mockTickets)
-  const [comments, setComments] = useState<TicketComment[]>(mockTicketComments)
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [comments, setComments] = useState<TicketComment[]>([])
   const [filters, setFilters] = useState<TicketFilters>({})
-  const [isLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+
+  // Fetch inicial de tickets
+  useEffect(() => {
+    if (!user) return
+
+    fetchTickets()
+    fetchComments()
+  }, [user])
+
+  async function fetchTickets() {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      setTickets(
+        data.map((t) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          category: t.category,
+          status: t.status,
+          priority: t.priority,
+          requester: t.requester,
+          createdBy: t.created_by,
+          assignedTo: t.assigned_to,
+          createdAt: new Date(t.created_at),
+          updatedAt: new Date(t.updated_at),
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching tickets:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function fetchComments() {
+    try {
+      const { data, error } = await supabase
+        .from('ticket_comments')
+        .select('*')
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      setComments(
+        data.map((c) => ({
+          id: c.id,
+          ticketId: c.ticket_id,
+          userId: c.user_id,
+          content: c.content,
+          isInternal: c.is_internal,
+          attachments: c.attachments,
+          createdAt: new Date(c.created_at),
+          updatedAt: c.updated_at ? new Date(c.updated_at) : undefined,
+          editedBy: c.edited_by,
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching comments:', error)
+    }
+  }
 
   // Calcular estatísticas
   const stats = useMemo((): TicketStats => {
@@ -92,42 +161,97 @@ export function useTickets(): UseTicketsReturn {
   }, [tickets, filters])
 
   // Criar novo ticket
-  const createTicket = useCallback((ticketData: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTicket: Ticket = {
-      ...ticketData,
-      id: `ticket-${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    setTickets(prev => [...prev, newTicket])
-    return newTicket
-  }, [])
+  const createTicket = useCallback(
+    async (ticketData: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!user) throw new Error('User not authenticated')
+
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert({
+          title: ticketData.title,
+          description: ticketData.description,
+          category: ticketData.category,
+          status: ticketData.status,
+          priority: ticketData.priority,
+          requester: user.id,
+          created_by: ticketData.createdBy,
+          assigned_to: ticketData.assignedTo,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newTicket: Ticket = {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        status: data.status,
+        priority: data.priority,
+        requester: data.requester,
+        createdBy: data.created_by,
+        assignedTo: data.assigned_to,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      }
+
+      setTickets(prev => [newTicket, ...prev])
+      return newTicket
+    },
+    [user]
+  )
 
   // Atualizar ticket
-  const updateTicket = useCallback((id: string, updates: Partial<Ticket>) => {
-    let updatedTicket: Ticket | null = null
-    setTickets(prev =>
-      prev.map(ticket => {
-        if (ticket.id === id) {
-          updatedTicket = { ...ticket, ...updates, updatedAt: new Date() }
-          return updatedTicket
-        }
-        return ticket
+  const updateTicket = useCallback(async (id: string, updates: Partial<Ticket>) => {
+    const { data, error } = await supabase
+      .from('tickets')
+      .update({
+        title: updates.title,
+        description: updates.description,
+        category: updates.category,
+        status: updates.status,
+        priority: updates.priority,
+        assigned_to: updates.assignedTo,
       })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    const updatedTicket: Ticket = {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      status: data.status,
+      priority: data.priority,
+      requester: data.requester,
+      createdBy: data.created_by,
+      assignedTo: data.assigned_to,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    }
+
+    setTickets(prev =>
+      prev.map(ticket => (ticket.id === id ? updatedTicket : ticket))
     )
+
     return updatedTicket
   }, [])
 
   // Deletar ticket
-  const deleteTicket = useCallback((id: string) => {
-    const existed = tickets.some(t => t.id === id)
-    if (existed) {
-      setTickets(prev => prev.filter(t => t.id !== id))
-      // Também remove comentários associados
-      setComments(prev => prev.filter(c => c.ticketId !== id))
-    }
-    return existed
-  }, [tickets])
+  const deleteTicket = useCallback(async (id: string) => {
+    const { error } = await supabase.from('tickets').delete().eq('id', id)
+
+    if (error) throw error
+
+    setTickets(prev => prev.filter(t => t.id !== id))
+    // Comentários serão removidos automaticamente via CASCADE
+    setComments(prev => prev.filter(c => c.ticketId !== id))
+    return true
+  }, [])
 
   // Obter ticket por ID
   const getTicketById = useCallback((id: string) => {
@@ -147,60 +271,108 @@ export function useTickets(): UseTicketsReturn {
   }, [comments])
 
   // Adicionar comentário
-  const addComment = useCallback((input: AddCommentInput) => {
-    const newComment: TicketComment = {
-      id: `comment-${Date.now()}`,
-      ticketId: input.ticketId,
-      userId: 'current-user', // Usuário logado
-      content: input.content,
-      isInternal: input.isInternal || false,
-      attachments: input.attachments,
-      createdAt: new Date(),
-    }
-    setComments(prev => [...prev, newComment])
+  const addComment = useCallback(
+    async (input: AddCommentInput) => {
+      if (!user) throw new Error('User not authenticated')
 
-    // Atualiza o updatedAt do ticket
-    setTickets(prev =>
-      prev.map(t => t.id === input.ticketId ? { ...t, updatedAt: new Date() } : t)
-    )
+      const { data, error } = await supabase
+        .from('ticket_comments')
+        .insert({
+          ticket_id: input.ticketId,
+          user_id: user.id,
+          content: input.content,
+          is_internal: input.isInternal || false,
+          attachments: input.attachments || [],
+        })
+        .select()
+        .single()
 
-    return newComment
-  }, [])
+      if (error) throw error
+
+      const newComment: TicketComment = {
+        id: data.id,
+        ticketId: data.ticket_id,
+        userId: data.user_id,
+        content: data.content,
+        isInternal: data.is_internal,
+        attachments: data.attachments,
+        createdAt: new Date(data.created_at),
+      }
+
+      setComments(prev => [...prev, newComment])
+
+      // Atualiza o updatedAt do ticket (feito automaticamente pelo trigger)
+      setTickets(prev =>
+        prev.map(t => t.id === input.ticketId ? { ...t, updatedAt: new Date() } : t)
+      )
+
+      return newComment
+    },
+    [user]
+  )
 
   // Deletar comentário
-  const deleteComment = useCallback((commentId: string) => {
-    const existed = comments.some(c => c.id === commentId)
-    if (existed) {
-      setComments(prev => prev.filter(c => c.id !== commentId))
-    }
-    return existed
-  }, [comments])
+  const deleteComment = useCallback(async (commentId: string) => {
+    const { error } = await supabase
+      .from('ticket_comments')
+      .delete()
+      .eq('id', commentId)
 
-  // Atualizar comentário
-  const updateComment = useCallback((commentId: string, content: string) => {
-    let updatedComment: TicketComment | null = null
-    setComments(prev =>
-      prev.map(comment => {
-        if (comment.id === commentId) {
-          updatedComment = {
-            ...comment,
-            content,
-            updatedAt: new Date(),
-            editedBy: 'current-user',
-          }
-          return updatedComment
-        }
-        return comment
-      })
-    )
-    return updatedComment
+    if (error) throw error
+
+    setComments(prev => prev.filter(c => c.id !== commentId))
+    return true
   }, [])
 
+  // Atualizar comentário
+  const updateComment = useCallback(
+    async (commentId: string, content: string) => {
+      if (!user) throw new Error('User not authenticated')
+
+      const { data, error } = await supabase
+        .from('ticket_comments')
+        .update({
+          content,
+          edited_by: user.id,
+        })
+        .eq('id', commentId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const updatedComment: TicketComment = {
+        id: data.id,
+        ticketId: data.ticket_id,
+        userId: data.user_id,
+        content: data.content,
+        isInternal: data.is_internal,
+        attachments: data.attachments,
+        createdAt: new Date(data.created_at),
+        updatedAt: data.updated_at ? new Date(data.updated_at) : undefined,
+        editedBy: data.edited_by,
+      }
+
+      setComments(prev =>
+        prev.map(comment => (comment.id === commentId ? updatedComment : comment))
+      )
+
+      return updatedComment
+    },
+    [user]
+  )
+
   // Obter usuário por ID
-  const getUserById = useCallback((userId: string) => {
-    const user = mockUsers.find(u => u.id === userId)
-    if (!user) return null
-    return { name: user.name, avatar: user.avatar }
+  const getUserById = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('name, avatar')
+      .eq('id', userId)
+      .single()
+
+    if (error) return null
+
+    return { name: data.name, avatar: data.avatar || undefined }
   }, [])
 
   return {
