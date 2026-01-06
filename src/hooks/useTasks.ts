@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { Task } from '@/types/tasks'
+import { CreateTaskSchema, UpdateTaskSchema, formatZodErrors } from '@/lib/validation-schemas'
 import {
   isToday,
   isTomorrow,
@@ -185,6 +186,13 @@ export function useTasks(): UseTasksReturn {
     async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
       if (!user) throw new Error('User not authenticated')
 
+      // ✅ Validação com Zod antes de inserir no banco
+      const validation = CreateTaskSchema.safeParse(taskData)
+      if (!validation.success) {
+        const errors = formatZodErrors(validation.error)
+        throw new Error(`Dados inválidos: ${errors.join(', ')}`)
+      }
+
       const { data, error } = await supabase
         .from('tasks')
         .insert({
@@ -226,6 +234,13 @@ export function useTasks(): UseTasksReturn {
 
   // Atualizar tarefa
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
+    // ✅ Validação com Zod antes de atualizar no banco
+    const validation = UpdateTaskSchema.safeParse(updates)
+    if (!validation.success) {
+      const errors = formatZodErrors(validation.error)
+      throw new Error(`Dados inválidos: ${errors.join(', ')}`)
+    }
+
     const { data, error } = await supabase
       .from('tasks')
       .update({

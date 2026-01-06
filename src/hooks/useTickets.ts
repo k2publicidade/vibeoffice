@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { Ticket, TicketComment } from '@/types/tickets'
+import { CreateTicketSchema, UpdateTicketSchema, CreateTicketCommentSchema, formatZodErrors } from '@/lib/validation-schemas'
 
 export interface TicketFilters {
   status?: string[]  // Suporta multi-seleção
@@ -164,6 +165,13 @@ export function useTickets(): UseTicketsReturn {
   const createTicket = useCallback(
     async (ticketData: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>) => {
       if (!user) throw new Error('User not authenticated')
+
+      // ✅ Validação com Zod antes de inserir no banco
+      const validation = CreateTicketSchema.safeParse({ ...ticketData, requester: user.id })
+      if (!validation.success) {
+        const errors = formatZodErrors(validation.error)
+        throw new Error(`Dados inválidos: ${errors.join(', ')}`)
+      }
 
       const { data, error } = await supabase
         .from('tickets')

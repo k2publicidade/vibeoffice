@@ -38,7 +38,6 @@ npm install
 2. Vá em **Settings > API** e copie:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon/public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
 
 3. Crie o arquivo `.env.local`:
 
@@ -46,12 +45,17 @@ npm install
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key-aqui
-SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key-aqui
 
 # App Configuration
 NEXT_PUBLIC_APP_NAME=VIBEDISTRO Intranet
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+⚠️ **IMPORTANTE - Segurança:**
+- **NÃO adicione** `SUPABASE_SERVICE_ROLE_KEY` ao `.env.local`
+- A chave de service role bypassa TODAS as políticas de segurança (RLS)
+- Use apenas em scripts administrativos server-side (ex: `npm run db:seed`)
+- A aplicação usa exclusivamente a `anon key` para todas as operações client-side
 
 ### 4. Aplique as migrations no Supabase
 
