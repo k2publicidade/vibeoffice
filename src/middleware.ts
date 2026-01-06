@@ -4,6 +4,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { env } from '@/lib/env'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -12,64 +13,70 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+  try {
+    const supabase = createServerClient(
+      env.supabaseUrl,
+      env.supabaseAnonKey,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+          },
+          remove(name: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            response.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+          },
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
+      }
+    )
+
+    // Refresh session
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+    const isProtectedRoute = !isAuthRoute
+
+    if (isProtectedRoute && !session) {
+      return NextResponse.redirect(new URL('/login', request.url))
     }
-  )
 
-  // Refresh session
-  const { data: { session } } = await supabase.auth.getSession()
-
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
-  const isProtectedRoute = !isAuthRoute
-
-  if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (isAuthRoute && session) {
-    return NextResponse.redirect(new URL('/', request.url))
+    if (isAuthRoute && session) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  } catch (error) {
+    console.error('❌ Middleware error:', error)
+    // Se houver erro com env vars, deixar a resposta passar
+    // O cliente vai tentar se conectar ao Supabase e falhará com mensagem clara
   }
 
   return response

@@ -9,13 +9,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { SessionProvider } from 'next-auth/react'
 import { ThemeProvider } from 'next-themes'
-import { ReactNode, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
+import { initializeApp } from '@/lib/init'
 
 interface ProvidersProps {
   children: ReactNode
 }
 
 export function Providers({ children }: ProvidersProps) {
+  // Inicializar aplicação (validar env vars, etc)
+  useEffect(() => {
+    initializeApp()
+  }, [])
+
   // Criar QueryClient no estado do componente para evitar recriação em re-renders
   const [queryClient] = useState(
     () =>
