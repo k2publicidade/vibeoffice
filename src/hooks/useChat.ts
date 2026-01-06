@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from './useAuth'
 import { ChatRoom, Message } from '@/types/chat'
-import { mockChatRooms, mockMessages, mockUsers } from '@/lib/mock-data'
+import { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface ChatUser {
   id: string
@@ -20,39 +22,88 @@ export interface UseChatReturn {
   currentRoom: ChatRoom | null
   messages: Message[]
   setCurrentRoom: (room: ChatRoom) => void
-  sendMessage: (content: string) => void
-  createDM: (userId: string, userName: string) => ChatRoom
+  sendMessage: (content: string) => Promise<void>
+  createDM: (userId: string, userName: string) => Promise<ChatRoom>
   getExistingDMUserIds: () => string[]
-  getUserById: (userId: string) => ChatUser | null
-  getDMUserInfo: (room: ChatRoom) => ChatUser | null
+  getUserById: (userId: string) => Promise<ChatUser | null>
+  getDMUserInfo: (room: ChatRoom) => Promise<ChatUser | null>
   availableUsers: ChatUser[]
   isLoading: boolean
   typingUsers: string[]
 }
 
 export function useChat(): UseChatReturn {
-  const [rooms, setRooms] = useState<ChatRoom[]>(mockChatRooms)
+  const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [currentRoom, setCurrentRoom] = useState<ChatRoom | null>(null)
-  const [messages, setMessages] = useState<Message[]>(mockMessages)
-  const [isLoading] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [availableUsers, setAvailableUsers] = useState<ChatUser[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [typingUsers, setTypingUsers] = useState<string[]>([])
-  const messageTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const { user } = useAuth()
+
+  // Fetch inicial de salas e usuários
+  useEffect(() => {
+    if (!user) return
+
+    fetchRooms()
+    fetchUsers()
+  }, [user])
+
+  async function fetchRooms() {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('chat_rooms')
+        .select('*')
+        .contains('participants', [user!.id])
+        .order('updated_at', { ascending: false })
+
+      if (error) throw error
+
+      setRooms(
+        data.map((r) => ({
+          id: r.id,
+          name: r.name,
+          type: r.type as 'sector' | 'dm',
+          participants: r.participants,
+          createdAt: new Date(r.created_at),
+          updatedAt: new Date(r.updated_at),
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching rooms:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function fetchUsers() {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email, avatar, sector, role')
+        .order('name')
+
+      if (error) throw error
+
+      setAvailableUsers(
+        data.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          avatar: u.avatar || undefined,
+          sector: u.sector,
+          role: u.role,
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
 
   // Separar salas por tipo
   const sectorRooms = useMemo(() => rooms.filter(r => r.type === 'sector'), [rooms])
   const dmRooms = useMemo(() => rooms.filter(r => r.type === 'dm'), [rooms])
-
-  // Usuários disponíveis para criar DMs
-  const availableUsers = useMemo(() => {
-    return mockUsers.map(u => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      avatar: u.avatar,
-      sector: u.sector,
-      role: u.role,
-    }))
-  }, [])
 
   // Obter IDs de usuários com DMs existentes
   const getExistingDMUserIds = useCallback(() => {
@@ -62,29 +113,38 @@ export function useChat(): UseChatReturn {
   }, [dmRooms])
 
   // Obter usuário por ID
-  const getUserById = useCallback((userId: string): ChatUser | null => {
-    const user = mockUsers.find(u => u.id === userId)
-    if (!user) return null
+  const getUserById = useCallback(async (userId: string): Promise<ChatUser | null> => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, email, avatar, sector, role')
+      .eq('id', userId)
+      .single()
+
+    if (error) return null
+
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      sector: user.sector,
-      role: user.role,
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      avatar: data.avatar || undefined,
+      sector: data.sector,
+      role: data.role,
     }
   }, [])
 
   // Obter informações do usuário de um DM
-  const getDMUserInfo = useCallback((room: ChatRoom): ChatUser | null => {
+  const getDMUserInfo = useCallback(async (room: ChatRoom): Promise<ChatUser | null> => {
     if (room.type !== 'dm') return null
-    const otherUserId = room.participants.find(p => p !== 'current-user')
+    const otherUserId = room.participants.find(p => p !== user?.id)
     if (!otherUserId) return null
-    return getUserById(otherUserId)
-  }, [getUserById])
+    return await getUserById(otherUserId)
+  }, [getUserById, user])
 
   // Criar nova conversa DM
-  const createDM = useCallback((userId: string, userName: string): ChatRoom => {
+  const createDM = useCallback(async (userId: string, userName: string): Promise<ChatRoom> => {
+    if (!user) throw new Error('User not authenticated')
+
+    // Verificar se já existe DM
     const existingDM = rooms.find(
       r => r.type === 'dm' && r.participants.includes(userId)
     )
@@ -93,81 +153,123 @@ export function useChat(): UseChatReturn {
       return existingDM
     }
 
+    // Criar nova sala DM no banco
+    const { data, error } = await supabase
+      .from('chat_rooms')
+      .insert({
+        name: userName,
+        type: 'dm',
+        participants: [user.id, userId],
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
     const newRoom: ChatRoom = {
-      id: `dm-${Date.now()}`,
-      name: userName,
-      type: 'dm',
-      participants: ['current-user', userId],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      id: data.id,
+      name: data.name,
+      type: data.type as 'dm',
+      participants: data.participants,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
     }
 
     setRooms(prev => [...prev, newRoom])
     return newRoom
-  }, [rooms])
+  }, [rooms, user])
 
-  // Filtrar mensagens da sala atual
-  const currentRoomMessages = currentRoom
-    ? messages.filter(m => m.roomId === currentRoom.id)
-    : []
-
-  // Simular mensagens de entrada (apenas para demo)
+  // Fetch mensagens + subscribe Realtime quando trocar de sala
   useEffect(() => {
-    if (!currentRoom) return
+    if (!currentRoom || !user) return
 
-    const simulateIncomingMessage = () => {
-      const randomDelay = Math.random() * 8000 + 2000 // 2-10 segundos
-      messageTimerRef.current = setTimeout(() => {
-        // 30% de chance de receber uma mensagem
-        if (Math.random() > 0.7) {
-          const newMessage: Message = {
-            id: `msg-${Date.now()}`,
-            roomId: currentRoom.id,
-            userId: `user-${Math.floor(Math.random() * 20) + 1}`,
-            content: getRandomMessage(),
-            timestamp: new Date(),
+    let channel: RealtimeChannel
+
+    async function setupMessages() {
+      // Fetch mensagens da sala
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('room_id', currentRoom!.id)
+        .order('timestamp', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching messages:', error)
+        return
+      }
+
+      setMessages(
+        data.map((m) => ({
+          id: m.id,
+          roomId: m.room_id,
+          userId: m.user_id,
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+        }))
+      )
+
+      // Subscribe para novas mensagens em tempo real
+      channel = supabase
+        .channel(`room:${currentRoom!.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `room_id=eq.${currentRoom!.id}`,
+          },
+          (payload) => {
+            const newMessage: Message = {
+              id: payload.new.id,
+              roomId: payload.new.room_id,
+              userId: payload.new.user_id,
+              content: payload.new.content,
+              timestamp: new Date(payload.new.timestamp),
+            }
+            setMessages((prev) => [...prev, newMessage])
           }
-          setMessages(prev => [...prev, newMessage])
-        }
-        simulateIncomingMessage()
-      }, randomDelay)
+        )
+        .subscribe()
     }
 
-    simulateIncomingMessage()
+    setupMessages()
 
     return () => {
-      if (messageTimerRef.current) {
-        clearTimeout(messageTimerRef.current)
+      if (channel) {
+        supabase.removeChannel(channel)
       }
     }
-  }, [currentRoom])
+  }, [currentRoom, user])
 
-  const sendMessage = useCallback((content: string) => {
-    if (!currentRoom || !content.trim()) return
+  const sendMessage = useCallback(async (content: string) => {
+    if (!currentRoom || !content.trim() || !user) return
 
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      roomId: currentRoom.id,
-      userId: 'current-user',
-      content: content.trim(),
-      timestamp: new Date(),
+    try {
+      const { error } = await supabase.from('messages').insert({
+        room_id: currentRoom.id,
+        user_id: user.id,
+        content: content.trim(),
+      })
+
+      if (error) throw error
+
+      // Atualizar updated_at da sala (opcional, pode ter trigger no banco)
+      await supabase
+        .from('chat_rooms')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', currentRoom.id)
+    } catch (error) {
+      console.error('Error sending message:', error)
     }
-
-    setMessages(prev => [...prev, newMessage])
-
-    // Simular digitação de resposta
-    setTypingUsers(['other-user'])
-    setTimeout(() => {
-      setTypingUsers([])
-    }, 1500)
-  }, [currentRoom])
+  }, [currentRoom, user])
 
   return {
     rooms,
     sectorRooms,
     dmRooms,
     currentRoom,
-    messages: currentRoomMessages,
+    messages,
     setCurrentRoom,
     sendMessage,
     createDM,
@@ -178,22 +280,4 @@ export function useChat(): UseChatReturn {
     isLoading,
     typingUsers,
   }
-}
-
-// Mensagens aleatórias para simular atividade
-const randomMessages = [
-  'Ótimo trabalho no projeto!',
-  'Podemos agendar uma reunião?',
-  'Qual é o status do deliverable?',
-  'Aprovado! Vamos seguir com a próxima fase.',
-  'Pode revisar o documento enviado?',
-  'Conforme conversamos antes...',
-  'Adorei a apresentação!',
-  'Você pode enviar os arquivos?',
-  'Perfeito! Vamos em frente.',
-  'Tenho uma sugestão para melhorar.',
-]
-
-function getRandomMessage(): string {
-  return randomMessages[Math.floor(Math.random() * randomMessages.length)]
 }
