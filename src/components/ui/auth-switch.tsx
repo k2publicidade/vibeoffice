@@ -115,6 +115,14 @@ export const AuthSwitch = () => {
                   onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
                   required
                 />
+                <input
+                  type="password"
+                  placeholder="Confirmar senha"
+                  className="w-full px-6 md:px-8 py-3.5 md:py-4 bg-white/5 border border-white/10 text-white rounded-2xl md:rounded-3xl focus:ring-2 focus:ring-[#fd6e5b] transition-all outline-none placeholder:text-white/20 text-sm md:text-base"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData(p => ({ ...p, confirmPassword: e.target.value }))}
+                  required
+                />
               </div>
 
               {error && isSignUp && <p className="text-[#ff0300] text-xs mb-6 font-medium">{error}</p>}
