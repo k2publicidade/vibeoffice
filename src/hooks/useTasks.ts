@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from './useAuth'
 import { Task } from '@/types/tasks'
-import { mockTasks } from '@/lib/mock-data'
 import {
   isToday,
   isTomorrow,
@@ -41,9 +42,9 @@ export interface UseTasksReturn {
   stats: TaskStats
 
   setFilters: (filters: TaskFilters) => void
-  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task
-  updateTask: (id: string, updates: Partial<Task>) => Task | null
-  deleteTask: (id: string) => boolean
+  createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Task>
+  updateTask: (id: string, updates: Partial<Task>) => Promise<Task | null>
+  deleteTask: (id: string) => Promise<boolean>
   getTaskById: (id: string) => Task | null
   getTasksByStatus: (status: string) => Task[]
   getOverdueTasks: () => Task[]
@@ -53,9 +54,50 @@ export interface UseTasksReturn {
 }
 
 export function useTasks(): UseTasksReturn {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks)
+  const [tasks, setTasks] = useState<Task[]>([])
   const [filters, setFilters] = useState<TaskFilters>({})
-  const [isLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+
+  // Fetch inicial de tarefas
+  useEffect(() => {
+    if (!user) return
+
+    fetchTasks()
+  }, [user])
+
+  async function fetchTasks() {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      setTasks(
+        data.map((t) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || '',
+          status: t.status,
+          priority: t.priority,
+          dueDate: t.due_date ? new Date(t.due_date) : undefined,
+          assignedTo: t.assigned_to,
+          sector: t.sector,
+          createdBy: t.created_by,
+          tags: t.tags || [],
+          createdAt: new Date(t.created_at),
+          updatedAt: new Date(t.updated_at),
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // Função auxiliar para verificar se tarefa está atrasada
   const isOverdue = useCallback((task: Task): boolean => {
@@ -94,7 +136,6 @@ export function useTasks(): UseTasksReturn {
 
   // Calcular estatísticas
   const stats = useMemo((): TaskStats => {
-    const now = new Date()
     return {
       total: tasks.length,
       overdue: tasks.filter(t => isOverdue(t)).length,
@@ -139,42 +180,101 @@ export function useTasks(): UseTasksReturn {
     })
   }, [tasks, filters, matchesDateFilter])
 
-  // Criar nova tarefa
-  const createTask = useCallback((taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTask: Task = {
-      ...taskData,
-      dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
-      id: `task-${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    setTasks(prev => [...prev, newTask])
-    return newTask
-  }, [])
+  // Criar tarefa
+  const createTask = useCallback(
+    async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!user) throw new Error('User not authenticated')
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          priority: taskData.priority,
+          due_date: taskData.dueDate?.toISOString(),
+          assigned_to: taskData.assignedTo,
+          sector: taskData.sector,
+          created_by: user.id,
+          tags: taskData.tags || [],
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newTask: Task = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        status: data.status,
+        priority: data.priority,
+        dueDate: data.due_date ? new Date(data.due_date) : undefined,
+        assignedTo: data.assigned_to,
+        sector: data.sector,
+        createdBy: data.created_by,
+        tags: data.tags || [],
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      }
+
+      setTasks((prev) => [newTask, ...prev])
+      return newTask
+    },
+    [user]
+  )
 
   // Atualizar tarefa
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    let updatedTask: Task | null = null
-    setTasks(prev =>
-      prev.map(task => {
-        if (task.id === id) {
-          updatedTask = { ...task, ...updates, updatedAt: new Date() }
-          return updatedTask
-        }
-        return task
+  const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({
+        title: updates.title,
+        description: updates.description,
+        status: updates.status,
+        priority: updates.priority,
+        due_date: updates.dueDate?.toISOString(),
+        assigned_to: updates.assignedTo,
+        sector: updates.sector,
+        tags: updates.tags,
       })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    const updatedTask: Task = {
+      id: data.id,
+      title: data.title,
+      description: data.description || '',
+      status: data.status,
+      priority: data.priority,
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      assignedTo: data.assigned_to,
+      sector: data.sector,
+      createdBy: data.created_by,
+      tags: data.tags || [],
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    }
+
+    setTasks((prev) =>
+      prev.map((task) => (task.id === id ? updatedTask : task))
     )
+
     return updatedTask
   }, [])
 
   // Deletar tarefa
-  const deleteTask = useCallback((id: string) => {
-    const existed = tasks.some(t => t.id === id)
-    if (existed) {
-      setTasks(prev => prev.filter(t => t.id !== id))
-    }
-    return existed
-  }, [tasks])
+  const deleteTask = useCallback(async (id: string) => {
+    const { error } = await supabase.from('tasks').delete().eq('id', id)
+
+    if (error) throw error
+
+    setTasks((prev) => prev.filter((t) => t.id !== id))
+    return true
+  }, [])
 
   // Obter tarefa por ID
   const getTaskById = useCallback((id: string) => {
