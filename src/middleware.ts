@@ -1,21 +1,82 @@
 /**
- * Next.js Middleware - Proteção de rotas com NextAuth v5
- * Usa o callback authorized da configuração do NextAuth
+ * Next.js Middleware - Proteção de rotas com Supabase Auth
  */
 
-import { auth } from '@/lib/auth'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export default auth
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-// Configurar quais rotas usar middleware
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+        },
+      },
+    }
+  )
+
+  // Refresh session
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+  const isProtectedRoute = !isAuthRoute
+
+  if (isProtectedRoute && !session) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  if (isAuthRoute && session) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  return response
+}
+
 export const config = {
   matcher: [
-    /*
-     * Proteger todas as rotas exceto:
-     * - _next/static (arquivos estáticos)
-     * - _next/image (otimização de imagens)
-     * - favicon.ico (favicon)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
