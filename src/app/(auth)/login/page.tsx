@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AuthSwitch } from '@/components/ui/auth-switch'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
@@ -157,6 +158,9 @@ export default function LoginPage() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Auth Switch Component */}
+        <AuthSwitch className="bg-gradient-to-br from-card to-card/80" />
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
