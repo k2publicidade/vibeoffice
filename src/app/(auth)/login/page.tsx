@@ -6,19 +6,16 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, AlertCircle } from 'lucide-react'
-import { mockUsers } from '@/lib/mock-data'
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const { signIn, isLoading } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
@@ -36,32 +33,21 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setIsLoading(true)
     setError(null)
 
     try {
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        setError('Email ou senha inválidos')
-      } else if (result?.ok) {
-        // Redirecionar para a página principal (dashboard está em /)
-        router.push('/')
-        router.refresh()
-      }
-    } catch (err) {
-      setError('Erro ao fazer login. Tente novamente.')
-    } finally {
-      setIsLoading(false)
+      await signIn(formData.email, formData.password)
+    } catch (err: any) {
+      setError(err.message || 'Email ou senha inválidos')
     }
   }
 
   // Usuários de teste para referência
-  const testUsers = mockUsers.slice(0, 3)
+  const testUsers = [
+    { email: 'eu@vibedistro.com', name: 'Você', role: 'Admin', sector: 'Administrativo' },
+    { email: 'joao.silva@vibedistro.com', name: 'João Silva', role: 'Admin', sector: 'A&R' },
+    { email: 'maria.santos@vibedistro.com', name: 'Maria Santos', role: 'Gerente', sector: 'Marketing' },
+  ]
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 p-4">
@@ -153,8 +139,8 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              {testUsers.map(user => (
-                <div key={user.id} className="flex justify-between items-start">
+              {testUsers.map((user, idx) => (
+                <div key={idx} className="flex justify-between items-start">
                   <div>
                     <p className="font-medium">{user.name}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
