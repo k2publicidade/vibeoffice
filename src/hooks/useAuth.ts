@@ -1,52 +1,103 @@
 /**
- * useAuth Hook - Acesso à sessão do usuário
- * Simplifica acesso aos dados de autenticação em componentes
+ * useAuth Hook - Acesso à sessão do usuário com Supabase Auth
  */
 
 'use client'
 
-import { useSession } from 'next-auth/react'
-import type { Sector, Role } from '@/types/auth'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { User } from '@/types/auth'
+import { useRouter } from 'next/navigation'
 
-// Tipo simplificado para dados da sessão (sem createdAt/updatedAt)
-interface SessionUser {
-  id: string
-  name: string
-  email: string
-  avatar?: string
-  sector: Sector
-  role: Role
-}
-
-interface UseAuthReturn {
-  user: SessionUser | null
+export interface UseAuthReturn {
+  user: User | null
   isLoading: boolean
-  isAuthenticated: boolean
-  sector: Sector | null
-  role: Role | null
+  signIn: (email: string, password: string) => Promise<void>
+  signOut: () => Promise<void>
 }
 
 export function useAuth(): UseAuthReturn {
-  const { data: session, status } = useSession()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
-  const sessionUser = session?.user
-
-  const user: SessionUser | null = sessionUser
-    ? {
-        id: sessionUser.email || '',
-        name: sessionUser.name || '',
-        email: sessionUser.email || '',
-        avatar: sessionUser.image || undefined,
-        sector: (sessionUser.sector as Sector) || 'TI/Suporte',
-        role: (sessionUser.role as Role) || 'Colaborador',
+  useEffect(() => {
+    // Obter sessão inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+      } else {
+        setIsLoading(false)
       }
-    : null
+    })
+
+    // Escutar mudanças de auth
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+      } else {
+        setUser(null)
+        setIsLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function fetchUserProfile(userId: string) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (!error && data) {
+      setUser({
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        avatar: data.avatar,
+        sector: data.sector,
+        role: data.role,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      })
+    }
+    setIsLoading(false)
+  }
+
+  async function signIn(email: string, password: string) {
+    setIsLoading(true)
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) throw error
+      router.push('/')
+    } catch (error: any) {
+      throw new Error(error.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function signOut() {
+    setIsLoading(true)
+    try {
+      await supabase.auth.signOut()
+      router.push('/login')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return {
     user,
-    isLoading: status === 'loading',
-    isAuthenticated: status === 'authenticated',
-    sector: (sessionUser?.sector as Sector) || null,
-    role: (sessionUser?.role as Role) || null,
+    isLoading,
+    signIn,
+    signOut,
   }
 }
