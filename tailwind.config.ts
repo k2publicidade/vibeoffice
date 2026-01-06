@@ -60,16 +60,16 @@ const config = {
         },
         // New VIBE design system colors
         vibe: {
-          orange: "hsl(var(--vibe-orange))",
-          blue: "hsl(var(--vibe-blue))",
-          black: "hsl(var(--vibe-black))",
-          gray: "hsl(var(--vibe-gray))",
-          success: "hsl(var(--vibe-success))",
-          warning: "hsl(var(--vibe-warning))",
+          orange: "oklch(var(--vibe-orange))",
+          blue: "oklch(var(--vibe-blue))",
+          black: "oklch(var(--vibe-black))",
+          gray: "oklch(var(--vibe-gray))",
+          success: "oklch(var(--vibe-success))",
+          warning: "oklch(var(--vibe-warning))",
           // Legacy aliases
-          purple: "hsl(var(--vibe-purple))",
-          pink: "hsl(var(--vibe-pink))",
-          gold: "hsl(var(--vibe-gold))",
+          purple: "oklch(var(--vibe-purple))",
+          pink: "oklch(var(--vibe-pink))",
+          gold: "oklch(var(--vibe-gold))",
         },
       },
       borderRadius: {

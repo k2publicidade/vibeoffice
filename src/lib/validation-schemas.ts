@@ -219,3 +219,52 @@ export function formatZodErrors(error: z.ZodError<any>): string[] {
     return path ? `${path}: ${err.message}` : err.message
   })
 }
+
+// ============================================================================
+// AUTH SCHEMAS
+// ============================================================================
+
+/**
+ * Schema de validação para Login
+ */
+export const LoginSchema = z.object({
+  email: z.string()
+    .email('Email inválido')
+    .min(1, 'Email é obrigatório'),
+
+  password: z.string()
+    .min(1, 'Senha é obrigatória'),
+})
+
+/**
+ * Schema de validação para Signup
+ * Regras:
+ * - Email válido
+ * - Senha >= 8 caracteres com maiúsculas, minúsculas e números
+ * - Nome >= 2 caracteres
+ * - Confirmação de senha deve coincidir
+ */
+export const SignupSchema = z.object({
+  email: z.string()
+    .email('Email inválido')
+    .min(1, 'Email é obrigatório'),
+
+  password: z.string()
+    .min(8, 'Senha deve ter no mínimo 8 caracteres')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Senha deve conter letras maiúsculas, minúsculas e números'
+    ),
+
+  name: z.string()
+    .min(2, 'Nome deve ter no mínimo 2 caracteres')
+    .max(100, 'Nome muito longo'),
+
+  confirmPassword: z.string()
+}).refine(data => data.password === data.confirmPassword, {
+  message: 'As senhas não coincidem',
+  path: ['confirmPassword'],
+})
+
+export type LoginInput = z.infer<typeof LoginSchema>
+export type SignupInput = z.infer<typeof SignupSchema>

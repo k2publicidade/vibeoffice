@@ -8,11 +8,13 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { User } from '@/types/auth'
 import { useRouter } from 'next/navigation'
+import { getDashboardRoute } from '@/lib/auth-utils'
 
 export interface UseAuthReturn {
   user: User | null
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -71,14 +73,68 @@ export function useAuth(): UseAuthReturn {
   async function signIn(email: string, password: string) {
     setIsLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
       if (error) throw error
-      router.push('/')
-    } catch (error: any) {
-      throw new Error(error.message)
+
+      // Buscar perfil do usuário para obter a role
+      if (authData.user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', authData.user.id)
+          .single()
+
+        // Redirecionar baseado na role
+        if (profile?.role) {
+          const dashboardRoute = getDashboardRoute(profile.role)
+          router.push(dashboardRoute)
+        } else {
+          router.push('/')
+        }
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido'
+      throw new Error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function signUp(email: string, password: string, name: string) {
+    setIsLoading(true)
+    try {
+      // 1. Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+
+      if (authError) throw authError
+      if (!authData.user) throw new Error('Falha ao criar usuário')
+
+      // 2. Criar perfil na tabela users
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: email,
+          name: name,
+          sector: 'Administrativo', // Setor padrão
+          role: 'Colaborador',      // Role padrão
+          avatar: null,
+        })
+
+      if (profileError) throw profileError
+
+      // 3. Fazer login automático
+      await signIn(email, password)
+
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido'
+      throw new Error(message)
     } finally {
       setIsLoading(false)
     }
@@ -98,6 +154,7 @@ export function useAuth(): UseAuthReturn {
     user,
     isLoading,
     signIn,
+    signUp,
     signOut,
   }
 }
