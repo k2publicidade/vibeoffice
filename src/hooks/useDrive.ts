@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { useAuth } from './useAuth'
 import { DriveItem, SharedAccess, SharePermission, SharedWithMe } from '@/types/drive'
-import { mockDriveItems, mockUsers } from '@/lib/mock-data'
 
 export interface UploadFileInput {
   file: File
@@ -52,29 +53,88 @@ export interface UseDriveReturn {
 }
 
 export function useDrive(): UseDriveReturn {
-  const [items, setItems] = useState<DriveItem[]>(mockDriveItems)
+  const [items, setItems] = useState<DriveItem[]>([])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
-  const [isLoading] = useState(false)
+  const [availableUsers, setAvailableUsers] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
+  const { user } = useAuth()
 
-  // Usuários disponíveis para compartilhamento (exclui o atual)
-  const availableUsers = useMemo(() => {
-    return mockUsers
-      .filter(u => u.id !== 'current-user')
-      .map(u => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        avatar: u.avatar,
-        sector: u.sector,
-      }))
-  }, [])
+  // Fetch inicial de items e usuários
+  useEffect(() => {
+    if (!user) return
+
+    fetchItems()
+    fetchUsers()
+  }, [user])
+
+  async function fetchItems() {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('drive_items')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      setItems(
+        data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          type: item.type as 'file' | 'folder',
+          parentId: item.parent_id || undefined,
+          size: item.size || undefined,
+          mimeType: item.mime_type || undefined,
+          storagePath: item.storage_path || undefined,
+          uploadedBy: item.uploaded_by,
+          sharedWith: item.shared_with || [],
+          isPublic: item.is_public || false,
+          createdAt: new Date(item.created_at),
+          updatedAt: new Date(item.updated_at),
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching drive items:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function fetchUsers() {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email, avatar, sector')
+        .ne('id', user!.id) // Exclui o usuário atual
+        .order('name')
+
+      if (error) throw error
+
+      setAvailableUsers(
+        data.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          avatar: u.avatar || undefined,
+          sector: u.sector,
+        }))
+      )
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
 
   // Obter usuário por ID
-  const getUserById = useCallback((userId: string) => {
-    const user = mockUsers.find(u => u.id === userId)
-    if (!user) return null
-    return { name: user.name, avatar: user.avatar, email: user.email }
+  const getUserById = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('name, avatar, email')
+      .eq('id', userId)
+      .single()
+
+    if (error) return null
+    return { name: data.name, avatar: data.avatar || undefined, email: data.email }
   }, [])
 
   // Folder da raiz é null
@@ -150,9 +210,6 @@ export function useDrive(): UseDriveReturn {
     return path
   }, [items])
 
-  // Função para gerar um ID único
-  const generateId = () => `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
   // Função para obter o mimeType do arquivo
   const getMimeType = (file: File): string => {
     return file.type || 'application/octet-stream'
@@ -160,181 +217,263 @@ export function useDrive(): UseDriveReturn {
 
   // Upload de um único arquivo
   const uploadFile = useCallback(async (input: UploadFileInput): Promise<DriveItem> => {
+    if (!user) throw new Error('User not authenticated')
+
     setIsUploading(true)
 
-    // Simula delay de upload
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000))
+    try {
+      // 1. Upload para o Supabase Storage
+      const fileName = `${Date.now()}-${input.file.name}`
+      const storagePath = input.parentId
+        ? `${input.parentId}/${fileName}`
+        : fileName
 
-    const newItem: DriveItem = {
-      id: generateId(),
-      name: input.file.name,
-      type: 'file',
-      parentId: input.parentId || undefined,
-      size: input.file.size,
-      mimeType: getMimeType(input.file),
-      uploadedBy: 'current-user',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      const { error: storageError } = await supabase.storage
+        .from('drive-files')
+        .upload(storagePath, input.file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (storageError) throw storageError
+
+      // 2. Inserir metadata no banco
+      const { data, error } = await supabase
+        .from('drive_items')
+        .insert({
+          name: input.file.name,
+          type: 'file',
+          parent_id: input.parentId || null,
+          size: input.file.size,
+          mime_type: getMimeType(input.file),
+          storage_path: storagePath,
+          uploaded_by: user.id,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newItem: DriveItem = {
+        id: data.id,
+        name: data.name,
+        type: 'file',
+        parentId: data.parent_id || undefined,
+        size: data.size,
+        mimeType: data.mime_type,
+        storagePath: data.storage_path,
+        uploadedBy: data.uploaded_by,
+        sharedWith: data.shared_with || [],
+        isPublic: data.is_public || false,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      }
+
+      setItems(prev => [...prev, newItem])
+      return newItem
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      throw error
+    } finally {
+      setIsUploading(false)
     }
-
-    setItems(prev => [...prev, newItem])
-    setIsUploading(false)
-
-    return newItem
-  }, [])
+  }, [user])
 
   // Upload de múltiplos arquivos
   const uploadFiles = useCallback(async (files: File[], parentId?: string | null): Promise<DriveItem[]> => {
     setIsUploading(true)
     const uploadedItems: DriveItem[] = []
 
-    for (const file of files) {
-      // Simula delay de upload
-      await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 500))
-
-      const newItem: DriveItem = {
-        id: generateId(),
-        name: file.name,
-        type: 'file',
-        parentId: parentId || undefined,
-        size: file.size,
-        mimeType: getMimeType(file),
-        uploadedBy: 'current-user',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+    try {
+      for (const file of files) {
+        const item = await uploadFile({ file, parentId })
+        uploadedItems.push(item)
       }
-
-      uploadedItems.push(newItem)
+      return uploadedItems
+    } catch (error) {
+      console.error('Error uploading files:', error)
+      throw error
+    } finally {
+      setIsUploading(false)
     }
-
-    setItems(prev => [...prev, ...uploadedItems])
-    setIsUploading(false)
-
-    return uploadedItems
-  }, [])
+  }, [uploadFile])
 
   // Criar nova pasta
-  const createFolder = useCallback((input: CreateFolderInput): DriveItem => {
+  const createFolder = useCallback(async (input: CreateFolderInput): Promise<DriveItem> => {
+    if (!user) throw new Error('User not authenticated')
+
+    const { data, error } = await supabase
+      .from('drive_items')
+      .insert({
+        name: input.name,
+        type: 'folder',
+        parent_id: input.parentId || null,
+        uploaded_by: user.id,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
     const newFolder: DriveItem = {
-      id: generateId(),
-      name: input.name,
+      id: data.id,
+      name: data.name,
       type: 'folder',
-      parentId: input.parentId || undefined,
-      uploadedBy: 'current-user',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      parentId: data.parent_id || undefined,
+      uploadedBy: data.uploaded_by,
+      sharedWith: data.shared_with || [],
+      isPublic: data.is_public || false,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
     }
 
     setItems(prev => [...prev, newFolder])
-
     return newFolder
-  }, [])
+  }, [user])
 
   // Deletar item
-  const deleteItem = useCallback((itemId: string) => {
-    setItems(prev => {
-      // Função recursiva para pegar todos os IDs dos itens filhos
-      const getChildIds = (parentId: string): string[] => {
-        const children = prev.filter(item => item.parentId === parentId)
-        let ids: string[] = []
-        for (const child of children) {
-          ids.push(child.id)
-          if (child.type === 'folder') {
-            ids = [...ids, ...getChildIds(child.id)]
-          }
-        }
-        return ids
+  const deleteItem = useCallback(async (itemId: string) => {
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    try {
+      // Se for arquivo, deletar do Storage também
+      if (item.type === 'file' && item.storagePath) {
+        const { error: storageError } = await supabase.storage
+          .from('drive-files')
+          .remove([item.storagePath])
+
+        if (storageError) console.error('Error deleting from storage:', storageError)
       }
 
-      // Pega todos os IDs para deletar (item + filhos)
-      const idsToDelete = [itemId, ...getChildIds(itemId)]
+      // Deletar do banco (CASCADE vai deletar filhos automaticamente)
+      const { error } = await supabase
+        .from('drive_items')
+        .delete()
+        .eq('id', itemId)
 
-      return prev.filter(item => !idsToDelete.includes(item.id))
-    })
-  }, [])
+      if (error) throw error
+
+      // Atualizar estado local
+      await fetchItems()
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      throw error
+    }
+  }, [items])
 
   // Renomear item
-  const renameItem = useCallback((itemId: string, newName: string) => {
+  const renameItem = useCallback(async (itemId: string, newName: string) => {
+    const { data, error } = await supabase
+      .from('drive_items')
+      .update({ name: newName })
+      .eq('id', itemId)
+      .select()
+      .single()
+
+    if (error) throw error
+
     setItems(prev =>
       prev.map(item =>
         item.id === itemId
-          ? { ...item, name: newName, updatedAt: new Date() }
+          ? { ...item, name: newName, updatedAt: new Date(data.updated_at) }
           : item
       )
     )
   }, [])
 
   // Compartilhar item com usuário
-  const shareItem = useCallback((input: ShareItemInput) => {
+  const shareItem = useCallback(async (input: ShareItemInput) => {
+    if (!user) throw new Error('User not authenticated')
+
+    const item = items.find(i => i.id === input.itemId)
+    if (!item) return
+
+    const existingShares = item.sharedWith || []
+    const alreadyShared = existingShares.some((s: any) => s.userId === input.userId)
+
+    let updatedShares: SharedAccess[]
+    if (alreadyShared) {
+      // Atualiza permissão
+      updatedShares = existingShares.map((s: any) =>
+        s.userId === input.userId
+          ? { ...s, permission: input.permission }
+          : s
+      )
+    } else {
+      // Adiciona novo compartilhamento
+      const newShare: SharedAccess = {
+        userId: input.userId,
+        permission: input.permission,
+        sharedAt: new Date(),
+        sharedBy: user.id,
+      }
+      updatedShares = [...existingShares, newShare]
+    }
+
+    const { error } = await supabase
+      .from('drive_items')
+      .update({ shared_with: updatedShares })
+      .eq('id', input.itemId)
+
+    if (error) throw error
+
     setItems(prev =>
-      prev.map(item => {
-        if (item.id === input.itemId) {
-          const existingShares = item.sharedWith || []
-          // Verifica se já está compartilhado com esse usuário
-          const alreadyShared = existingShares.some(s => s.userId === input.userId)
-          if (alreadyShared) {
-            // Atualiza permissão
-            return {
-              ...item,
-              sharedWith: existingShares.map(s =>
-                s.userId === input.userId
-                  ? { ...s, permission: input.permission }
-                  : s
-              ),
-              updatedAt: new Date(),
-            }
-          }
-          // Adiciona novo compartilhamento
-          const newShare: SharedAccess = {
-            userId: input.userId,
-            permission: input.permission,
-            sharedAt: new Date(),
-            sharedBy: 'current-user',
-          }
-          return {
-            ...item,
-            sharedWith: [...existingShares, newShare],
-            updatedAt: new Date(),
-          }
-        }
-        return item
-      })
+      prev.map(item =>
+        item.id === input.itemId
+          ? { ...item, sharedWith: updatedShares, updatedAt: new Date() }
+          : item
+      )
     )
-  }, [])
+  }, [user, items])
 
   // Remover compartilhamento
-  const unshareItem = useCallback((itemId: string, userId: string) => {
+  const unshareItem = useCallback(async (itemId: string, userId: string) => {
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    const updatedShares = (item.sharedWith || []).filter((s: any) => s.userId !== userId)
+
+    const { error } = await supabase
+      .from('drive_items')
+      .update({ shared_with: updatedShares })
+      .eq('id', itemId)
+
+    if (error) throw error
+
     setItems(prev =>
-      prev.map(item => {
-        if (item.id === itemId && item.sharedWith) {
-          return {
-            ...item,
-            sharedWith: item.sharedWith.filter(s => s.userId !== userId),
-            updatedAt: new Date(),
-          }
-        }
-        return item
-      })
+      prev.map(item =>
+        item.id === itemId
+          ? { ...item, sharedWith: updatedShares, updatedAt: new Date() }
+          : item
+      )
     )
-  }, [])
+  }, [items])
 
   // Atualizar permissão de compartilhamento
-  const updateShare = useCallback((itemId: string, userId: string, permission: SharePermission) => {
-    setItems(prev =>
-      prev.map(item => {
-        if (item.id === itemId && item.sharedWith) {
-          return {
-            ...item,
-            sharedWith: item.sharedWith.map(s =>
-              s.userId === userId ? { ...s, permission } : s
-            ),
-            updatedAt: new Date(),
-          }
-        }
-        return item
-      })
+  const updateShare = useCallback(async (itemId: string, userId: string, permission: SharePermission) => {
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    const updatedShares = (item.sharedWith || []).map((s: any) =>
+      s.userId === userId ? { ...s, permission } : s
     )
-  }, [])
+
+    const { error } = await supabase
+      .from('drive_items')
+      .update({ shared_with: updatedShares })
+      .eq('id', itemId)
+
+    if (error) throw error
+
+    setItems(prev =>
+      prev.map(item =>
+        item.id === itemId
+          ? { ...item, sharedWith: updatedShares, updatedAt: new Date() }
+          : item
+      )
+    )
+  }, [items])
 
   // Obter compartilhamentos de um item
   const getItemShares = useCallback((itemId: string): SharedAccess[] => {
@@ -344,11 +483,13 @@ export function useDrive(): UseDriveReturn {
 
   // Obter itens compartilhados comigo
   const getSharedWithMe = useCallback((): SharedWithMe[] => {
+    if (!user) return []
+
     const sharedItems: SharedWithMe[] = []
 
     items.forEach(item => {
       if (item.sharedWith) {
-        const myShare = item.sharedWith.find(s => s.userId === 'current-user')
+        const myShare = (item.sharedWith as any[]).find((s: any) => s.userId === user.id)
         if (myShare) {
           sharedItems.push({
             item,
@@ -361,18 +502,30 @@ export function useDrive(): UseDriveReturn {
     })
 
     return sharedItems
-  }, [items])
+  }, [items, user])
 
   // Toggle acesso público
-  const togglePublicAccess = useCallback((itemId: string) => {
+  const togglePublicAccess = useCallback(async (itemId: string) => {
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    const newPublicState = !item.isPublic
+
+    const { error } = await supabase
+      .from('drive_items')
+      .update({ is_public: newPublicState })
+      .eq('id', itemId)
+
+    if (error) throw error
+
     setItems(prev =>
       prev.map(item =>
         item.id === itemId
-          ? { ...item, isPublic: !item.isPublic, updatedAt: new Date() }
+          ? { ...item, isPublic: newPublicState, updatedAt: new Date() }
           : item
       )
     )
-  }, [])
+  }, [items])
 
   // Gerar link de compartilhamento
   const copyShareLink = useCallback((itemId: string): string => {
