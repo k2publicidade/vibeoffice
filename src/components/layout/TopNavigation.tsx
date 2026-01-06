@@ -1,0 +1,100 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { Menu } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { UserMenu } from './UserMenu'
+import { NavBar } from '@/components/ui/tubelight-navbar'
+import { Home, Calendar, Ticket, MessageSquare, CheckSquare, FolderOpen, GraduationCap } from 'lucide-react'
+
+interface TopNavigationProps {
+  onMenuClick?: () => void
+}
+
+const navItems = [
+  { name: 'Início', url: '/', icon: Home },
+  { name: 'Agenda', url: '/calendar', icon: Calendar },
+  { name: 'Solicitações', url: '/tickets', icon: Ticket },
+  { name: 'Comunicados', url: '/chat', icon: MessageSquare },
+  { name: 'Tarefas', url: '/tasks', icon: CheckSquare },
+  { name: 'Drive', url: '/drive', icon: FolderOpen },
+  { name: 'Cursos', url: '/courses', icon: GraduationCap },
+]
+
+export function TopNavigation({ onMenuClick }: TopNavigationProps) {
+  const pathname = usePathname()
+  const { data: session } = useSession()
+
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/'
+    }
+    return pathname.startsWith(href)
+  }
+
+  const getUserRole = () => {
+    const user = session?.user as { sector?: string; role?: string } | undefined
+    if (user?.role === 'admin') return 'Administrador'
+    if (user?.role === 'manager') return 'Gerente'
+    return user?.sector || 'Colaborador'
+  }
+
+  return (
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-sm">
+      <div className="flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
+        {/* Left: Logo + Mobile Menu */}
+        <div className="flex items-center gap-4">
+          {/* Mobile menu button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={onMenuClick}
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          {/* Logo - Yanger */}
+          <Link href="/" className="flex items-center">
+            <img
+              src="/logo.png"
+              alt="Yanger Logo"
+              className="h-10 w-auto object-contain"
+            />
+          </Link>
+        </div>
+
+        {/* Center: Navigation */}
+        <NavBar items={navItems} className="pb-[15px]" />
+
+        {/* Right: User Info */}
+        <div className="flex items-center gap-4">
+          {session?.user && (
+            <div className="hidden sm:flex items-center gap-3">
+              {/* User info text */}
+              <div className="text-right">
+                <p className="text-sm font-semibold leading-tight">{session.user.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {getUserRole()}
+                </p>
+              </div>
+
+              {/* Avatar with dropdown */}
+              <UserMenu />
+            </div>
+          )}
+
+          {/* Mobile: Only avatar */}
+          <div className="sm:hidden">
+            <UserMenu />
+          </div>
+        </div>
+      </div>
+    </header>
+  )
+}

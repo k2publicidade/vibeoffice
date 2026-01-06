@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Windows reserved names
+nul
+
+# Claude temporary files
+.agent/
+*.webp
+prompt.md
+chat.md
+multiselect.md
