@@ -1,11 +1,12 @@
 'use client'
 
-import { useNotifications } from '@/hooks/useNotifications'
-import { Notification } from '@/types/notifications'
+import { useState } from 'react'
+import { useNotifications, type Notification } from '@/hooks/useNotifications'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import {
   CheckSquare,
   Ticket,
@@ -50,7 +51,9 @@ function getNotificationLink(notif: Notification): string | null {
     case 'ticket':
       return notif.entity_id ? `/tickets?open=${notif.entity_id}` : null
     case 'message':
-      return notif.metadata?.roomId ? `/chat?room=${notif.metadata.roomId}` : null
+      // metadata é Json (pode ser null, object, array, etc)
+      const metadata = notif.metadata as Record<string, any> | null
+      return metadata?.roomId ? `/chat?room=${metadata.roomId}` : null
     default:
       return null
   }
@@ -59,25 +62,32 @@ function getNotificationLink(notif: Notification): string | null {
 export function NotificationItem({ notification }: NotificationItemProps) {
   const { markAsRead } = useNotifications()
   const router = useRouter()
+  const [isRemoving, setIsRemoving] = useState(false)
 
   const Icon = notificationIcons[notification.type as keyof typeof notificationIcons] || Bell
   const iconColor = priorityColors[notification.priority as keyof typeof priorityColors] || 'text-gray-500'
 
   const handleClick = async () => {
     try {
-      // Marcar como lida
       if (!notification.read) {
+        setIsRemoving(true)
         await markAsRead(notification.id)
-      }
-
-      // Redirecionar para entidade
-      const link = getNotificationLink(notification)
-      if (link) {
-        router.push(link)
+        // Aguardar animação antes de redirecionar
+        setTimeout(() => {
+          const link = getNotificationLink(notification)
+          if (link) {
+            router.push(link)
+          }
+        }, 300) // Match animation duration
+      } else {
+        const link = getNotificationLink(notification)
+        if (link) {
+          router.push(link)
+        }
       }
     } catch (error) {
+      setIsRemoving(false)
       console.error('Failed to mark notification as read:', error)
-      // Não redireciona se falhou
     }
   }
 
@@ -87,7 +97,11 @@ export function NotificationItem({ notification }: NotificationItemProps) {
   })
 
   return (
-    <button
+    <motion.button
+      initial={{ opacity: 1, x: 0 }}
+      animate={isRemoving ? { opacity: 0, x: -20 } : { opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
       onClick={handleClick}
       className={cn(
         "w-full p-4 text-left hover:bg-muted/50 transition-colors flex gap-3",
@@ -128,6 +142,6 @@ export function NotificationItem({ notification }: NotificationItemProps) {
           {timeAgo}
         </p>
       </div>
-    </button>
+    </motion.button>
   )
 }

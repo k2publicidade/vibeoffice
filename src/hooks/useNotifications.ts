@@ -148,11 +148,7 @@ export function useNotifications(): UseNotificationsReturn {
           const newNotification = payload.new as Notification
           setNotifications(prev => [newNotification, ...prev])
 
-          // Toast para nova notificação
-          toast(newNotification.title, {
-            description: newNotification.message,
-            duration: 5000,
-          })
+          // O toast premium será exibido pelo componente NotificationToast
         }
       )
       .on(

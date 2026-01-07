@@ -5,6 +5,7 @@ import { NotificationItem } from './NotificationItem'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Loader2, Bell } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 
 export function NotificationList() {
@@ -51,12 +52,14 @@ export function NotificationList() {
           </div>
         ) : (
           <div className="divide-y">
-            {notifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-              />
-            ))}
+            <AnimatePresence mode="popLayout">
+              {notifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                />
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </ScrollArea>
