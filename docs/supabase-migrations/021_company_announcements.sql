@@ -61,7 +61,7 @@ COMMENT ON COLUMN public.company_announcements.metadata IS 'JSONB para link, att
 -- Query principal: buscar avisos ativos e não expirados
 CREATE INDEX idx_announcements_active_expires
   ON public.company_announcements(active, expires_at DESC)
-  WHERE active = true AND expires_at > NOW();
+  WHERE active = true;
 
 -- Busca por setores (GIN index para arrays)
 CREATE INDEX idx_announcements_sectors
