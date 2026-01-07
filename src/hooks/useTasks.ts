@@ -313,6 +313,18 @@ export function useTasks(): UseTasksReturn {
     [user]
   )
 
+  // Função auxiliar para mapear TaskStatus → TicketStatus
+  const mapTaskStatusToTicketStatus = (taskStatus: 'todo' | 'in_progress' | 'done'): 'open' | 'analyzing' | 'in_progress' | 'completed' => {
+    switch (taskStatus) {
+      case 'todo':
+        return 'open'
+      case 'in_progress':
+        return 'in_progress'
+      case 'done':
+        return 'completed'
+    }
+  }
+
   // Atualizar tarefa
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
     // Guardar referência do oldTask ANTES do update
@@ -356,6 +368,21 @@ export function useTasks(): UseTasksReturn {
       tags: data.tags || [],
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
+      linkedTicketId: (data as any).linked_ticket_id,
+    }
+
+    // NOVO: Sincronizar status com ticket vinculado
+    if (updates.status && updatedTask.linkedTicketId && oldTask && updates.status !== oldTask.status) {
+      const ticketStatus = mapTaskStatusToTicketStatus(updates.status)
+
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({ status: ticketStatus })
+        .eq('id', updatedTask.linkedTicketId)
+
+      if (ticketError) {
+        console.error('[useTasks] Failed to sync ticket status:', ticketError)
+      }
     }
 
     // NOVO: Emitir evento se status mudou
