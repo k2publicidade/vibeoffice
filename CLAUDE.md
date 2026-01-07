@@ -253,6 +253,150 @@ npx shadcn-ui@latest add [component-name]
 - **Breakpoints Tailwind:** sm (640px), md (768px), lg (1024px), xl (1280px), 2xl (1400px)
 - **Sidebar:** Colapsável em mobile (hamburguer menu)
 
+### Padrões de Responsividade Obrigatórios
+
+**IMPORTANTE:** Todos os componentes novos devem seguir estes padrões para garantir responsividade perfeita em mobile, tablet e desktop.
+
+#### 1. Container Pattern (SEMPRE usar)
+```tsx
+// ✅ CORRETO - Usar max-w com padding responsivo
+<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+  {children}
+</div>
+
+// ❌ ERRADO - Largura fixa ou percentual
+<div className="w-[90%] mx-auto">
+  {children}
+</div>
+```
+
+#### 2. Grid Pattern (Mobile-First)
+```tsx
+// ✅ SEMPRE adicionar grid-cols-1 explícito
+<div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+
+// ❌ NUNCA omitir grid-cols-1
+<div className="grid gap-4 md:grid-cols-2">
+```
+
+#### 3. Gap Responsivo
+```tsx
+// ✅ Gap deve escalar com breakpoints
+className="gap-2 md:gap-4 lg:gap-6"
+className="space-y-4 md:space-y-6 lg:space-y-8"
+
+// ❌ Gap fixo
+className="gap-6"
+```
+
+#### 4. Touch Targets (Mínimo 44px)
+```tsx
+// ✅ Botões com altura mínima 44px
+<Button className="min-h-11 min-w-11">  {/* 44px */}
+
+// ✅ Icon buttons
+<Button size="icon" className="h-11 w-11">
+
+// ❌ Muito pequeno
+<Button size="icon">  {/* 36px - abaixo do mínimo */}
+```
+
+#### 5. Tipografia Responsiva
+```tsx
+// ✅ Escalas responsivas
+<h1 className="text-2xl font-bold md:text-3xl lg:text-4xl">
+<p className="text-sm md:text-base">
+
+// ❌ Tamanho fixo
+<h1 className="text-3xl">
+```
+
+#### 6. Tabelas (Mobile: Cards | Desktop: Table)
+```tsx
+// ✅ Com scroll horizontal
+<div className="overflow-x-auto rounded-lg border -mx-4 md:mx-0">
+  <table className="min-w-full">
+    <TableHead className="min-w-[180px]">Título</TableHead>
+
+// ❌ Sem overflow
+<table className="w-full">
+```
+
+#### 7. Sidebars (Mobile: Hidden | Desktop: Visible)
+```tsx
+// ✅ Sidebar colapsável
+<div className="hidden lg:block lg:w-64 xl:w-80">
+  <Sidebar />
+</div>
+
+// Mobile: Drawer alternativo (quando necessário)
+<Sheet>
+  <SheetTrigger>Filtros</SheetTrigger>
+  <SheetContent>
+    <Sidebar />
+  </SheetContent>
+</Sheet>
+
+// ❌ Sempre visível
+<div className="w-80">
+  <Sidebar />
+</div>
+```
+
+#### 8. Modais Responsivos
+```tsx
+// ✅ Max-width responsivo com viewport limit
+<DialogContent className="max-w-md sm:max-w-lg w-[95vw] max-h-[95vh] overflow-y-auto">
+
+// ❌ Largura fixa
+<DialogContent className="max-w-md">
+```
+
+#### 9. Spacing Responsivo
+```tsx
+// ✅ Padding responsivo
+className="p-2 sm:p-4 md:p-6"
+
+// ✅ Margin responsivo
+className="mb-4 md:mb-6 lg:mb-8"
+
+// ❌ Fixo
+className="p-6"
+```
+
+#### 10. Imagens e SVGs Responsivos
+```tsx
+// ✅ Tamanhos responsivos
+<div className="w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48">
+  <svg className="w-full h-full">
+
+// ❌ Tamanho fixo
+<div className="w-48 h-48">
+```
+
+### Breakpoints de Teste
+
+Sempre testar nos seguintes viewports:
+- **320px** - Galaxy Fold (edge case)
+- **375px** - iPhone SE, iPhone 12/13/14 mini
+- **768px** - iPad Mini portrait
+- **1024px** - Desktop breakpoint
+- **1920px** - Desktop full HD
+
+### Checklist para Novos Componentes
+
+Antes de considerar um componente completo:
+- [ ] Testado em < 375px (iPhone SE)
+- [ ] Usa padrão de container correto
+- [ ] Grids têm grid-cols-1 explícito
+- [ ] Gaps são responsivos
+- [ ] Touch targets ≥ 44px
+- [ ] Tipografia escala com breakpoints
+- [ ] Tabelas têm overflow ou cards mobile
+- [ ] Sidebars colapsam em mobile
+- [ ] Sem larguras fixas (w-[500px], w-[90%])
+- [ ] Funciona em dark mode
+
 ## Boas Práticas
 
 1. **Sempre validar inputs com Zod** antes de enviar para API

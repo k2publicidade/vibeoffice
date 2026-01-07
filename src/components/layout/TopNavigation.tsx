@@ -45,14 +45,14 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-sm">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
+      <div className="flex h-16 items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8">
         {/* Left: Logo + Mobile Menu */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           {/* Mobile menu button */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden min-h-11 min-w-11"
             onClick={onMenuClick}
             aria-label="Abrir menu"
           >
@@ -69,14 +69,14 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
           </Link>
         </div>
 
-        {/* Center: Navigation */}
-        <NavBar items={navItems} className="pb-[15px]" />
+        {/* Center: Navigation - Hidden on mobile and tablet */}
+        <NavBar items={navItems} className="hidden md:block pb-[15px]" />
 
         {/* Right: User Info */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <NotificationBell />
           {user && (
-            <div className="hidden sm:flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 md:gap-3">
               {/* User info text */}
               <div className="text-right">
                 <p className="text-sm font-semibold leading-tight">{user.name}</p>

@@ -254,7 +254,7 @@ export default function DashboardPage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="w-[90%] mx-auto py-6 md:py-8 space-y-8"
+      className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-6 md:space-y-8"
     >
       {/* Welcome Header */}
       <motion.div variants={itemVariants}>
@@ -282,7 +282,7 @@ export default function DashboardPage() {
       />
 
       {/* Row 1: Meeting Card + Efficiency */}
-      <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-3">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
         <MeetingCard
           title={dashboardData.nextMeeting.title}
           startsIn={dashboardData.nextMeeting.startsIn}
@@ -297,7 +297,7 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Row 2: Upcoming Events + Requests + News */}
-      <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-3">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
         <UpcomingEvents
           eventGroups={dashboardData.eventGroups}
           newCount={2}

@@ -140,10 +140,10 @@ export default function CalendarPage() {
   }))
 
   return (
-    <div className="w-[95%] mx-auto py-6 md:py-8">
-      <div className="flex gap-6 h-[calc(100vh-180px)]">
+    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+      <div className="flex-1 overflow-auto flex gap-4 md:gap-6 px-4 sm:px-6 lg:px-8 py-4 md:py-6">
         {/* Sidebar */}
-        <div className="hidden lg:block w-80 flex-shrink-0">
+        <div className="hidden lg:flex lg:flex-col lg:w-64 xl:w-80 lg:flex-shrink-0">
           <CalendarSidebar
             selectedDate={selectedDate}
             onDateSelect={setSelectedDate}
@@ -155,7 +155,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Main Calendar */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-auto">
           {view === 'week' && (
             <WeekView
               selectedDate={selectedDate}

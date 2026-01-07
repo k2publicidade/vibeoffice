@@ -273,9 +273,9 @@ export default function DrivePage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-4">
-        {/* Sidebar - Folder Tree */}
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-4">
+        {/* Sidebar - Folder Tree - Hidden on mobile */}
+        <div className="hidden lg:block lg:col-span-1">
           <FolderTree
             items={items}
             currentFolderId={currentFolder?.id || null}

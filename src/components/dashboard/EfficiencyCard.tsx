@@ -47,9 +47,9 @@ export function EfficiencyCard({
         </button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 lg:gap-8 items-start">
         {/* Left Section: Stats and Weekly Progress */}
-        <div className="flex-1 space-y-8 w-full">
+        <div className="flex-1 space-y-6 md:space-y-8 w-full">
           <div className="flex items-center gap-2">
             <span className="text-6xl font-black text-white leading-none tracking-tighter">{efficiency}%</span>
             <ChevronDown className="h-8 w-8 text-white/50" />
@@ -131,8 +131,8 @@ export function EfficiencyCard({
         </div>
 
         {/* Right Section: Circular Gauge (Donut Chart) */}
-        <div className="flex shrink-0 items-center justify-center pt-4 lg:pt-0 mx-auto lg:mx-0">
-          <div className="relative w-48 h-48 group">
+        <div className="flex shrink-0 items-center justify-center pt-4 lg:pt-0 mx-auto lg:mx-0 w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48">
+          <div className="relative w-full h-full group">
             {/* Glow background effect */}
             <div className="absolute inset-4 rounded-full bg-orange-500/5 blur-3xl group-hover:bg-orange-500/10 transition-all duration-500" />
 

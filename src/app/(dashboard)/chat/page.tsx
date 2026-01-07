@@ -76,28 +76,35 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="fixed inset-0 top-16 bottom-0 flex bg-black text-white overflow-hidden">
-        {/* Sidebar - Integrated List (w-80) */}
-        <div className={cn(
-          "bg-black border-r border-[#ff0300]/20 flex flex-col transition-all duration-300 shrink-0",
-          showChatList ? "w-full lg:w-80" : "w-0 lg:w-80 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto"
-        )}>
-          <ChatListPremium
-            rooms={rooms}
-            selectedRoom={currentRoom}
-            onSelectRoom={handleSelectRoom}
-            onNewConversation={() => setShowNewConversationModal(true)}
-            unreadCounts={unreadCounts}
-            lastMessages={lastMessages}
-            getDMUserInfo={getDMUserInfo}
-          />
-        </div>
+      <div className="flex flex-col bg-black text-white overflow-hidden h-[calc(100vh-64px)]">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar - Integrated List */}
+          <div className={cn(
+            "bg-black border-r border-[#ff0300]/20 flex flex-col transition-all duration-300 shrink-0 overflow-hidden",
+            "absolute lg:relative top-0 left-0 h-full z-40 lg:z-auto",
+            showChatList ? "w-full lg:w-80 translate-x-0" : "w-full lg:w-80 -translate-x-full lg:translate-x-0"
+          )}>
+            <ChatListPremium
+              rooms={rooms}
+              selectedRoom={currentRoom}
+              onSelectRoom={handleSelectRoom}
+              onNewConversation={() => setShowNewConversationModal(true)}
+              unreadCounts={unreadCounts}
+              lastMessages={lastMessages}
+              getDMUserInfo={getDMUserInfo}
+            />
+          </div>
 
-        {/* Main Chat Area (flex-1) */}
-        <div className={cn(
-          "flex-1 flex flex-col bg-black transition-all duration-300",
-          !showChatList ? "fixed inset-0 top-16 z-50 lg:relative lg:top-0" : "hidden lg:flex"
-        )}>
+          {/* Overlay for mobile */}
+          {showChatList && (
+            <div
+              className="fixed inset-0 bg-black/50 lg:hidden z-30"
+              onClick={() => setShowChatList(false)}
+            />
+          )}
+
+          {/* Main Chat Area */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-black">
           <ChatRoomPremium
             room={currentRoom}
             messages={messages}

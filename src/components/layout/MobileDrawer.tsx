@@ -52,9 +52,9 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
       />
 
       {/* Drawer */}
-      <div className="fixed inset-y-0 left-0 z-50 w-72 bg-card shadow-xl md:hidden animate-slide-in-left">
+      <div className="fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-card shadow-xl md:hidden animate-slide-in-left">
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b px-4">
+        <div className="flex h-16 items-center justify-between border-b px-4 gap-2">
           <img
             src="/logo.png"
             alt="Yanger Logo"
@@ -65,6 +65,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
             size="icon"
             onClick={onClose}
             aria-label="Fechar menu"
+            className="min-h-11 min-w-11"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -72,7 +73,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4">
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {navItems.map((item) => {
               const Icon = item.icon
               return (
@@ -81,7 +82,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                     href={item.href}
                     onClick={onClose}
                     className={cn(
-                      'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
+                      'flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-colors min-h-12',
                       isActive(item.href)
                         ? 'bg-accent text-accent-foreground'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'

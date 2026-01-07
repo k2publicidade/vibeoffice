@@ -45,17 +45,17 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
   }
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <Table>
+    <div className="overflow-x-auto rounded-lg border border-border -mx-4 md:mx-0">
+      <Table className="min-w-full">
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead>Título</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Prioridade</TableHead>
-            <TableHead>Responsável</TableHead>
-            <TableHead>Vencimento</TableHead>
-            <TableHead>Setor</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
+            <TableHead className="min-w-[180px]">Título</TableHead>
+            <TableHead className="min-w-[100px]">Status</TableHead>
+            <TableHead className="min-w-[100px]">Prioridade</TableHead>
+            <TableHead className="min-w-[120px]">Responsável</TableHead>
+            <TableHead className="min-w-[100px]">Vencimento</TableHead>
+            <TableHead className="min-w-[100px]">Setor</TableHead>
+            <TableHead className="text-right min-w-[80px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

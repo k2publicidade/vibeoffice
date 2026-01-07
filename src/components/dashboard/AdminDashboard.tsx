@@ -182,15 +182,15 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="w-[90%] mx-auto py-6 md:py-8 space-y-8"
+      className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-6 md:space-y-8"
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-white md:text-3xl">
             Painel Administrativo
           </h1>
-          <p className="text-gray-400">
+          <p className="text-sm md:text-base text-gray-400">
             Bem-vindo, {userName}. Visão geral de toda a empresa.
           </p>
         </div>
@@ -201,7 +201,7 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
       </motion.div>
 
       {/* Quick Stats */}
-      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">

@@ -45,12 +45,12 @@ export function MessageInputPremium({
   }
 
   return (
-    <div className="p-4 border-t border-[#ff0300]/20 bg-[#0a0a0a]">
-      <div className="flex items-center gap-2">
+    <div className="p-2 sm:p-4 border-t border-[#ff0300]/20 bg-[#0a0a0a]">
+      <div className="flex items-end gap-1 sm:gap-2">
         <Button
           variant="ghost"
           size="icon"
-          className="text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
+          className="hidden sm:flex text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
         >
           <Smile className="h-5 w-5" />
         </Button>
@@ -60,7 +60,7 @@ export function MessageInputPremium({
             <Button
               variant="ghost"
               size="icon"
-              className="text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
+              className="hidden sm:flex text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
             >
               <Paperclip className="h-5 w-5" />
             </Button>
@@ -83,14 +83,14 @@ export function MessageInputPremium({
           onChange={(e) => setMessageInput(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Digite uma mensagem..."
-          className="flex-1 bg-[#1a1a1a] border-[#ff0300]/20 text-white placeholder:text-gray-500 focus-visible:border-[#fc7a67] focus-visible:ring-[#fc7a67] h-11 px-4"
+          className="flex-1 bg-[#1a1a1a] border-[#ff0300]/20 text-white placeholder:text-gray-500 focus-visible:border-[#fc7a67] focus-visible:ring-[#fc7a67] h-9 sm:h-11 px-2 sm:px-4 text-sm sm:text-base"
           disabled={disabled}
         />
 
         <Button
           variant="ghost"
           size="icon"
-          className="text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
+          className="hidden sm:flex text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
         >
           <Mic className="h-5 w-5" />
         </Button>
@@ -98,9 +98,9 @@ export function MessageInputPremium({
         <Button
           onClick={handleSendMessage}
           disabled={!messageInput.trim() || disabled}
-          className="bg-[#fc7a67] text-black hover:bg-[#ff0300] disabled:bg-[#1a1a1a] disabled:text-gray-600 rounded-lg px-3 h-11 shrink-0 transition-colors shadow-lg shadow-[#fc7a67]/10"
+          className="bg-[#fc7a67] text-black hover:bg-[#ff0300] disabled:bg-[#1a1a1a] disabled:text-gray-600 rounded-lg px-2 sm:px-3 h-9 sm:h-11 shrink-0 transition-colors shadow-lg shadow-[#fc7a67]/10"
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       </div>
     </div>
