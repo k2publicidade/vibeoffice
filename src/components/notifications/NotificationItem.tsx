@@ -42,6 +42,20 @@ const priorityColors = {
   high: 'text-red-500',
 } as const
 
+// Helper para obter link de redirecionamento baseado na notificação
+function getNotificationLink(notif: Notification): string | null {
+  switch (notif.entity_type) {
+    case 'task':
+      return notif.entity_id ? `/tasks?open=${notif.entity_id}` : null
+    case 'ticket':
+      return notif.entity_id ? `/tickets?open=${notif.entity_id}` : null
+    case 'message':
+      return notif.metadata?.roomId ? `/chat?room=${notif.metadata.roomId}` : null
+    default:
+      return null
+  }
+}
+
 export function NotificationItem({ notification }: NotificationItemProps) {
   const { markAsRead } = useNotifications()
   const router = useRouter()
@@ -50,28 +64,20 @@ export function NotificationItem({ notification }: NotificationItemProps) {
   const iconColor = priorityColors[notification.priority as keyof typeof priorityColors] || 'text-gray-500'
 
   const handleClick = async () => {
-    // Marcar como lida
-    if (!notification.read) {
-      await markAsRead(notification.id)
-    }
+    try {
+      // Marcar como lida
+      if (!notification.read) {
+        await markAsRead(notification.id)
+      }
 
-    // Redirecionar para entidade
-    const link = getNotificationLink(notification)
-    if (link) {
-      router.push(link)
-    }
-  }
-
-  const getNotificationLink = (notif: Notification): string | null => {
-    switch (notif.entity_type) {
-      case 'task':
-        return `/tasks?open=${notif.entity_id}`
-      case 'ticket':
-        return `/tickets?open=${notif.entity_id}`
-      case 'message':
-        return `/chat?room=${notif.metadata.roomId}`
-      default:
-        return null
+      // Redirecionar para entidade
+      const link = getNotificationLink(notification)
+      if (link) {
+        router.push(link)
+      }
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+      // Não redireciona se falhou
     }
   }
 
