@@ -259,14 +259,24 @@ export function useChat(): UseChatReturn {
 
       if (error) throw error
 
+      // Validar que data existe antes de usar
+      if (!data) {
+        console.error('[useChat] Message insert returned no data')
+        return
+      }
+
       // Atualizar updated_at da sala (opcional, pode ter trigger no banco)
-      await supabase
+      const updateResult = await supabase
         .from('chat_rooms')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', currentRoom.id)
 
+      if (updateResult.error) {
+        console.error('[useChat] Failed to update room timestamp:', updateResult.error)
+      }
+
       // Emitir notificação para todos os membros da sala (exceto o sender)
-      const recipients = currentRoom.participants.filter(memberId => memberId !== user.id)
+      const recipients = (currentRoom.participants || []).filter(memberId => memberId !== user.id)
 
       if (recipients.length > 0) {
         EventBus.emit({
