@@ -64,16 +64,25 @@ export function WeekView({
     return events.filter((event) => isSameDay(event.startTime, day))
   }
 
-  // Calculate event position and height
+  // Calculate event position and height (usando porcentagens para flexbox)
   const getEventStyle = (event: CalendarEvent) => {
     const startHour = getHours(event.startTime)
     const startMinute = getMinutes(event.startTime)
     const duration = differenceInMinutes(event.endTime, event.startTime)
 
-    const top = ((startHour - 10) * 60 + startMinute) * (64 / 60) // 64px per hour
-    const height = (duration / 60) * 64
+    // Cada hora ocupa 100/9 = 11.111% da altura total
+    const hourPercentage = 100 / HOURS.length
 
-    return { top: `${top}px`, height: `${height}px` }
+    // Posição: (hora - hora_inicial) + fração de minutos
+    const hoursFromStart = startHour - 10
+    const minuteFraction = startMinute / 60
+    const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
+
+    // Altura: duração em horas * porcentagem por hora
+    const durationHours = duration / 60
+    const heightPercentage = durationHours * hourPercentage
+
+    return { top: `${topPercentage}%`, height: `${heightPercentage}%` }
   }
 
   return (
@@ -163,14 +172,14 @@ export function WeekView({
       </div>
 
       {/* Calendar Grid */}
-      <div className="flex-1 overflow-y-auto rounded-2xl bg-zinc-800/30 border border-zinc-700/50 p-2">
-        <div className="grid grid-cols-8 gap-1">
+      <div className="flex-1 rounded-2xl bg-zinc-800/30 border border-zinc-700/50 p-2 overflow-hidden">
+        <div className="grid grid-cols-8 gap-1 h-full">
           {/* Time Column */}
-          <div className="w-16">
+          <div className="w-16 flex flex-col">
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="h-16 text-xs text-muted-foreground text-right pr-3 -mt-2 font-medium"
+                className="flex-1 text-xs text-muted-foreground text-right pr-3 flex items-start pt-1 font-medium"
               >
                 {hour.toString().padStart(2, '0')}:00
               </div>
@@ -186,7 +195,7 @@ export function WeekView({
               <div
                 key={day.toISOString()}
                 className={cn(
-                  "relative min-h-[768px] border-l border-zinc-700/50 rounded-lg",
+                  "relative border-l border-zinc-700/50 rounded-lg flex flex-col",
                   isToday && "bg-orange-500/5"
                 )}
               >
@@ -194,7 +203,7 @@ export function WeekView({
                 {HOURS.map((hour) => (
                   <div
                     key={hour}
-                    className="h-16 border-b border-zinc-700/30 cursor-pointer hover:bg-orange-500/10 transition-colors group relative"
+                    className="flex-1 border-b border-zinc-700/30 cursor-pointer hover:bg-orange-500/10 transition-colors group relative"
                     onClick={() => onSlotClick?.(day, hour)}
                   >
                     {/* Add button on hover */}
