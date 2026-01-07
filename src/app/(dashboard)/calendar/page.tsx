@@ -9,11 +9,13 @@ import { DayView } from '@/components/calendar/DayView'
 import { AgendaView } from '@/components/calendar/AgendaView'
 import { CreateEventModal } from '@/components/calendar/CreateEventModal'
 import { useUsers } from '@/hooks/useUsers'
+import { toast } from 'sonner'
 
 export default function CalendarPage() {
   const {
     events,
     getEventsByType,
+    createEvent,
   } = useCalendar()
   const { users } = useUsers()
 
@@ -91,7 +93,7 @@ export default function CalendarPage() {
     // TODO: Open event details modal
   }
 
-  const handleCreateEvent = (eventData: {
+  const handleCreateEvent = async (eventData: {
     title: string
     date: Date
     startTime: string
@@ -100,10 +102,34 @@ export default function CalendarPage() {
     tags: string[]
     attendees: string[]
   }) => {
-    console.log('Create event:', eventData)
-    // TODO: Actually create the event
-    setCreateModalOpen(false)
-    setSelectedSlot(null)
+    try {
+      // Combinar data + hora em Date objects
+      const [startHour, startMin] = eventData.startTime.split(':')
+      const [endHour, endMin] = eventData.endTime.split(':')
+
+      const startTime = new Date(eventData.date)
+      startTime.setHours(parseInt(startHour), parseInt(startMin), 0)
+
+      const endTime = new Date(eventData.date)
+      endTime.setHours(parseInt(endHour), parseInt(endMin), 0)
+
+      await createEvent({
+        title: eventData.title,
+        description: '',
+        startTime,
+        endTime,
+        type: 'personal',
+        location: eventData.location,
+        attendees: eventData.attendees,
+      })
+
+      setCreateModalOpen(false)
+      setSelectedSlot(null)
+      toast.success('Evento criado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao criar evento:', error)
+      toast.error('Erro ao criar evento')
+    }
   }
 
   // Available attendees for create modal
