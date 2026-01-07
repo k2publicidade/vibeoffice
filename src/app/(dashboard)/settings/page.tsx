@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { CardSpotlight } from '@/components/ui/card-spotlight'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,7 @@ const contentVariants = {
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('general')
+    const router = useRouter()
 
     const tabItems = [
         { id: 'general', label: 'Geral', icon: User },
@@ -53,6 +55,14 @@ export default function SettingsPage() {
         { id: 'notifications', label: 'Notificações', icon: Bell },
         { id: 'appearance', label: 'Aparência', icon: Palette },
     ]
+
+    const handleTabChange = (value: string) => {
+        if (value === 'notifications') {
+            router.push('/settings/notifications')
+        } else {
+            setActiveTab(value)
+        }
+    }
 
     return (
         <motion.div
@@ -71,7 +81,7 @@ export default function SettingsPage() {
                 </p>
             </motion.div>
 
-            <Tabs defaultValue="general" className="space-y-8" onValueChange={setActiveTab}>
+            <Tabs defaultValue="general" className="space-y-8" value={activeTab} onValueChange={handleTabChange}>
                 {/* Navigation Sidebar-style Tabs */}
                 <div className="flex flex-col lg:flex-row gap-8">
                     <motion.aside variants={itemVariants} className="w-full lg:w-64 space-y-2">
@@ -164,29 +174,6 @@ export default function SettingsPage() {
                                     </div>
                                 </TabsContent>
 
-                                {/* Notifications */}
-                                <TabsContent value="notifications" className="m-0 space-y-8">
-                                    <div className="space-y-6">
-                                        <h3 className="text-xl font-bold text-white border-b border-[#2a2a2a] pb-4">Preferências de Alerta</h3>
-
-                                        <div className="space-y-4">
-                                            {[
-                                                { title: 'Notificações por E-mail', desc: 'Receba resumos e alertas importantes.' },
-                                                { title: 'Chat em Tempo Real', desc: 'Alertas visuais para novas mensagens.' },
-                                                { title: 'Status de Tarefas', desc: 'Notificar quando uma tarefa mudar.' },
-                                                { title: 'Lembretes de Agenda', desc: '15 minutos antes de cada evento.' },
-                                            ].map((item, idx) => (
-                                                <div key={idx} className="flex items-center justify-between py-4 border-b border-white/5">
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm font-bold text-white">{item.title}</p>
-                                                        <p className="text-xs text-gray-500">{item.desc}</p>
-                                                    </div>
-                                                    <Switch defaultChecked={idx < 2} />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </TabsContent>
 
                                 {/* Appearance */}
                                 <TabsContent value="appearance" className="m-0 space-y-8">
