@@ -7,6 +7,12 @@ import { useArchiveChat } from './useArchiveChat'
 import { ChatRoom, Message } from '@/types/chat'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { EventBus } from '@/lib/notifications/eventBus'
+import {
+  validateProjectGroup,
+  canManageGroup,
+  type CreateProjectGroupData
+} from '@/types/chat'
+import { toast } from 'sonner'
 
 export interface ChatUser {
   id: string
@@ -32,6 +38,10 @@ export interface UseChatReturn {
   availableUsers: ChatUser[]
   isLoading: boolean
   typingUsers: string[]
+  createProjectGroup: (data: CreateProjectGroupData) => Promise<ChatRoom | null>
+  updateProjectGroup: (roomId: string, updates: { name?: string; description?: string }) => Promise<boolean>
+  addMemberToProject: (roomId: string, userId: string) => Promise<boolean>
+  removeMemberFromProject: (roomId: string, userId: string) => Promise<boolean>
 }
 
 export function useChat(): UseChatReturn {
@@ -312,6 +322,247 @@ export function useChat(): UseChatReturn {
     }
   }, [currentRoom, user])
 
+  /**
+   * Cria novo grupo de projeto
+   * @param data Dados do grupo (nome, descrição, membros)
+   * @returns ChatRoom criado ou null se erro
+   */
+  const createProjectGroup = async (
+    data: CreateProjectGroupData
+  ): Promise<ChatRoom | null> => {
+    if (!user?.id) {
+      toast.error('Você precisa estar autenticado')
+      return null
+    }
+
+    // Validar dados
+    const validation = validateProjectGroup(data)
+    if (!validation.valid) {
+      toast.error(validation.error)
+      return null
+    }
+
+    // Garantir que criador está nos participantes
+    const participants = Array.from(new Set([user.id, ...data.memberIds]))
+
+    try {
+      setIsLoading(true)
+
+      const { data: newRoom, error } = await supabase
+        .from('chat_rooms')
+        .insert({
+          name: data.name.trim(),
+          type: 'project',
+          description: data.description.trim(),
+          created_by: user.id,
+          participants: participants
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Mapear para ChatRoom interface
+      const mappedRoom: ChatRoom = {
+        id: newRoom.id,
+        name: newRoom.name,
+        type: newRoom.type,
+        sector: newRoom.sector,
+        description: newRoom.description,
+        createdBy: newRoom.created_by,
+        participants: newRoom.participants,
+        createdAt: newRoom.created_at,
+        updatedAt: newRoom.updated_at
+      }
+
+      // Atualizar estado local
+      setRooms(prev => [mappedRoom, ...prev])
+      setCurrentRoom(mappedRoom)
+
+      toast.success('Grupo de projeto criado!')
+      return mappedRoom
+
+    } catch (error) {
+      console.error('Error creating project group:', error)
+      toast.error('Erro ao criar grupo')
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  /**
+   * Atualiza nome e/ou descrição de grupo de projeto
+   * @param roomId ID do grupo
+   * @param updates Campos a atualizar
+   * @returns true se sucesso, false se erro
+   */
+  const updateProjectGroup = async (
+    roomId: string,
+    updates: { name?: string; description?: string }
+  ): Promise<boolean> => {
+    if (!user?.id) return false
+
+    const room = rooms.find(r => r.id === roomId)
+    if (!room || !canManageGroup(room, user.id)) {
+      toast.error('Você não tem permissão para editar este grupo')
+      return false
+    }
+
+    try {
+      const { error } = await supabase
+        .from('chat_rooms')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roomId)
+        .eq('created_by', user.id)
+        .eq('type', 'project')
+
+      if (error) throw error
+
+      // Atualizar estado local
+      setRooms(prev => prev.map(r =>
+        r.id === roomId ? { ...r, ...updates } : r
+      ))
+
+      if (currentRoom?.id === roomId) {
+        setCurrentRoom(prev => prev ? { ...prev, ...updates } : null)
+      }
+
+      toast.success('Grupo atualizado!')
+      return true
+
+    } catch (error) {
+      console.error('Error updating project group:', error)
+      toast.error('Erro ao atualizar grupo')
+      return false
+    }
+  }
+
+  /**
+   * Adiciona membro a grupo de projeto
+   * @param roomId ID do grupo
+   * @param userId ID do usuário a adicionar
+   * @returns true se sucesso, false se erro
+   */
+  const addMemberToProject = async (
+    roomId: string,
+    userId: string
+  ): Promise<boolean> => {
+    if (!user?.id) return false
+
+    const room = rooms.find(r => r.id === roomId)
+    if (!room || !canManageGroup(room, user.id)) {
+      toast.error('Sem permissão para adicionar membros')
+      return false
+    }
+
+    // Verificar se usuário já é membro
+    if (room.participants.includes(userId)) {
+      toast.error('Usuário já é membro do grupo')
+      return false
+    }
+
+    const newParticipants = [...room.participants, userId]
+
+    try {
+      const { error } = await supabase
+        .from('chat_rooms')
+        .update({
+          participants: newParticipants,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roomId)
+
+      if (error) throw error
+
+      // Atualizar estado local
+      setRooms(prev => prev.map(r =>
+        r.id === roomId
+          ? { ...r, participants: newParticipants }
+          : r
+      ))
+
+      if (currentRoom?.id === roomId) {
+        setCurrentRoom(prev => prev
+          ? { ...prev, participants: newParticipants }
+          : null
+        )
+      }
+
+      toast.success('Membro adicionado!')
+      return true
+
+    } catch (error) {
+      console.error('Error adding member:', error)
+      toast.error('Erro ao adicionar membro')
+      return false
+    }
+  }
+
+  /**
+   * Remove membro de grupo de projeto
+   * @param roomId ID do grupo
+   * @param userId ID do usuário a remover
+   * @returns true se sucesso, false se erro
+   */
+  const removeMemberFromProject = async (
+    roomId: string,
+    userId: string
+  ): Promise<boolean> => {
+    if (!user?.id) return false
+
+    const room = rooms.find(r => r.id === roomId)
+    if (!room || !canManageGroup(room, user.id)) {
+      toast.error('Sem permissão para remover membros')
+      return false
+    }
+
+    // Impedir remoção do criador
+    if (userId === room.createdBy) {
+      toast.error('O criador do grupo não pode ser removido')
+      return false
+    }
+
+    const newParticipants = room.participants.filter(id => id !== userId)
+
+    try {
+      const { error } = await supabase
+        .from('chat_rooms')
+        .update({
+          participants: newParticipants,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roomId)
+
+      if (error) throw error
+
+      // Atualizar estado local
+      setRooms(prev => prev.map(r =>
+        r.id === roomId
+          ? { ...r, participants: newParticipants }
+          : r
+      ))
+
+      if (currentRoom?.id === roomId) {
+        setCurrentRoom(prev => prev
+          ? { ...prev, participants: newParticipants }
+          : null
+        )
+      }
+
+      toast.success('Membro removido!')
+      return true
+
+    } catch (error) {
+      console.error('Error removing member:', error)
+      toast.error('Erro ao remover membro')
+      return false
+    }
+  }
+
   return {
     rooms,
     sectorRooms,
@@ -327,5 +578,9 @@ export function useChat(): UseChatReturn {
     availableUsers,
     isLoading,
     typingUsers,
+    createProjectGroup,
+    updateProjectGroup,
+    addMemberToProject,
+    removeMemberFromProject,
   }
 }
