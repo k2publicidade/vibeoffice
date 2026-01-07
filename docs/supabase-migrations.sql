@@ -964,7 +964,6 @@ CREATE POLICY "Users can create project groups"
   WITH CHECK (
     type = 'project'
     AND created_by = auth.uid()
-    AND auth.uid() = ANY(participants)
   );
 
 -- Apenas criador pode deletar grupo de projeto
@@ -972,16 +971,15 @@ CREATE POLICY "Creator can delete project groups"
   ON chat_rooms FOR DELETE
   USING (
     type = 'project'
+    AND created_by IS NOT NULL
     AND created_by = auth.uid()
   );
 
 -- Apenas criador pode atualizar grupo de projeto
 CREATE POLICY "Creator can update project groups"
   ON chat_rooms FOR UPDATE
-  USING (
-    type = 'project'
-    AND created_by = auth.uid()
-  );
+  USING (type = 'project' AND created_by IS NOT NULL AND created_by = auth.uid())
+  WITH CHECK (created_by = auth.uid());
 
 -- Permitir usuários verem grupos de projeto onde são participantes
 -- (isso já é coberto pela policy existente de SELECT em chat_rooms,
