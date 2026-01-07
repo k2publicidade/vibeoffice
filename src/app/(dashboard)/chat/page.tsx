@@ -22,6 +22,7 @@ export default function ChatPage() {
     availableUsers,
     isLoading,
     typingUsers,
+    createProjectGroup,
   } = useChat()
 
   const [showChatList, setShowChatList] = useState(true)
@@ -92,6 +93,7 @@ export default function ChatPage() {
               unreadCounts={unreadCounts}
               lastMessages={lastMessages}
               getDMUserInfo={getDMUserInfo}
+              createProjectGroup={createProjectGroup}
             />
           </div>
 

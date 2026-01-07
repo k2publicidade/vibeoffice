@@ -4,7 +4,7 @@ import { ChatRoom } from '@/types/chat'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { MessageSquare, Users } from 'lucide-react'
+import { MessageSquare, Users, FolderKanban } from 'lucide-react'
 
 interface ChatRoomListProps {
   rooms: ChatRoom[]
@@ -15,11 +15,13 @@ interface ChatRoomListProps {
 const typeIcons = {
   sector: MessageSquare,
   dm: Users,
+  project: FolderKanban,
 }
 
 const typeLabels = {
   sector: 'Setor',
   dm: 'DM',
+  project: 'Projeto',
 }
 
 export function ChatRoomList({ rooms, selectedRoom, onSelectRoom }: ChatRoomListProps) {
