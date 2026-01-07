@@ -55,6 +55,8 @@ export function useCalendar(): UseCalendarReturn {
           createdBy: event.created_by,
           createdAt: new Date(event.created_at),
           updatedAt: new Date(event.created_at), // DB não tem updated_at, usando created_at
+          linkedTaskId: event.linked_task_id || undefined,
+          linkedTicketId: event.linked_ticket_id || undefined,
         }))
       )
     } catch (error) {
@@ -124,6 +126,8 @@ export function useCalendar(): UseCalendarReturn {
           location: event.location,
           attendees: event.attendees || [],
           created_by: user.id,
+          linked_task_id: event.linkedTaskId || null,
+          linked_ticket_id: event.linkedTicketId || null,
         })
         .select()
         .single()
@@ -142,6 +146,8 @@ export function useCalendar(): UseCalendarReturn {
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.created_at), // DB não tem updated_at
+        linkedTaskId: data.linked_task_id || undefined,
+        linkedTicketId: data.linked_ticket_id || undefined,
       }
 
       setEvents((prev) => [...prev, newEvent])
@@ -161,6 +167,8 @@ export function useCalendar(): UseCalendarReturn {
           type: updates.type,
           location: updates.location,
           attendees: updates.attendees,
+          linked_task_id: updates.linkedTaskId || null,
+          linked_ticket_id: updates.linkedTicketId || null,
         })
         .eq('id', id)
         .select()
@@ -181,6 +189,8 @@ export function useCalendar(): UseCalendarReturn {
                 location: data.location,
                 attendees: data.attendees || [],
                 updatedAt: new Date(), // DB não tem updated_at, usando data atual
+                linkedTaskId: data.linked_task_id || undefined,
+                linkedTicketId: data.linked_ticket_id || undefined,
               }
             : event
         )
