@@ -21,10 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useTasks } from '@/hooks/useTasks'
+import { useTickets } from '@/hooks/useTickets'
 
 interface Attendee {
   id: string
@@ -49,6 +52,8 @@ interface CreateEventModalProps {
     location?: string
     tags: string[]
     attendees: string[]
+    linkedTaskId?: string
+    linkedTicketId?: string
   }) => void
   selectedDate?: Date
   availableAttendees?: Attendee[]
@@ -94,6 +99,14 @@ export function CreateEventModal({
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([])
 
+  // Estados para vinculação
+  const [linkType, setLinkType] = useState<'none' | 'task' | 'ticket'>('none')
+  const [selectedTaskId, setSelectedTaskId] = useState<string>()
+  const [selectedTicketId, setSelectedTicketId] = useState<string>()
+
+  const { tasks } = useTasks()
+  const { tickets } = useTickets()
+
   const handleTagToggle = (tagId: string) => {
     setSelectedTags((prev) =>
       prev.includes(tagId)
@@ -119,6 +132,8 @@ export function CreateEventModal({
       location: location || undefined,
       tags: selectedTags,
       attendees: selectedAttendees,
+      linkedTaskId: linkType === 'task' ? selectedTaskId : undefined,
+      linkedTicketId: linkType === 'ticket' ? selectedTicketId : undefined,
     })
     handleReset()
     onClose()
@@ -131,6 +146,9 @@ export function CreateEventModal({
     setLocation('')
     setSelectedTags([])
     setSelectedAttendees([])
+    setLinkType('none')
+    setSelectedTaskId(undefined)
+    setSelectedTicketId(undefined)
   }
 
   return (
@@ -260,6 +278,50 @@ export function CreateEventModal({
                 </motion.button>
               ))}
             </div>
+          </motion.div>
+
+          {/* Vincular a Task/Ticket */}
+          <motion.div variants={itemVariants}>
+            <Label className="text-sm font-medium mb-2 block">
+              Vincular a (opcional)
+            </Label>
+            <Tabs value={linkType} onValueChange={(v) => setLinkType(v as 'none' | 'task' | 'ticket')}>
+              <TabsList className="grid w-full grid-cols-3 bg-zinc-800 border-zinc-700">
+                <TabsTrigger value="none">Nenhum</TabsTrigger>
+                <TabsTrigger value="task">Tarefa</TabsTrigger>
+                <TabsTrigger value="ticket">Ticket</TabsTrigger>
+              </TabsList>
+
+              {linkType === 'task' && (
+                <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+                  <SelectTrigger className="mt-2 bg-zinc-800/50 border-zinc-700">
+                    <SelectValue placeholder="Selecione uma tarefa" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {tasks.filter(t => t.status !== 'done').map(task => (
+                      <SelectItem key={task.id} value={task.id}>
+                        📋 {task.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {linkType === 'ticket' && (
+                <Select value={selectedTicketId} onValueChange={setSelectedTicketId}>
+                  <SelectTrigger className="mt-2 bg-zinc-800/50 border-zinc-700">
+                    <SelectValue placeholder="Selecione um ticket" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {tickets.filter(t => t.status !== 'completed').map(ticket => (
+                      <SelectItem key={ticket.id} value={ticket.id}>
+                        🎫 {ticket.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </Tabs>
           </motion.div>
 
           {/* Attendees */}
