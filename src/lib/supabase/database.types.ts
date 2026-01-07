@@ -266,6 +266,7 @@ export type Database = {
           timestamp: string
           reactions: Json
           mentioned_users: string[]
+          read_by: Json
         }
         Insert: {
           id?: string
@@ -276,6 +277,7 @@ export type Database = {
           timestamp?: string
           reactions?: Json
           mentioned_users?: string[]
+          read_by?: Json
         }
         Update: {
           id?: string
@@ -286,6 +288,7 @@ export type Database = {
           timestamp?: string
           reactions?: Json
           mentioned_users?: string[]
+          read_by?: Json
         }
         Relationships: [
           {

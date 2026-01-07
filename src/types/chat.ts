@@ -28,6 +28,7 @@ export interface Message {
   editedAt?: Date
   reactions?: { [emoji: string]: string[] } // Emoji -> array of user IDs
   mentionedUsers?: string[] // Array of user IDs mentioned in message
+  readBy?: { [userId: string]: string } // userId -> ISO timestamp when read
 }
 
 export interface DirectMessage {
