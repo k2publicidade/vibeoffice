@@ -154,12 +154,11 @@ CENÁRIO 3: Gerente (ex: Leitteian) logado
 
 
 -- ============================================
--- 9. SOLUÇÃO COMUM: FORÇAR RLS
+-- 9. SOLUÇÃO COMUM: HABILITAR RLS
 -- ============================================
--- Se RLS não está habilitado, habilitar:
-ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+-- IMPORTANTE: Execute APENAS esta linha se a seção 1 mostrar rls_enabled = false
 
--- Se 'authenticated' role tem bypass, remover:
-ALTER ROLE authenticated NOBYPASSRLS;
+-- ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 
--- Recriar policies se necessário (voltar e executar migration 014)
+-- NOTA: NÃO tente modificar role 'authenticated' - é gerenciada pelo Supabase
+-- Se houver problema de bypass, contate suporte do Supabase

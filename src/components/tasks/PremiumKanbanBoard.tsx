@@ -35,7 +35,7 @@ export interface KanbanColumnData {
 
 interface PremiumKanbanBoardProps {
     columns: KanbanColumnData[]
-    onTaskMove: (taskId: string, newStatus: TaskStatus) => void
+    onTaskMove: (taskId: string, newStatus: TaskStatus) => Promise<void> | void
     onAddTask: (status: TaskStatus) => void
     onTaskClick: (task: Task) => void
     className?: string
@@ -184,7 +184,7 @@ export function PremiumKanbanBoard({
         })
     }
 
-    const handleDragEnd = (event: DragEndEvent) => {
+    const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event
         const activeIdVal = active.id as string
 
@@ -202,12 +202,19 @@ export function PremiumKanbanBoard({
         }
 
         if (activeContainer !== overContainer) {
-            // Find source column to confirm the move
-            onTaskMove(activeIdVal, overContainer)
+            // Aguardar o update completar ANTES de limpar activeId
+            try {
+                await onTaskMove(activeIdVal, overContainer)
 
-            // Vibração de confirmação (padrão diferente)
-            if (typeof window !== 'undefined' && window.navigator.vibrate) {
-                window.navigator.vibrate([15, 50, 15]) // Duplo tap
+                // Vibração de confirmação (padrão diferente)
+                if (typeof window !== 'undefined' && window.navigator.vibrate) {
+                    window.navigator.vibrate([15, 50, 15]) // Duplo tap
+                }
+            } catch (error) {
+                console.error('Failed to move task:', error)
+            } finally {
+                // Só limpa activeId DEPOIS do update
+                setActiveId(null)
             }
         } else {
             // Reordering within same column
@@ -228,9 +235,8 @@ export function PremiumKanbanBoard({
                     }))
                 }
             }
+            setActiveId(null)
         }
-
-        setActiveId(null)
     }
 
     const activeTask = React.useMemo(() => {
