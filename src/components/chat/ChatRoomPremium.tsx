@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { ChatRoom as ChatRoomType, Message } from '@/types/chat'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { MessageListPremium } from './MessageListPremium'
 import { MessageInputPremium } from './MessageInputPremium'
+import { MessageSearchDialog } from './MessageSearchDialog'
+import { useUsers } from '@/hooks/useUsers'
 
 interface ChatUser {
   id: string
@@ -41,6 +44,27 @@ export function ChatRoomPremium({
   onBack,
   getDMUserInfo,
 }: ChatRoomPremiumProps) {
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false)
+  const { users } = useUsers()
+
+  // Keyboard shortcut: Ctrl+F to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault()
+        setSearchDialogOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  const handleMessageClick = (messageId: string) => {
+    // TODO: Scroll to message in list
+    console.log('Scroll to message:', messageId)
+  }
+
   if (!room) {
     return (
       <div className="flex-1 flex items-center justify-center bg-black">
@@ -118,7 +142,9 @@ export function ChatRoomPremium({
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setSearchDialogOpen(true)}
             className="text-[#fc7a67] hover:bg-[#ff0300]/20"
+            title="Buscar mensagens (Ctrl+F)"
           >
             <Search className="h-5 w-5" />
           </Button>
@@ -156,6 +182,15 @@ export function ChatRoomPremium({
 
       {/* Input */}
       <MessageInputPremium onSendMessage={onSendMessage} />
+
+      {/* Search Dialog */}
+      <MessageSearchDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        messages={messages}
+        users={users || []}
+        onMessageClick={handleMessageClick}
+      />
     </div>
   )
 }
