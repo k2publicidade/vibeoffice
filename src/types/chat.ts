@@ -26,6 +26,7 @@ export interface Message {
   timestamp: Date
   edited?: boolean
   editedAt?: Date
+  reactions?: { [emoji: string]: string[] } // Emoji -> array of user IDs
 }
 
 export interface DirectMessage {

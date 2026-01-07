@@ -10,9 +10,10 @@ interface MessageListProps {
   messages: Message[]
   typingUsers?: string[]
   isLoading?: boolean
+  onReactionToggle?: (messageId: string, emoji: string) => void
 }
 
-export function MessageList({ messages, typingUsers = [], isLoading }: MessageListProps) {
+export function MessageList({ messages, typingUsers = [], isLoading, onReactionToggle }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
 
@@ -54,6 +55,8 @@ export function MessageList({ messages, typingUsers = [], isLoading }: MessageLi
             key={message.id}
             message={message}
             isCurrentUser={message.userId === user?.id}
+            currentUserId={user?.id || ''}
+            onReactionToggle={onReactionToggle}
           />
         ))
       )}

@@ -4,13 +4,21 @@ import { memo } from 'react'
 import { Message } from '@/types/chat'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUsers } from '@/hooks/useUsers'
+import { MessageReactions, Reactions } from './MessageReactions'
 
 interface MessageBubbleProps {
   message: Message
   isCurrentUser: boolean
+  currentUserId: string
+  onReactionToggle?: (messageId: string, emoji: string) => void
 }
 
-export const MessageBubble = memo(function MessageBubble({ message, isCurrentUser }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({
+  message,
+  isCurrentUser,
+  currentUserId,
+  onReactionToggle
+}: MessageBubbleProps) {
   const { users } = useUsers()
   const user = users?.find(u => u.id === message.userId)
   const initials = user?.name
@@ -55,6 +63,17 @@ export const MessageBubble = memo(function MessageBubble({ message, isCurrentUse
         <p className="text-xs text-muted-foreground mt-1">
           {timeString}
         </p>
+
+        {/* Message Reactions */}
+        {onReactionToggle && (
+          <MessageReactions
+            messageId={message.id}
+            reactions={(message.reactions || {}) as Reactions}
+            currentUserId={currentUserId}
+            users={users || []}
+            onReactionToggle={onReactionToggle}
+          />
+        )}
       </div>
 
       {isCurrentUser && (

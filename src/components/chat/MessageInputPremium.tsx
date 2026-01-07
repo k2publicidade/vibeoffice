@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import {
   Send,
   Paperclip,
-  Smile,
   Mic,
   Image as ImageIcon,
   File,
@@ -18,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { EmojiPickerPopover } from './EmojiPickerPopover'
 
 interface MessageInputPremiumProps {
   onSendMessage: (message: string) => void
@@ -44,16 +44,19 @@ export function MessageInputPremium({
     }
   }
 
+  const handleEmojiSelect = (emoji: string) => {
+    setMessageInput((prev) => prev + emoji)
+  }
+
   return (
     <div className="p-2 sm:p-4 border-t border-[#ff0300]/20 bg-[#0a0a0a]">
       <div className="flex items-end gap-1 sm:gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="hidden sm:flex text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
-        >
-          <Smile className="h-5 w-5" />
-        </Button>
+        <div className="hidden sm:flex">
+          <EmojiPickerPopover
+            onEmojiSelect={handleEmojiSelect}
+            className="text-[#fc7a67] hover:bg-[#ff0300]/20"
+          />
+        </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

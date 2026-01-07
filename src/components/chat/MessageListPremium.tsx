@@ -6,9 +6,11 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUsers } from '@/hooks/useUsers'
 import { useAuth } from '@/hooks/useAuth'
+import { useMessageReactions } from '@/hooks/useMessageReactions'
 import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { MessageReactions, Reactions } from './MessageReactions'
 
 interface MessageListPremiumProps {
   messages: Message[]
@@ -24,6 +26,13 @@ export function MessageListPremium({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { users } = useUsers()
   const { user: currentUser } = useAuth()
+  const { toggleReaction } = useMessageReactions()
+
+  const handleReactionToggle = (messageId: string, emoji: string) => {
+    if (currentUser?.id) {
+      toggleReaction(messageId, emoji, currentUser.id)
+    }
+  }
 
   // Auto scroll para a última mensagem
   useEffect(() => {
@@ -101,6 +110,17 @@ export function MessageListPremium({
                   <span className="text-[10px] text-gray-500 opacity-70 block px-1">
                     {timeString}
                   </span>
+
+                  {/* Message Reactions */}
+                  {currentUser?.id && (
+                    <MessageReactions
+                      messageId={message.id}
+                      reactions={(message.reactions || {}) as Reactions}
+                      currentUserId={currentUser.id}
+                      users={users || []}
+                      onReactionToggle={handleReactionToggle}
+                    />
+                  )}
                 </div>
               </motion.div>
             )
