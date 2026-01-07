@@ -27,6 +27,7 @@ export interface Message {
   edited?: boolean
   editedAt?: Date
   reactions?: { [emoji: string]: string[] } // Emoji -> array of user IDs
+  mentionedUsers?: string[] // Array of user IDs mentioned in message
 }
 
 export interface DirectMessage {

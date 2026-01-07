@@ -265,6 +265,7 @@ export type Database = {
           type: Database["public"]["Enums"]["message_type"]
           timestamp: string
           reactions: Json
+          mentioned_users: string[]
         }
         Insert: {
           id?: string
@@ -274,6 +275,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["message_type"]
           timestamp?: string
           reactions?: Json
+          mentioned_users?: string[]
         }
         Update: {
           id?: string
@@ -283,6 +285,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["message_type"]
           timestamp?: string
           reactions?: Json
+          mentioned_users?: string[]
         }
         Relationships: [
           {

@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { MessageReactions, Reactions } from './MessageReactions'
+import { parseMentions } from '@/lib/mentions'
 
 interface MessageListPremiumProps {
   messages: Message[]
@@ -105,7 +106,9 @@ export function MessageListPremium({
                         : "bg-[#1a1a1a] text-white border border-[#ff0300]/20 rounded-tl-none"
                     )}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed">
+                      {parseMentions(message.content, users || [], currentUser?.id)}
+                    </p>
                   </div>
                   <span className="text-[10px] text-gray-500 opacity-70 block px-1">
                     {timeString}
