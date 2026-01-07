@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useUsers } from '@/hooks/useUsers'
 import { motion } from 'framer-motion'
 import { addDays, format } from 'date-fns'
+import { AnnouncementsCarousel } from '@/components/announcements/AnnouncementsCarousel'
+import { CreateAnnouncementModal } from '@/components/announcements/CreateAnnouncementModal'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -46,6 +48,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false)
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false)
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | undefined>()
   const { users } = useUsers()
 
   useEffect(() => {
@@ -76,6 +80,16 @@ export default function DashboardPage() {
   }) => {
     console.log('Nova reunião:', meeting)
     // TODO: Integrar com API real
+  }
+
+  const handleCreateAnnouncement = () => {
+    setEditingAnnouncementId(undefined)
+    setIsAnnouncementModalOpen(true)
+  }
+
+  const handleEditAnnouncement = (id: string) => {
+    setEditingAnnouncementId(id)
+    setIsAnnouncementModalOpen(true)
   }
 
   // Mock data for the dashboard
@@ -264,6 +278,14 @@ export default function DashboardPage() {
         />
       </motion.div>
 
+      {/* Quadro de Avisos */}
+      <motion.div variants={itemVariants}>
+        <AnnouncementsCarousel
+          onCreateClick={handleCreateAnnouncement}
+          onEditClick={handleEditAnnouncement}
+        />
+      </motion.div>
+
       {/* Modals */}
       <NewRequestModal
         open={isRequestModalOpen}
@@ -279,6 +301,14 @@ export default function DashboardPage() {
           name: u.name,
           avatar: u.avatar ?? undefined,
         })) || []}
+      />
+      <CreateAnnouncementModal
+        open={isAnnouncementModalOpen}
+        onClose={() => {
+          setIsAnnouncementModalOpen(false)
+          setEditingAnnouncementId(undefined)
+        }}
+        editingId={editingAnnouncementId}
       />
 
       {/* Row 1: Meeting Card + Efficiency */}
