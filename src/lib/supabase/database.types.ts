@@ -264,6 +264,9 @@ export type Database = {
           content: string
           type: Database["public"]["Enums"]["message_type"]
           timestamp: string
+          reactions: Json
+          mentioned_users: string[]
+          read_by: Json
         }
         Insert: {
           id?: string
@@ -272,6 +275,9 @@ export type Database = {
           content: string
           type?: Database["public"]["Enums"]["message_type"]
           timestamp?: string
+          reactions?: Json
+          mentioned_users?: string[]
+          read_by?: Json
         }
         Update: {
           id?: string
@@ -280,6 +286,9 @@ export type Database = {
           content?: string
           type?: Database["public"]["Enums"]["message_type"]
           timestamp?: string
+          reactions?: Json
+          mentioned_users?: string[]
+          read_by?: Json
         }
         Relationships: [
           {
@@ -708,6 +717,51 @@ export type Database = {
             columns: ["requester"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_chat_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          room_id: string
+          is_archived: boolean
+          archived_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          room_id: string
+          is_archived?: boolean
+          archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          room_id?: string
+          is_archived?: boolean
+          archived_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_chat_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_chat_preferences_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
             referencedColumns: ["id"]
           }
         ]

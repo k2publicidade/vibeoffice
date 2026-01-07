@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
+import { useArchiveChat } from './useArchiveChat'
 import { ChatRoom, Message } from '@/types/chat'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { EventBus } from '@/lib/notifications/eventBus'
@@ -41,6 +42,7 @@ export function useChat(): UseChatReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [typingUsers, setTypingUsers] = useState<string[]>([])
   const { user } = useAuth()
+  const { isRoomArchived, unarchiveRoom } = useArchiveChat(user?.id)
 
   // Fetch inicial de salas e usuários
   useEffect(() => {
@@ -220,7 +222,7 @@ export function useChat(): UseChatReturn {
             table: 'messages',
             filter: `room_id=eq.${currentRoom!.id}`,
           },
-          (payload) => {
+          async (payload) => {
             const newMessage: Message = {
               id: payload.new.id,
               roomId: payload.new.room_id,
@@ -229,6 +231,16 @@ export function useChat(): UseChatReturn {
               timestamp: new Date(payload.new.timestamp),
             }
             setMessages((prev) => [...prev, newMessage])
+
+            // Auto-unarchive: if message is from someone else and room is archived, unarchive it
+            if (newMessage.userId !== user?.id && isRoomArchived(currentRoom!.id)) {
+              try {
+                await unarchiveRoom(currentRoom!.id)
+                console.log('Auto-unarchived room:', currentRoom!.name)
+              } catch (error) {
+                console.error('Failed to auto-unarchive room:', error)
+              }
+            }
           }
         )
         .subscribe()

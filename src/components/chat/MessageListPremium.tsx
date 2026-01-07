@@ -6,9 +6,14 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUsers } from '@/hooks/useUsers'
 import { useAuth } from '@/hooks/useAuth'
+import { useMessageReactions } from '@/hooks/useMessageReactions'
+import { useReadReceipts } from '@/hooks/useReadReceipts'
 import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { MessageReactions, Reactions } from './MessageReactions'
+import { parseMentions } from '@/lib/mentions'
+import { ReadReceipt, calculateReadStatus } from './ReadReceipt'
 
 interface MessageListPremiumProps {
   messages: Message[]
@@ -24,6 +29,17 @@ export function MessageListPremium({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { users } = useUsers()
   const { user: currentUser } = useAuth()
+  const { toggleReaction } = useMessageReactions()
+  const { observeMessage } = useReadReceipts(
+    currentUser?.id,
+    messages[0]?.roomId // Get room ID from first message
+  )
+
+  const handleReactionToggle = (messageId: string, emoji: string) => {
+    if (currentUser?.id) {
+      toggleReaction(messageId, emoji, currentUser.id)
+    }
+  }
 
   // Auto scroll para a última mensagem
   useEffect(() => {
@@ -64,9 +80,19 @@ export function MessageListPremium({
               minute: '2-digit',
             })
 
+            // Calculate read status for own messages
+            const readStatus = isOwn && message.readBy
+              ? calculateReadStatus(message.readBy, message.userId, [])
+              : null
+
             return (
               <motion.div
                 key={message.id}
+                ref={(el) => {
+                  if (el && !isOwn) {
+                    observeMessage(el, message.id, message.userId)
+                  }
+                }}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
@@ -96,11 +122,28 @@ export function MessageListPremium({
                         : "bg-[#1a1a1a] text-white border border-[#ff0300]/20 rounded-tl-none"
                     )}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed">
+                      {parseMentions(message.content, users || [], currentUser?.id)}
+                    </p>
                   </div>
-                  <span className="text-[10px] text-gray-500 opacity-70 block px-1">
-                    {timeString}
-                  </span>
+                  <div className="flex items-center gap-1 px-1">
+                    <span className="text-[10px] text-gray-500 opacity-70">
+                      {timeString}
+                    </span>
+                    {/* Read Receipt - only for own messages */}
+                    {isOwn && readStatus && <ReadReceipt status={readStatus} />}
+                  </div>
+
+                  {/* Message Reactions */}
+                  {currentUser?.id && (
+                    <MessageReactions
+                      messageId={message.id}
+                      reactions={(message.reactions || {}) as Reactions}
+                      currentUserId={currentUser.id}
+                      users={users || []}
+                      onReactionToggle={handleReactionToggle}
+                    />
+                  )}
                 </div>
               </motion.div>
             )

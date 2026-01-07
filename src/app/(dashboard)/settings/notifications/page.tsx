@@ -11,6 +11,9 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 
+// Force dynamic rendering since this page requires authentication
+export const dynamic = 'force-dynamic'
+
 export default async function NotificationsSettingsPage() {
   const supabase = await createServerSupabaseClient()
 
