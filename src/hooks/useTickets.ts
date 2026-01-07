@@ -249,90 +249,107 @@ export function useTickets(): UseTicketsReturn {
   )
 
   // Atualizar ticket
-  const updateTicket = useCallback(async (id: string, updates: Partial<Ticket>) => {
-    if (!user) throw new Error('User not authenticated')
+  const updateTicket = useCallback(
+    async (id: string, updates: Partial<Ticket>): Promise<Ticket | null> => {
+      if (!user) throw new Error('User not authenticated')
 
-    // Store old ticket data before update for comparison
-    const oldTicket = tickets.find(t => t.id === id)
+      try {
+        // Capturar oldTicket do estado atual ANTES de qualquer operação
+        const oldTicket = tickets.find(t => t.id === id)
 
-    const { data, error } = await supabase
-      .from('tickets')
-      .update({
-        title: updates.title,
-        description: updates.description,
-        category: updates.category,
-        status: updates.status,
-        priority: updates.priority,
-        assigned_to: updates.assignedTo,
-      })
-      .eq('id', id)
-      .select()
-      .single()
+        // Validação early-return (Issue #2)
+        if (!oldTicket) {
+          console.warn('[useTickets] Cannot update: ticket not found in local state')
+          return null
+        }
 
-    if (error) throw error
+        // Detectar mudanças ANTES do update
+        const statusChanged = updates.status && oldTicket.status !== updates.status
+        const assigneeChanged = updates.assignedTo && oldTicket.assignedTo !== updates.assignedTo
 
-    const updatedTicket: Ticket = {
-      id: data.id,
-      title: data.title,
-      description: data.description,
-      category: data.category,
-      status: data.status,
-      priority: data.priority,
-      requester: data.requester,
-      createdBy: data.created_by ?? undefined,
-      assignedTo: data.assigned_to ?? undefined,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    }
+        // Fazer update no banco
+        const { data, error } = await supabase
+          .from('tickets')
+          .update({
+            title: updates.title,
+            description: updates.description,
+            category: updates.category,
+            status: updates.status,
+            priority: updates.priority,
+            assigned_to: updates.assignedTo,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .select()
+          .single()
 
-    setTickets(prev =>
-      prev.map(ticket => (ticket.id === id ? updatedTicket : ticket))
-    )
+        if (error) throw error
 
-    // Notify on status change
-    const statusChanged = updates.status && oldTicket && oldTicket.status !== updates.status
-    if (statusChanged) {
-      const recipients = [oldTicket.requester, oldTicket.assignedTo].filter(Boolean) as string[]
+        // Mapear resultado
+        const updatedTicket: Ticket = {
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          category: data.category,
+          status: data.status,
+          priority: data.priority,
+          requester: data.requester,
+          createdBy: data.created_by ?? undefined,
+          assignedTo: data.assigned_to ?? undefined,
+          createdAt: new Date(data.created_at),
+          updatedAt: new Date(data.updated_at),
+        }
 
-      EventBus.emit({
-        type: 'ticket_status_changed',
-        recipientIds: recipients,
-        priority: 'medium',
-        entityType: 'ticket',
-        entityId: id,
-        metadata: {
-          ticketTitle: oldTicket.title,
-          oldStatus: oldTicket.status,
-          newStatus: updates.status,
-          changedBy: user?.id,
-          changedByName: user?.name,
-        },
-      }).catch((err) => {
-        console.error('[useTickets] Failed to emit notification:', err)
-      })
-    }
+        // Atualizar estado local
+        setTickets(prev => prev.map(ticket => (ticket.id === id ? updatedTicket : ticket)))
 
-    // Notify on assignment change
-    const assigneeChanged = updates.assignedTo && oldTicket && oldTicket.assignedTo !== updates.assignedTo
-    if (assigneeChanged && updates.assignedTo) {
-      EventBus.emit({
-        type: 'ticket_assigned',
-        recipientIds: [updates.assignedTo],
-        priority: oldTicket.priority === 'high' ? 'high' : 'medium',
-        entityType: 'ticket',
-        entityId: id,
-        metadata: {
-          ticketTitle: oldTicket.title,
-          assignedBy: user?.id,
-          assignedByName: user?.name,
-        },
-      }).catch((err) => {
-        console.error('[useTickets] Failed to emit notification:', err)
-      })
-    }
+        // Emitir eventos DEPOIS do update, usando as flags capturadas antes
+        if (statusChanged) {
+          const recipients = [oldTicket.requester, oldTicket.assignedTo].filter(Boolean) as string[]
 
-    return updatedTicket
-  }, [user, tickets])
+          EventBus.emit({
+            type: 'ticket_status_changed',
+            recipientIds: recipients,
+            priority: updatedTicket.priority === 'high' ? 'high' : 'medium', // Issue #3 fix
+            entityType: 'ticket',
+            entityId: id,
+            metadata: {
+              ticketTitle: oldTicket.title,
+              oldStatus: oldTicket.status,
+              newStatus: updates.status!,
+              changedBy: user?.id,
+              changedByName: user?.name,
+            },
+          }).catch((err) => {
+            console.error('[useTickets] Failed to emit notification:', err)
+          })
+        }
+
+        if (assigneeChanged && updates.assignedTo) {
+          EventBus.emit({
+            type: 'ticket_assigned',
+            recipientIds: [updates.assignedTo],
+            priority: updatedTicket.priority === 'high' ? 'high' : 'medium',
+            entityType: 'ticket',
+            entityId: id,
+            metadata: {
+              ticketTitle: oldTicket.title,
+              assignedBy: user?.id,
+              assignedByName: user?.name,
+            },
+          }).catch((err) => {
+            console.error('[useTickets] Failed to emit notification:', err)
+          })
+        }
+
+        return updatedTicket
+      } catch (error) {
+        console.error('Error updating ticket:', error)
+        return null
+      }
+    },
+    [user, tickets]
+  )
 
   // Deletar ticket
   const deleteTicket = useCallback(async (id: string) => {
