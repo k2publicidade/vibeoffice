@@ -111,6 +111,7 @@ export function PremiumKanbanBoard({
     className
 }: PremiumKanbanBoardProps) {
     const [activeId, setActiveId] = React.useState<UniqueIdentifier | null>(null)
+    const [originalContainer, setOriginalContainer] = React.useState<TaskStatus | null>(null)
 
     // Local state to handle optimistic updates during drag
     const [columns, setColumns] = React.useState<KanbanColumnData[]>(initialColumns)
@@ -139,6 +140,10 @@ export function PremiumKanbanBoard({
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveId(event.active.id)
+
+        // Armazenar container ORIGINAL antes do drag começar
+        const container = findContainer(event.active.id) as TaskStatus
+        setOriginalContainer(container)
 
         // Vibração tátil em dispositivos mobile
         if (typeof window !== 'undefined' && window.navigator.vibrate) {
@@ -190,14 +195,17 @@ export function PremiumKanbanBoard({
 
         if (!over) {
             setActiveId(null)
+            setOriginalContainer(null)
             return
         }
 
-        const activeContainer = findContainer(active.id) as TaskStatus
+        // Usar container ORIGINAL (antes do drag), não o atual
+        const activeContainer = originalContainer
         const overContainer = findContainer(over.id) as TaskStatus
 
         if (!activeContainer || !overContainer) {
             setActiveId(null)
+            setOriginalContainer(null)
             return
         }
 
@@ -215,6 +223,7 @@ export function PremiumKanbanBoard({
             } finally {
                 // Só limpa activeId DEPOIS do update
                 setActiveId(null)
+                setOriginalContainer(null)
             }
         } else {
             // Reordering within same column
@@ -236,6 +245,7 @@ export function PremiumKanbanBoard({
                 }
             }
             setActiveId(null)
+            setOriginalContainer(null)
         }
     }
 
