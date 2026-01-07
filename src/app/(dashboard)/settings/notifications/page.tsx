@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NotificationPreferences } from '@/components/settings/NotificationPreferences'
 import { createDefaultPreferences } from '@/lib/notifications/defaults'
 import {
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/breadcrumb'
 
 export default async function NotificationsSettingsPage() {
-  const supabase = await createClient()
+  const supabase = await createServerSupabaseClient()
 
   // Check authentication
   const {
