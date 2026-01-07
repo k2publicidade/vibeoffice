@@ -90,6 +90,7 @@ export function useTickets(): UseTicketsReturn {
           assignedTo: t.assigned_to ?? undefined,
           createdAt: new Date(t.created_at),
           updatedAt: new Date(t.updated_at),
+          linkedTaskId: (t as any).linked_task_id,
         }))
       )
     } catch (error) {

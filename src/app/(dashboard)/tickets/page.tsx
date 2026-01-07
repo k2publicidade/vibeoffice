@@ -134,6 +134,7 @@ export default function TicketsPage() {
               </button>
             </div>
 
+            {/* Botão removido: tickets são criados automaticamente via tasks
             <Button
               onClick={() => setIsCreateModalOpen(true)}
               className="gap-2 rounded-full px-6 h-11 bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] hover:from-[#ff0300] hover:to-[#cc0200] transition-all shadow-lg shadow-[#ff0300]/20 border-none"
@@ -141,6 +142,7 @@ export default function TicketsPage() {
               <Plus className="h-4 w-4" />
               Novo Ticket
             </Button>
+            */}
           </div>
         </div>
       </div>

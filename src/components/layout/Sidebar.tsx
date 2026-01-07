@@ -28,7 +28,7 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: 'Comunicados',
+    name: 'Chat',
     href: '/chat',
     icon: MessageSquare,
   },

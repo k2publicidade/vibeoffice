@@ -92,6 +92,7 @@ export function useTasks(): UseTasksReturn {
           tags: t.tags || [],
           createdAt: new Date(t.created_at),
           updatedAt: new Date(t.updated_at),
+          linkedTicketId: (t as any).linked_ticket_id,
         }))
       )
     } catch (error) {
@@ -194,7 +195,8 @@ export function useTasks(): UseTasksReturn {
         throw new Error(`Dados inválidos: ${errors.join(', ')}`)
       }
 
-      const { data, error } = await supabase
+      // 1. Criar a task no banco
+      const { data: taskInserted, error: taskError } = await supabase
         .from('tasks')
         .insert({
           title: taskData.title,
@@ -210,24 +212,83 @@ export function useTasks(): UseTasksReturn {
         .select()
         .single()
 
-      if (error) throw error
+      if (taskError) throw taskError
 
-      const newTask: Task = {
-        id: data.id,
-        title: data.title,
-        description: data.description || '',
-        status: data.status,
-        priority: data.priority,
-        dueDate: data.due_date ? new Date(data.due_date) : undefined,
-        assignedTo: data.assigned_to,
-        sector: data.sector,
-        createdBy: data.created_by,
-        tags: data.tags || [],
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
+      // 2. Criar ticket vinculado automaticamente
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .insert({
+          title: taskInserted.title,
+          description: taskInserted.description || `Ticket gerado automaticamente para a tarefa: ${taskInserted.title}`,
+          category: 'Task Vinculada',
+          status: 'open', // Task 'todo' → Ticket 'open'
+          priority: taskInserted.priority,
+          requester: user.id,
+          created_by: user.id,
+          assigned_to: taskInserted.assigned_to,
+          linked_task_id: taskInserted.id,
+        })
+        .select()
+        .single()
+
+      if (ticketError) {
+        console.error('[useTasks] Failed to create linked ticket:', ticketError)
+        throw ticketError
       }
 
-      // NOVO: Emitir evento de notificação
+      // 3. Atualizar task com linked_ticket_id
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ linked_ticket_id: ticketData.id } as any)
+        .eq('id', taskInserted.id)
+
+      if (updateError) {
+        console.error('[useTasks] Failed to link ticket to task:', updateError)
+      }
+
+      // 4. Criar evento de calendário se houver dueDate
+      if (taskInserted.due_date) {
+        const eventDate = new Date(taskInserted.due_date)
+        eventDate.setHours(18, 0, 0, 0) // 18h
+
+        const endDate = new Date(eventDate)
+        endDate.setHours(19, 0, 0, 0) // 19h (duração de 1h)
+
+        const { error: eventError } = await supabase
+          .from('calendar_events')
+          .insert({
+            title: `📋 ${taskInserted.title}`,
+            description: taskInserted.description || 'Tarefa agendada automaticamente',
+            start_time: eventDate.toISOString(),
+            end_time: endDate.toISOString(),
+            type: 'personal',
+            created_by: user.id,
+            linked_task_id: taskInserted.id,
+          })
+
+        if (eventError) {
+          console.error('[useTasks] Failed to create calendar event:', eventError)
+        }
+      }
+
+      // 5. Criar objeto Task para o state
+      const newTask: Task = {
+        id: taskInserted.id,
+        title: taskInserted.title,
+        description: taskInserted.description || '',
+        status: taskInserted.status,
+        priority: taskInserted.priority,
+        dueDate: taskInserted.due_date ? new Date(taskInserted.due_date) : undefined,
+        assignedTo: taskInserted.assigned_to,
+        sector: taskInserted.sector,
+        createdBy: taskInserted.created_by,
+        tags: taskInserted.tags || [],
+        createdAt: new Date(taskInserted.created_at),
+        updatedAt: new Date(taskInserted.updated_at),
+        linkedTicketId: ticketData.id,
+      }
+
+      // 6. Emitir evento de notificação
       if (taskData.assignedTo) {
         EventBus.emit({
           type: 'task_assigned',

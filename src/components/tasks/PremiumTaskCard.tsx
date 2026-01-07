@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useUsers } from "@/hooks/useUsers"
-import { Calendar, AlertCircle } from "lucide-react"
+import { Calendar, AlertCircle, Edit2 } from "lucide-react"
 
 interface PremiumTaskCardProps {
     task: Task
@@ -52,14 +52,27 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
                 "group cursor-grab active:cursor-grabbing",
                 isDragging && "opacity-50 z-50"
             )}
-            onClick={onClick}
         >
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10">
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative">
+                {/* Botão de edição (não interfere com drag) */}
+                {onClick && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onClick()
+                        }}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        title="Editar tarefa"
+                    >
+                        <Edit2 className="h-3 w-3 text-zinc-400" />
+                    </button>
+                )}
+
                 <div className="space-y-3">
-                    {/* Tags/Labels */}
-                    {task.tags && task.tags.length > 0 && (
+                    {/* Tags/Labels e Badge de Ticket Vinculado */}
+                    {(task.tags && task.tags.length > 0) || task.linkedTicketId ? (
                         <div className="flex flex-wrap gap-1.5">
-                            {task.tags.map((tag) => (
+                            {task.tags?.map((tag) => (
                                 <Badge
                                     key={tag}
                                     className="bg-[#fc7a67]/10 text-[#fc7a67] border-[#fc7a67]/20 text-[10px] px-2 py-0.5 font-medium hover:bg-[#fc7a67] hover:text-white transition-colors"
@@ -67,8 +80,13 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
                                     {tag}
                                 </Badge>
                             ))}
+                            {task.linkedTicketId && (
+                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-[10px] px-2 py-0.5 font-medium">
+                                    🎫 Ticket
+                                </Badge>
+                            )}
                         </div>
-                    )}
+                    ) : null}
 
                     {/* Title */}
                     <h3 className="text-white font-semibold text-sm leading-tight group-hover:text-[#fc7a67] transition-colors line-clamp-2">

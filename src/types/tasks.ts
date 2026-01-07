@@ -21,6 +21,7 @@ export interface Task {
   createdAt: Date
   updatedAt: Date
   tags?: string[]
+  linkedTicketId?: string // UUID do ticket vinculado (sincronização 1:1)
 }
 
 export interface CreateTaskInput {

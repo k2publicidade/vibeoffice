@@ -18,6 +18,7 @@ export interface Ticket {
   assignedTo?: string // User ID
   createdAt: Date
   updatedAt: Date
+  linkedTaskId?: string // UUID da task vinculada (sincronização 1:1)
 }
 
 export interface TicketHistory {
