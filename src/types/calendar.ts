@@ -20,6 +20,9 @@ export interface CalendarEvent {
   createdBy: string // User ID
   createdAt: Date
   updatedAt: Date
+  // Linked items
+  linkedTaskId?: string
+  linkedTicketId?: string
 }
 
 export interface CreateEventInput {
