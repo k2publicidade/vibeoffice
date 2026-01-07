@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { UserMenu } from './UserMenu'
 import { NavBar } from '@/components/ui/tubelight-navbar'
 import { Home, Calendar, Ticket, MessageSquare, CheckSquare, FolderOpen, GraduationCap } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 interface TopNavigationProps {
   onMenuClick?: () => void
@@ -73,6 +74,7 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
 
         {/* Right: User Info */}
         <div className="flex items-center gap-4">
+          <NotificationBell />
           {user && (
             <div className="hidden sm:flex items-center gap-3">
               {/* User info text */}
