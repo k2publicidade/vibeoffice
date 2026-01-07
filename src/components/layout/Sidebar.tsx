@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { OnlineUsersSidebar } from '@/components/presence/OnlineUsersSidebar'
 
 interface SidebarProps {
   isOpen?: boolean
@@ -123,6 +124,9 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             )
           })}
         </nav>
+
+        {/* Online Users */}
+        <OnlineUsersSidebar />
 
         {/* Footer */}
         <div className="border-t border-border px-3 py-4 text-xs text-muted-foreground">
