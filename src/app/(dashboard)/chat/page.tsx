@@ -105,15 +105,16 @@ export default function ChatPage() {
 
           {/* Main Chat Area */}
           <div className="flex-1 flex flex-col overflow-hidden bg-black">
-          <ChatRoomPremium
-            room={currentRoom}
-            messages={messages}
-            onSendMessage={sendMessage}
-            typingUsers={typingUsers}
-            isLoading={isLoading}
-            onBack={handleBackToList}
-            getDMUserInfo={getDMUserInfo}
-          />
+            <ChatRoomPremium
+              room={currentRoom}
+              messages={messages}
+              onSendMessage={sendMessage}
+              typingUsers={typingUsers}
+              isLoading={isLoading}
+              onBack={handleBackToList}
+              getDMUserInfo={getDMUserInfo}
+            />
+          </div>
         </div>
       </div>
 

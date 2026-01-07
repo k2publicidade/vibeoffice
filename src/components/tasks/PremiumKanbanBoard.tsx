@@ -46,10 +46,12 @@ function KanbanColumn({
     column,
     onAddTask,
     onTaskClick,
+    className,
 }: {
     column: KanbanColumnData
     onAddTask: (status: TaskStatus) => void
     onTaskClick: (task: Task) => void
+    className?: string
 }) {
     const { setNodeRef } = useDroppable({
         id: column.id,
@@ -58,7 +60,10 @@ function KanbanColumn({
     return (
         <div
             ref={setNodeRef}
-            className="flex-1 min-w-[320px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border border-[#2a2a2a] shadow-inner h-full min-h-[500px]"
+            className={cn(
+                "flex-1 min-w-[320px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border border-[#2a2a2a] shadow-inner h-full min-h-[500px]",
+                className
+            )}
         >
             <div className="flex items-center justify-between mb-5 px-1">
                 <div className="flex items-center gap-2.5">
