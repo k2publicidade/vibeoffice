@@ -6,6 +6,18 @@ import { useAuth } from './useAuth'
 import type { CalendarEvent } from '@/types/calendar'
 import { isSameDay, isToday, isBefore, isAfter, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
+export interface CreateEventInput {
+  title: string
+  description?: string
+  startTime: Date
+  endTime: Date
+  type: CalendarEvent['type']
+  location?: string | null
+  attendees?: string[]
+  linkedTaskId?: string
+  linkedTicketId?: string
+}
+
 export interface UseCalendarReturn {
   events: CalendarEvent[]
   isLoading: boolean
@@ -13,7 +25,7 @@ export interface UseCalendarReturn {
   getEventsByMonth: (date: Date) => CalendarEvent[]
   getUpcomingEvents: (days?: number) => CalendarEvent[]
   getEventById: (id: string) => CalendarEvent | null
-  createEvent: (event: Omit<CalendarEvent, 'id'>) => void
+  createEvent: (event: CreateEventInput) => Promise<void>
   updateEvent: (id: string, event: Partial<CalendarEvent>) => void
   deleteEvent: (id: string) => void
   getEventsByType: (type: CalendarEvent['type']) => CalendarEvent[]
@@ -43,7 +55,7 @@ export function useCalendar(): UseCalendarReturn {
       if (error) throw error
 
       setEvents(
-        data.map((event) => ({
+        data.map((event: any) => ({
           id: event.id,
           title: event.title,
           description: event.description || '',
@@ -112,7 +124,7 @@ export function useCalendar(): UseCalendarReturn {
   )
 
   const createEvent = useCallback(
-    async (event: Omit<CalendarEvent, 'id'>) => {
+    async (event: CreateEventInput) => {
       if (!user) throw new Error('User not authenticated')
 
       const { data, error } = await supabase
@@ -146,8 +158,8 @@ export function useCalendar(): UseCalendarReturn {
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.created_at), // DB não tem updated_at
-        linkedTaskId: data.linked_task_id || undefined,
-        linkedTicketId: data.linked_ticket_id || undefined,
+        linkedTaskId: (data as any).linked_task_id || undefined,
+        linkedTicketId: (data as any).linked_ticket_id || undefined,
       }
 
       setEvents((prev) => [...prev, newEvent])
@@ -189,8 +201,8 @@ export function useCalendar(): UseCalendarReturn {
                 location: data.location,
                 attendees: data.attendees || [],
                 updatedAt: new Date(), // DB não tem updated_at, usando data atual
-                linkedTaskId: data.linked_task_id || undefined,
-                linkedTicketId: data.linked_ticket_id || undefined,
+                linkedTaskId: (data as any).linked_task_id || undefined,
+                linkedTicketId: (data as any).linked_ticket_id || undefined,
               }
             : event
         )
