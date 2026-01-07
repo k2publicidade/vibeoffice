@@ -43,7 +43,7 @@ export function CreateProjectGroupModal({
   const { user } = useAuth()
 
   // Filtrar usuários disponíveis (excluindo usuário atual)
-  const availableUsers = users.filter(u =>
+  const availableUsers = (users || []).filter(u =>
     u.id !== user?.id && // Excluir usuário atual
     (u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,7 +56,7 @@ export function CreateProjectGroupModal({
     if (!acc[sector]) acc[sector] = []
     acc[sector].push(user)
     return acc
-  }, {} as Record<string, typeof users>)
+  }, {} as Record<string, typeof availableUsers>)
 
   // Reset modal ao fechar
   const handleClose = () => {
@@ -187,7 +187,7 @@ export function CreateProjectGroupModal({
                 </Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {selectedMembers.map(userId => {
-                    const selectedUser = users.find(u => u.id === userId)
+                    const selectedUser = (users || []).find(u => u.id === userId)
                     return (
                       <Badge key={userId} variant="secondary" className="pl-2 pr-1">
                         {selectedUser?.name}

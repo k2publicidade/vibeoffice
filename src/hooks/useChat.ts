@@ -367,12 +367,12 @@ export function useChat(): UseChatReturn {
         id: newRoom.id,
         name: newRoom.name,
         type: newRoom.type,
-        sector: newRoom.sector,
-        description: newRoom.description,
-        createdBy: newRoom.created_by,
+        sector: newRoom.sector || undefined,
+        description: newRoom.description || undefined,
+        createdBy: newRoom.created_by || undefined,
         participants: newRoom.participants,
-        createdAt: newRoom.created_at,
-        updatedAt: newRoom.updated_at
+        createdAt: new Date(newRoom.created_at),
+        updatedAt: new Date(newRoom.updated_at)
       }
 
       // Atualizar estado local

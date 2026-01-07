@@ -65,6 +65,8 @@ export type Database = {
           name: string
           type: Database["public"]["Enums"]["room_type"]
           sector: Database["public"]["Enums"]["sector_type"] | null
+          description: string | null
+          created_by: string | null
           participants: string[]
           created_at: string
           updated_at: string
@@ -74,6 +76,8 @@ export type Database = {
           name: string
           type: Database["public"]["Enums"]["room_type"]
           sector?: Database["public"]["Enums"]["sector_type"] | null
+          description?: string | null
+          created_by?: string | null
           participants?: string[]
           created_at?: string
           updated_at?: string
@@ -83,6 +87,8 @@ export type Database = {
           name?: string
           type?: Database["public"]["Enums"]["room_type"]
           sector?: Database["public"]["Enums"]["sector_type"] | null
+          description?: string | null
+          created_by?: string | null
           participants?: string[]
           created_at?: string
           updated_at?: string
@@ -834,7 +840,7 @@ export type Database = {
         | "announcement"
       priority_type: "low" | "medium" | "high"
       role_type: "Admin" | "Gerente" | "Colaborador"
-      room_type: "sector" | "dm"
+      room_type: "sector" | "dm" | "project"
       sector_type:
         | "A&R"
         | "Marketing"

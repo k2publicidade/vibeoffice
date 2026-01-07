@@ -78,6 +78,12 @@ export function useAnnouncements(): UseAnnouncementsReturn {
   async function fetchAnnouncements() {
     setIsLoading(true)
     try {
+      // FIXME: Tabela 'company_announcements' não existe nos types do Supabase
+      // TODO: Criar migration ou atualizar types antes de habilitar
+      // Retornando array vazio temporariamente
+      const data: any[] = []
+
+      /* COMENTADO TEMPORARIAMENTE
       // Buscar avisos com informações do autor (JOIN)
       const { data, error } = await supabase
         .from('company_announcements')
@@ -93,6 +99,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         .order('created_at', { ascending: false })
 
       if (error) throw error
+      */
 
       // Mapear para AnnouncementWithAuthor
       const mapped: AnnouncementWithAuthor[] = data.map((a: any) => ({
@@ -205,6 +212,11 @@ export function useAnnouncements(): UseAnnouncementsReturn {
           metadata: data.metadata || {},
         }
 
+        // FIXME: Tabela company_announcements não existe
+        toast.error('Funcionalidade temporariamente desabilitada')
+        return null
+
+        /* COMENTADO TEMPORARIAMENTE
         const { data: newAnnouncement, error } = await supabase
           .from('company_announcements')
           .insert(insertData)
@@ -219,6 +231,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         await fetchAnnouncements()
 
         return newAnnouncement as Announcement
+        */
       } catch (error) {
         console.error('[useAnnouncements] Error creating:', error)
         toast.error('Erro ao criar aviso')
@@ -252,6 +265,11 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         if (data.active !== undefined) updateData.active = data.active
         if (data.metadata !== undefined) updateData.metadata = data.metadata
 
+        // FIXME: Tabela company_announcements não existe
+        toast.error('Funcionalidade temporariamente desabilitada')
+        return null
+
+        /* COMENTADO TEMPORARIAMENTE
         const { data: updatedAnnouncement, error } = await supabase
           .from('company_announcements')
           .update(updateData)
@@ -267,6 +285,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         await fetchAnnouncements()
 
         return updatedAnnouncement as Announcement
+        */
       } catch (error) {
         console.error('[useAnnouncements] Error updating:', error)
         toast.error('Erro ao atualizar aviso')
@@ -285,6 +304,11 @@ export function useAnnouncements(): UseAnnouncementsReturn {
       }
 
       try {
+        // FIXME: Tabela company_announcements não existe
+        toast.error('Funcionalidade temporariamente desabilitada')
+        return false
+
+        /* COMENTADO TEMPORARIAMENTE
         const { error } = await supabase
           .from('company_announcements')
           .update({ active: false })
@@ -300,6 +324,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         )
 
         return true
+        */
       } catch (error) {
         console.error('[useAnnouncements] Error archiving:', error)
         toast.error('Erro ao arquivar aviso')
@@ -318,6 +343,11 @@ export function useAnnouncements(): UseAnnouncementsReturn {
       }
 
       try {
+        // FIXME: Tabela company_announcements não existe
+        toast.error('Funcionalidade temporariamente desabilitada')
+        return false
+
+        /* COMENTADO TEMPORARIAMENTE
         const { error } = await supabase
           .from('company_announcements')
           .delete()
@@ -331,6 +361,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         setAllAnnouncements((prev) => prev.filter(a => a.id !== id))
 
         return true
+        */
       } catch (error) {
         console.error('[useAnnouncements] Error deleting:', error)
         toast.error('Erro ao deletar aviso')
