@@ -61,11 +61,79 @@ export function useTasks(): UseTasksReturn {
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
 
-  // Fetch inicial de tarefas
+  // Fetch inicial de tarefas + Realtime subscription
   useEffect(() => {
     if (!user) return
 
     fetchTasks()
+
+    // Setup Realtime subscription
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'tasks',
+        },
+        (payload) => {
+          console.log('[useTasks] Realtime event:', payload)
+
+          if (payload.eventType === 'INSERT') {
+            // New task created by another user
+            const newTask: Task = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description || '',
+              status: payload.new.status,
+              priority: payload.new.priority,
+              dueDate: payload.new.due_date ? new Date(payload.new.due_date) : undefined,
+              assignedTo: payload.new.assigned_to,
+              sector: payload.new.sector,
+              createdBy: payload.new.created_by,
+              tags: payload.new.tags || [],
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updated_at),
+              linkedTicketId: payload.new.linked_ticket_id,
+            }
+
+            setTasks((prev) => {
+              // Avoid duplicates (in case user who created it also receives the event)
+              if (prev.some(t => t.id === newTask.id)) return prev
+              return [newTask, ...prev]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            // Task updated by another user
+            const updatedTask: Task = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description || '',
+              status: payload.new.status,
+              priority: payload.new.priority,
+              dueDate: payload.new.due_date ? new Date(payload.new.due_date) : undefined,
+              assignedTo: payload.new.assigned_to,
+              sector: payload.new.sector,
+              createdBy: payload.new.created_by,
+              tags: payload.new.tags || [],
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updated_at),
+              linkedTicketId: payload.new.linked_ticket_id,
+            }
+
+            setTasks((prev) => prev.map(task => (task.id === updatedTask.id ? updatedTask : task)))
+          } else if (payload.eventType === 'DELETE') {
+            // Task deleted by another user
+            setTasks((prev) => prev.filter(task => task.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      channel.unsubscribe()
+    }
   }, [user])
 
   async function fetchTasks() {
