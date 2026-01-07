@@ -274,6 +274,64 @@ npx shadcn-ui@latest add [component-name]
 5. ✅ **Hooks**: Todos os 6 hooks migrados
 6. ✅ **Seed**: Script de dados mockados criado
 
+## Novas Features (Janeiro 2026)
+
+### Presença Online
+
+O sistema rastreia automaticamente usuários online via Supabase Realtime Presence:
+
+- **Hook**: `usePresence()` retorna `onlineUsers: string[]` (array de user IDs online)
+- **Componente**: `OnlineUsersSidebar` exibido na sidebar principal
+- **Auto-tracking**: Usuário é registrado ao fazer login
+- **Auto-cleanup**: Removido ao fazer logout ou fechar aba
+- **Atualização em tempo real**: Lista atualiza automaticamente quando usuários conectam/desconectam
+
+**Implementação:**
+```typescript
+import { usePresence } from '@/hooks/usePresence'
+
+const { onlineUsers } = usePresence()
+// onlineUsers: ['user-id-1', 'user-id-2', ...]
+```
+
+### Agenda Integrada
+
+Eventos podem ser vinculados a tasks ou tickets para melhor organização:
+
+- **Campos DB**: `linked_task_id`, `linked_ticket_id` (mutuamente exclusivos)
+- **Migration**: `docs/supabase-migrations/011_agenda_integrada.sql`
+- **UI**: Tabs no CreateEventModal para selecionar vínculo (Nenhum/Tarefa/Ticket)
+- **Visual**: Badges azuis (📋) para tasks, laranjas (🎫) para tickets em todas as views do calendário
+- **Filtros**: Apenas items não-concluídos aparecem nos dropdowns
+- **Integridade**: Constraint garante que evento tenha no máximo UM vínculo
+
+**Como usar:**
+1. Ao criar evento, selecione aba "Tarefa" ou "Ticket"
+2. Escolha o item desejado no dropdown
+3. Evento aparecerá com badge visual correspondente
+4. Vínculo salvo em `calendar_events.linked_task_id` ou `linked_ticket_id`
+
+**Constraint de segurança:**
+- ON DELETE SET NULL: Se task/ticket for deletado, evento permanece mas vínculo é limpo
+- CHECK: Garante apenas um vínculo por evento
+
+### Bug Fixes Implementados
+
+**1. Calendar Event Creation**
+- ✅ Eventos agora persistem corretamente no banco de dados
+- ✅ Aparecem imediatamente após criação
+- ✅ Toast notifications para feedback ao usuário
+
+**2. Ticket Creation**
+- ✅ handleCreateTicket agora aguarda insert antes de mostrar sucesso
+- ✅ Usa user.id autenticado em vez de string hardcoded
+- ✅ Error handling com try/catch
+
+**3. Kanban Drag & Drop**
+- ✅ Mudança de `closestCorners` para `closestCenter` para melhor detecção
+- ✅ Metadata adicionada ao sortable para debugging
+- ✅ Cards movem suavemente e persistem após refresh
+
 ## TODOs Futuros (Opcional)
 
 Para melhorias futuras:
