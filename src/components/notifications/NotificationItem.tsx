@@ -1,55 +1,78 @@
 'use client'
 
+import { useNotifications } from '@/hooks/useNotifications'
+import { Notification } from '@/types/notifications'
+import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Archive } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { useNotifications, type Notification } from '@/hooks/useNotifications'
+import {
+  CheckSquare,
+  Ticket,
+  MessageSquare,
+  RefreshCw,
+  Plus,
+  AtSign,
+  Bell,
+} from 'lucide-react'
 
 interface NotificationItemProps {
   notification: Notification
 }
 
-const priorityColors = {
-  low: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
-  medium: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
-  high: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
-}
+// Mapa de ícones por tipo de notificação
+const notificationIcons = {
+  task_assigned: CheckSquare,
+  task_status_changed: RefreshCw,
+  task_comment_added: MessageSquare,
+  task_due_soon: Bell,
+  ticket_created: Plus,
+  ticket_assigned: Ticket,
+  ticket_status_changed: RefreshCw,
+  ticket_comment_added: MessageSquare,
+  message_received: MessageSquare,
+  mentioned_in_chat: AtSign,
+  announcement: Bell,
+} as const
 
-const priorityLabels = {
-  low: 'Baixa',
-  medium: 'Normal',
-  high: 'Alta',
-}
+// Cores de ícones por prioridade
+const priorityColors = {
+  low: 'text-blue-500',
+  medium: 'text-orange-500',
+  high: 'text-red-500',
+} as const
 
 export function NotificationItem({ notification }: NotificationItemProps) {
+  const { markAsRead } = useNotifications()
   const router = useRouter()
-  const { markAsRead, archiveNotification } = useNotifications()
 
-  const handleClick = () => {
+  const Icon = notificationIcons[notification.type as keyof typeof notificationIcons] || Bell
+  const iconColor = priorityColors[notification.priority as keyof typeof priorityColors] || 'text-gray-500'
+
+  const handleClick = async () => {
+    // Marcar como lida
     if (!notification.read) {
-      markAsRead(notification.id)
+      await markAsRead(notification.id)
     }
 
-    // Construir link baseado em entity_type e entity_id
-    if (notification.entity_type && notification.entity_id) {
-      const linkMap: Record<string, string> = {
-        task: `/tasks?id=${notification.entity_id}`,
-        ticket: `/tickets/${notification.entity_id}`,
-        message: `/chat?room=${notification.entity_id}`,
-      }
-      const link = linkMap[notification.entity_type]
-      if (link) {
-        router.push(link)
-      }
+    // Redirecionar para entidade
+    const link = getNotificationLink(notification)
+    if (link) {
+      router.push(link)
     }
   }
 
-  const handleArchive = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    archiveNotification(notification.id)
+  const getNotificationLink = (notif: Notification): string | null => {
+    switch (notif.entity_type) {
+      case 'task':
+        return `/tasks?open=${notif.entity_id}`
+      case 'ticket':
+        return `/tickets?open=${notif.entity_id}`
+      case 'message':
+        return `/chat?room=${notif.metadata.roomId}`
+      default:
+        return null
+    }
   }
 
   const timeAgo = formatDistanceToNow(new Date(notification.created_at), {
@@ -58,65 +81,47 @@ export function NotificationItem({ notification }: NotificationItemProps) {
   })
 
   return (
-    <div
-      className={cn(
-        'flex items-start gap-3 p-4 hover:bg-accent/50 transition-colors cursor-pointer',
-        !notification.read && 'bg-accent/30'
-      )}
+    <button
       onClick={handleClick}
+      className={cn(
+        "w-full p-4 text-left hover:bg-muted/50 transition-colors flex gap-3",
+        !notification.read && "bg-muted/30"
+      )}
     >
-      {/* Indicador de prioridade */}
-      <div
-        className={cn(
-          'w-1 h-full rounded-full flex-shrink-0',
-          priorityColors[notification.priority]
-        )}
-      />
+      {/* Ícone */}
+      <div className={cn("flex-shrink-0 mt-1", iconColor)}>
+        <Icon className="h-5 w-5" />
+      </div>
 
       {/* Conteúdo */}
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-start justify-between gap-2">
-          <h4 className={cn(
-            'text-sm font-medium line-clamp-1',
-            !notification.read && 'font-semibold'
-          )}>
-            {notification.title}
-          </h4>
-          <span
+          <p
             className={cn(
-              'text-[10px] px-1.5 py-0.5 rounded border flex-shrink-0',
-              priorityColors[notification.priority]
+              "text-sm font-medium leading-tight",
+              notification.read && "opacity-60"
             )}
           >
-            {priorityLabels[notification.priority]}
-          </span>
+            {notification.title}
+          </p>
+          {!notification.read && (
+            <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />
+          )}
         </div>
 
-        <p className="text-sm text-muted-foreground line-clamp-2">
+        <p
+          className={cn(
+            "text-xs text-muted-foreground line-clamp-2",
+            notification.read && "opacity-60"
+          )}
+        >
           {notification.message}
         </p>
 
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            {timeAgo}
-          </span>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity"
-            onClick={handleArchive}
-            title="Arquivar notificação"
-          >
-            <Archive className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <p className="text-xs text-muted-foreground opacity-50">
+          {timeAgo}
+        </p>
       </div>
-
-      {/* Indicador de não lida */}
-      {!notification.read && (
-        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1" />
-      )}
-    </div>
+    </button>
   )
 }
