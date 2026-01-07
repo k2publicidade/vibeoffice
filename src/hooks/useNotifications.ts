@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useAuth } from './useAuth'
 import type { Tables } from '@/lib/supabase/database.types'
+import type { Notification } from '@/types/notifications'
 
-export type Notification = Tables<'notifications'>
+// Type from Supabase (raw)
+type NotificationRow = Tables<'notifications'>
 
 interface UseNotificationsReturn {
   notifications: Notification[]
@@ -46,7 +48,24 @@ export function useNotifications(): UseNotificationsReturn {
 
       if (fetchError) throw fetchError
 
-      setNotifications(data || [])
+      // Transform data from Supabase to app type
+      const transformedData: Notification[] = (data || []).map((row: NotificationRow) => ({
+        id: row.id,
+        user_id: row.user_id,
+        type: row.type,
+        title: row.title,
+        message: row.message,
+        priority: row.priority,
+        entity_type: row.entity_type,
+        entity_id: row.entity_id,
+        metadata: (row.metadata as Record<string, any>) || {}, // Cast Json to Record
+        read: row.read,
+        read_at: row.read_at,
+        archived: row.archived,
+        created_at: row.created_at,
+      }))
+
+      setNotifications(transformedData)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar notificações'
       setError(message)
