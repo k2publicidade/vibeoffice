@@ -66,6 +66,72 @@ export function useTickets(): UseTicketsReturn {
 
     fetchTickets()
     fetchComments()
+
+    // Setup Realtime subscription
+    const channel = supabase
+      .channel('tickets-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'tickets',
+        },
+        (payload) => {
+          console.log('[useTickets] Realtime event:', payload)
+
+          if (payload.eventType === 'INSERT') {
+            // New ticket created by another user
+            const newTicket: Ticket = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description,
+              category: payload.new.category,
+              status: payload.new.status,
+              priority: payload.new.priority,
+              requester: payload.new.requester,
+              createdBy: payload.new.created_by ?? undefined,
+              assignedTo: payload.new.assigned_to ?? undefined,
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updated_at),
+              linkedTaskId: payload.new.linked_task_id,
+            }
+
+            setTickets((prev) => {
+              // Avoid duplicates
+              if (prev.some(t => t.id === newTicket.id)) return prev
+              return [newTicket, ...prev]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            // Ticket updated by another user
+            const updatedTicket: Ticket = {
+              id: payload.new.id,
+              title: payload.new.title,
+              description: payload.new.description,
+              category: payload.new.category,
+              status: payload.new.status,
+              priority: payload.new.priority,
+              requester: payload.new.requester,
+              createdBy: payload.new.created_by ?? undefined,
+              assignedTo: payload.new.assigned_to ?? undefined,
+              createdAt: new Date(payload.new.created_at),
+              updatedAt: new Date(payload.new.updated_at),
+              linkedTaskId: payload.new.linked_task_id,
+            }
+
+            setTickets((prev) => prev.map(ticket => (ticket.id === updatedTicket.id ? updatedTicket : ticket)))
+          } else if (payload.eventType === 'DELETE') {
+            // Ticket deleted by another user
+            setTickets((prev) => prev.filter(ticket => ticket.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      channel.unsubscribe()
+    }
   }, [user])
 
   async function fetchTickets() {
