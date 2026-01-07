@@ -24,7 +24,13 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: task.id })
+    } = useSortable({
+        id: task.id,
+        data: {
+            task,
+            type: 'task'
+        }
+    })
 
     const style = {
         transform: CSS.Transform.toString(transform),

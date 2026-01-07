@@ -12,7 +12,7 @@ import {
     useSensors,
     DragOverlay,
     UniqueIdentifier,
-    closestCorners,
+    closestCenter,
     useDroppable,
 } from "@dnd-kit/core"
 import {
@@ -227,7 +227,7 @@ export function PremiumKanbanBoard({
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
