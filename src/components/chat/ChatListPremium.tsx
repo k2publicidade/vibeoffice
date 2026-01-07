@@ -1,14 +1,18 @@
 import { useState } from 'react'
-import { Search, MoreVertical, Hash, Users, ChevronDown, MessageSquarePlus } from 'lucide-react'
+import { Search, MoreVertical, Hash, Users, ChevronDown, MessageSquarePlus, Archive } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { ChatRoom } from '@/types/chat'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useAuth } from '@/hooks/useAuth'
+import { useArchiveChat } from '@/hooks/useArchiveChat'
 
 interface ChatUser {
   id: string
@@ -41,15 +45,31 @@ export function ChatListPremium({
   const [searchQuery, setSearchQuery] = useState('')
   const [showSectors, setShowSectors] = useState(true)
   const [showDMs, setShowDMs] = useState(true)
+  const [showArchived, setShowArchived] = useState(false)
+
+  const { user } = useAuth()
+  const { isRoomArchived, archivedRoomIds } = useArchiveChat(user?.id)
 
   const sectorRooms = rooms.filter(room => room.type === 'sector')
   const dmRooms = rooms.filter(room => room.type === 'dm')
 
-  const filterFn = (room: ChatRoom) =>
-    room.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filterFn = (room: ChatRoom) => {
+    const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const isArchived = isRoomArchived(room.id)
+
+    // If showArchived is false, exclude archived rooms
+    // If showArchived is true, show ONLY archived rooms
+    if (showArchived) {
+      return matchesSearch && isArchived
+    } else {
+      return matchesSearch && !isArchived
+    }
+  }
 
   const filteredSectors = sectorRooms.filter(filterFn)
   const filteredDMs = dmRooms.filter(filterFn)
+
+  const archivedCount = Array.from(archivedRoomIds).length
 
   const formatTime = (date: Date) => {
     const now = new Date()
@@ -81,13 +101,30 @@ export function ChatListPremium({
             </Button>
           )}
         </div>
-        <div className="relative">
+        <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="Buscar conversas..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 bg-[#1a1a1a] border-[#ff0300]/20 text-white placeholder:text-gray-500 focus-visible:border-[#fc7a67] focus-visible:ring-[#fc7a67]"
+          />
+        </div>
+
+        {/* Archive Filter */}
+        <div className="flex items-center justify-between space-x-2 p-2 bg-[#1a1a1a] rounded-lg">
+          <Label
+            htmlFor="show-archived"
+            className="text-xs text-gray-400 flex items-center gap-2 cursor-pointer"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Mostrar arquivadas {archivedCount > 0 && `(${archivedCount})`}
+          </Label>
+          <Switch
+            id="show-archived"
+            checked={showArchived}
+            onCheckedChange={setShowArchived}
+            className="data-[state=checked]:bg-[#fc7a67]"
           />
         </div>
       </div>
