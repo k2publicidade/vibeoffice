@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { Ticket, TicketComment } from '@/types/tickets'
 import { CreateTicketSchema, UpdateTicketSchema, CreateTicketCommentSchema, formatZodErrors } from '@/lib/validation-schemas'
+import { EventBus } from '@/lib/notifications/eventBus'
 
 export interface TicketFilters {
   status?: string[]  // Suporta multi-seleção
@@ -206,6 +207,42 @@ export function useTickets(): UseTicketsReturn {
       }
 
       setTickets(prev => [newTicket, ...prev])
+
+      // Notify requester that ticket was created
+      EventBus.emit({
+        type: 'ticket_created',
+        recipientIds: [newTicket.requester],
+        priority: newTicket.priority === 'high' ? 'high' : 'medium',
+        entityType: 'ticket',
+        entityId: newTicket.id,
+        metadata: {
+          ticketTitle: newTicket.title,
+          category: newTicket.category,
+          createdBy: user?.id,
+          createdByName: user?.name,
+        },
+      }).catch((err) => {
+        console.error('[useTickets] Failed to emit notification:', err)
+      })
+
+      // If ticket is assigned, notify assignee
+      if (ticketData.assignedTo) {
+        EventBus.emit({
+          type: 'ticket_assigned',
+          recipientIds: [ticketData.assignedTo],
+          priority: newTicket.priority === 'high' ? 'high' : 'medium',
+          entityType: 'ticket',
+          entityId: newTicket.id,
+          metadata: {
+            ticketTitle: newTicket.title,
+            assignedBy: user?.id,
+            assignedByName: user?.name,
+          },
+        }).catch((err) => {
+          console.error('[useTickets] Failed to emit notification:', err)
+        })
+      }
+
       return newTicket
     },
     [user]
@@ -213,6 +250,11 @@ export function useTickets(): UseTicketsReturn {
 
   // Atualizar ticket
   const updateTicket = useCallback(async (id: string, updates: Partial<Ticket>) => {
+    if (!user) throw new Error('User not authenticated')
+
+    // Store old ticket data before update for comparison
+    const oldTicket = tickets.find(t => t.id === id)
+
     const { data, error } = await supabase
       .from('tickets')
       .update({
@@ -247,8 +289,50 @@ export function useTickets(): UseTicketsReturn {
       prev.map(ticket => (ticket.id === id ? updatedTicket : ticket))
     )
 
+    // Notify on status change
+    const statusChanged = updates.status && oldTicket && oldTicket.status !== updates.status
+    if (statusChanged) {
+      const recipients = [oldTicket.requester, oldTicket.assignedTo].filter(Boolean) as string[]
+
+      EventBus.emit({
+        type: 'ticket_status_changed',
+        recipientIds: recipients,
+        priority: 'medium',
+        entityType: 'ticket',
+        entityId: id,
+        metadata: {
+          ticketTitle: oldTicket.title,
+          oldStatus: oldTicket.status,
+          newStatus: updates.status,
+          changedBy: user?.id,
+          changedByName: user?.name,
+        },
+      }).catch((err) => {
+        console.error('[useTickets] Failed to emit notification:', err)
+      })
+    }
+
+    // Notify on assignment change
+    const assigneeChanged = updates.assignedTo && oldTicket && oldTicket.assignedTo !== updates.assignedTo
+    if (assigneeChanged && updates.assignedTo) {
+      EventBus.emit({
+        type: 'ticket_assigned',
+        recipientIds: [updates.assignedTo],
+        priority: oldTicket.priority === 'high' ? 'high' : 'medium',
+        entityType: 'ticket',
+        entityId: id,
+        metadata: {
+          ticketTitle: oldTicket.title,
+          assignedBy: user?.id,
+          assignedByName: user?.name,
+        },
+      }).catch((err) => {
+        console.error('[useTickets] Failed to emit notification:', err)
+      })
+    }
+
     return updatedTicket
-  }, [])
+  }, [user, tickets])
 
   // Deletar ticket
   const deleteTicket = useCallback(async (id: string) => {
