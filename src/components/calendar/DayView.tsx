@@ -36,7 +36,7 @@ interface DayViewProps {
   onViewChange?: (view: 'month' | 'week' | 'day' | 'agenda') => void
 }
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 6) // 6am to 9pm
+const HOURS = Array.from({ length: 9 }, (_, i) => i + 10) // 10am to 6pm
 
 export function DayView({
   selectedDate,
@@ -59,7 +59,7 @@ export function DayView({
     const startMinute = getMinutes(new Date(event.startTime))
     const duration = differenceInMinutes(new Date(event.endTime), new Date(event.startTime))
 
-    const top = ((startHour - 6) * 60 + startMinute) * (80 / 60) // 80px per hour
+    const top = ((startHour - 10) * 60 + startMinute) * (80 / 60) // 80px per hour
     const height = Math.max((duration / 60) * 80, 30) // Minimum 30px
 
     return { top: `${top}px`, height: `${height}px` }

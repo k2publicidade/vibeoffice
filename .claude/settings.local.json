@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: add design document for system improvements\n\nDocumented design for 5 critical improvements:\n- Bug fixes: calendar events, tickets, kanban drag & drop\n- New features: online status presence, calendar integration with tasks/tickets\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(git commit:*)",
+      "Bash(pkill:*)",
+      "Bash(taskkill:*)",
+      "Skill(superpowers:executing-plans)",
+      "Bash(supabase:*)",
+      "Bash(git push:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}

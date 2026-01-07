@@ -147,7 +147,7 @@ export const NOTIFICATION_METADATA: Record<NotificationType, NotificationMetadat
     type: 'announcement',
     category: 'general',
     label: 'Anúncios',
-    description: 'Comunicados importantes da empresa',
+    description: 'Mensagens importantes da empresa',
     icon: '📢',
     channels: {
       inApp: { enabled: true, locked: false },

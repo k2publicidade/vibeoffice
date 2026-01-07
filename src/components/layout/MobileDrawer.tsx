@@ -24,7 +24,7 @@ const navItems = [
   { href: '/', label: 'Início', icon: LayoutDashboard },
   { href: '/calendar', label: 'Agenda', icon: Calendar },
   { href: '/tickets', label: 'Solicitações', icon: Ticket },
-  { href: '/chat', label: 'Comunicados', icon: MessageSquare },
+  { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/tasks', label: 'Tarefas', icon: CheckSquare },
   { href: '/drive', label: 'Arquivos', icon: HardDrive },
   { href: '/courses', label: 'Cursos', icon: BookOpen },

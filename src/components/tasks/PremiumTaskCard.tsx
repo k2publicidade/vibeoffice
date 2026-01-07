@@ -49,11 +49,11 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
             {...attributes}
             {...listeners}
             className={cn(
-                "group cursor-grab active:cursor-grabbing",
+                "group cursor-grab active:cursor-grabbing touch-none",
                 isDragging && "opacity-50 z-50"
             )}
         >
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative">
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative pointer-events-none">
                 {/* Botão de edição (não interfere com drag) */}
                 {onClick && (
                     <button
@@ -61,14 +61,14 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
                             e.stopPropagation()
                             onClick()
                         }}
-                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-auto"
                         title="Editar tarefa"
                     >
                         <Edit2 className="h-3 w-3 text-zinc-400" />
                     </button>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-3 pointer-events-none">
                     {/* Tags/Labels e Badge de Ticket Vinculado */}
                     {(task.tags && task.tags.length > 0) || task.linkedTicketId ? (
                         <div className="flex flex-wrap gap-1.5">

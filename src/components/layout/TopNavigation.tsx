@@ -20,7 +20,7 @@ const navItems = [
   { name: 'Início', url: '/', icon: Home },
   { name: 'Agenda', url: '/calendar', icon: Calendar },
   { name: 'Solicitações', url: '/tickets', icon: Ticket },
-  { name: 'Comunicados', url: '/chat', icon: MessageSquare },
+  { name: 'Chat', url: '/chat', icon: MessageSquare },
   { name: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { name: 'Drive', url: '/drive', icon: FolderOpen },
   { name: 'Cursos', url: '/courses', icon: GraduationCap },

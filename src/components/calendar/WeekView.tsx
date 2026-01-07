@@ -40,7 +40,7 @@ interface WeekViewProps {
   onViewChange?: (view: 'month' | 'week' | 'day' | 'agenda') => void
 }
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 6) // 6am to 5pm
+const HOURS = Array.from({ length: 9 }, (_, i) => i + 10) // 10am to 6pm
 
 export function WeekView({
   selectedDate,
@@ -70,7 +70,7 @@ export function WeekView({
     const startMinute = getMinutes(event.startTime)
     const duration = differenceInMinutes(event.endTime, event.startTime)
 
-    const top = ((startHour - 6) * 60 + startMinute) * (64 / 60) // 64px per hour
+    const top = ((startHour - 10) * 60 + startMinute) * (64 / 60) // 64px per hour
     const height = (duration / 60) * 64
 
     return { top: `${top}px`, height: `${height}px` }
