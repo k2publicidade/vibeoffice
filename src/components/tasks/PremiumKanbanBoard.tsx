@@ -38,6 +38,7 @@ interface PremiumKanbanBoardProps {
     onTaskMove: (taskId: string, newStatus: TaskStatus) => Promise<void> | void
     onAddTask: (status: TaskStatus) => void
     onTaskClick: (task: Task) => void
+    onDeleteTask: (task: Task) => void
     className?: string
 }
 
@@ -46,11 +47,13 @@ function KanbanColumn({
     column,
     onAddTask,
     onTaskClick,
+    onDeleteTask,
     className,
 }: {
     column: KanbanColumnData
     onAddTask: (status: TaskStatus) => void
     onTaskClick: (task: Task) => void
+    onDeleteTask: (task: Task) => void
     className?: string
 }) {
     const { isOver, setNodeRef } = useDroppable({
@@ -87,7 +90,12 @@ function KanbanColumn({
             <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-3 min-h-[200px] flex-1">
                     {column.tasks.map((task) => (
-                        <PremiumTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+                        <PremiumTaskCard
+                            key={task.id}
+                            task={task}
+                            onClick={() => onTaskClick(task)}
+                            onDelete={() => onDeleteTask(task)}
+                        />
                     ))}
                 </div>
             </SortableContext>
@@ -108,6 +116,7 @@ export function PremiumKanbanBoard({
     onTaskMove,
     onAddTask,
     onTaskClick,
+    onDeleteTask,
     className
 }: PremiumKanbanBoardProps) {
     const [activeId, setActiveId] = React.useState<UniqueIdentifier | null>(null)
@@ -273,6 +282,7 @@ export function PremiumKanbanBoard({
                         column={column}
                         onAddTask={onAddTask}
                         onTaskClick={onTaskClick}
+                        onDeleteTask={onDeleteTask}
                         className="w-full md:w-[320px] md:min-w-[320px]"
                     />
                 ))}

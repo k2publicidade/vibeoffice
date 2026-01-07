@@ -8,6 +8,7 @@ import { PremiumKanbanBoard, KanbanColumnData } from '@/components/tasks/Premium
 import { TaskList } from '@/components/tasks/TaskList'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
 import { TaskDialog } from '@/components/tasks/TaskDialog'
+import { DeleteTaskDialog } from '@/components/tasks/DeleteTaskDialog'
 import { LayoutGrid, List, Filter, ListTodo, Clock, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -64,6 +65,7 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [preselectedStatus, setPreselectedStatus] = useState<TaskStatus | undefined>()
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
 
   // Converter tasks para colunas do Kanban Premium
   const kanbanColumns = useMemo(
@@ -94,9 +96,31 @@ export default function TasksPage() {
     setPreselectedStatus(undefined)
   }
 
-  const handleDeleteTask = (taskId: string) => {
+  // Handler para iniciar processo de delete (usado no Kanban)
+  const handleDeleteTask = (task: Task) => {
+    setTaskToDelete(task)
+  }
+
+  // Handler para confirmar delete (usado no List view)
+  const handleDeleteTaskById = (taskId: string) => {
     if (confirm('Tem certeza que deseja deletar esta tarefa?')) {
       deleteTask(taskId)
+    }
+  }
+
+  // Handler para confirmar delete via dialog
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return
+
+    try {
+      await deleteTask(taskToDelete.id)
+      const { toast } = await import('sonner')
+      toast.success(`✅ "${taskToDelete.title}" excluída com sucesso`)
+      setTaskToDelete(null)
+    } catch (error) {
+      const { toast } = await import('sonner')
+      toast.error('❌ Erro ao excluir tarefa. Tente novamente.')
+      console.error('Error deleting task:', error)
     }
   }
 
@@ -211,6 +235,7 @@ export default function TasksPage() {
               onTaskMove={handleTaskMove}
               onTaskClick={handleEditTask}
               onAddTask={handleAddTask}
+              onDeleteTask={handleDeleteTask}
             />
           ) : (
             <div className="text-center py-12 bg-muted/30 rounded-2xl border-2 border-dashed border-muted-foreground/20">
@@ -233,7 +258,7 @@ export default function TasksPage() {
             <TaskList
               tasks={filteredTasks}
               onEdit={handleEditTask}
-              onDelete={handleDeleteTask}
+              onDelete={handleDeleteTaskById}
             />
           ) : (
             <div className="text-center py-12 bg-muted/30 rounded-2xl border-2 border-dashed border-muted-foreground/20">
@@ -256,6 +281,16 @@ export default function TasksPage() {
           }}
         />
       )}
+
+      {/* Dialog de confirmação de exclusão */}
+      <DeleteTaskDialog
+        task={taskToDelete}
+        open={!!taskToDelete}
+        onOpenChange={(open) => {
+          if (!open) setTaskToDelete(null)
+        }}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   )
 }

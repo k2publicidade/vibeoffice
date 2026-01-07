@@ -10,14 +10,15 @@ import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useUsers } from "@/hooks/useUsers"
-import { Calendar, AlertCircle, Edit2 } from "lucide-react"
+import { Calendar, AlertCircle, Edit2, Trash2 } from "lucide-react"
 
 interface PremiumTaskCardProps {
     task: Task
     onClick?: () => void
+    onDelete?: () => void
 }
 
-export const PremiumTaskCard = React.memo(({ task, onClick }: PremiumTaskCardProps) => {
+export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumTaskCardProps) => {
     const {
         attributes,
         listeners,
@@ -61,18 +62,34 @@ export const PremiumTaskCard = React.memo(({ task, onClick }: PremiumTaskCardPro
             )}
         >
             <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative">
-                {/* Botão de edição (não interfere com drag) */}
-                {onClick && (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onClick()
-                        }}
-                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-auto"
-                        title="Editar tarefa"
-                    >
-                        <Edit2 className="h-3 w-3 text-zinc-400" />
-                    </button>
+                {/* Botões de ação - aparecem no hover */}
+                {(onClick || onDelete) && (
+                    <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        {onClick && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onClick()
+                                }}
+                                className="p-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 pointer-events-auto transition-colors"
+                                title="Editar tarefa"
+                            >
+                                <Edit2 className="h-3 w-3 text-zinc-400" />
+                            </button>
+                        )}
+                        {onDelete && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onDelete()
+                                }}
+                                className="p-1.5 rounded-lg bg-zinc-800/80 hover:bg-red-900/80 pointer-events-auto transition-colors group/delete"
+                                title="Excluir tarefa"
+                            >
+                                <Trash2 className="h-3 w-3 text-zinc-400 group-hover/delete:text-red-400 transition-colors" />
+                            </button>
+                        )}
+                    </div>
                 )}
 
                 <div className="space-y-3">

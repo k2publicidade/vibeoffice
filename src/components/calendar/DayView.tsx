@@ -2,7 +2,6 @@
 
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import {
   format,
@@ -59,10 +58,19 @@ export function DayView({
     const startMinute = getMinutes(new Date(event.startTime))
     const duration = differenceInMinutes(new Date(event.endTime), new Date(event.startTime))
 
-    const top = ((startHour - 10) * 60 + startMinute) * (80 / 60) // 80px per hour
-    const height = Math.max((duration / 60) * 80, 30) // Minimum 30px
+    // Cada hora ocupa 100/9 = 11.111% da altura total
+    const hourPercentage = 100 / HOURS.length
 
-    return { top: `${top}px`, height: `${height}px` }
+    // Posição: (hora - hora_inicial) + fração de minutos
+    const hoursFromStart = startHour - 10
+    const minuteFraction = startMinute / 60
+    const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
+
+    // Altura: duração em horas * porcentagem por hora (mínimo 3%)
+    const durationHours = duration / 60
+    const heightPercentage = Math.max(durationHours * hourPercentage, 3)
+
+    return { top: `${topPercentage}%`, height: `${heightPercentage}%` }
   }
 
   return (
@@ -159,14 +167,13 @@ export function DayView({
       </div>
 
       {/* Time Grid */}
-      <ScrollArea className="flex-1">
-        <div className="relative min-h-[1280px]"> {/* 16 hours * 80px */}
+      <div className="flex-1 overflow-hidden">
+        <div className="relative h-full flex flex-col">
           {/* Hour Lines */}
           {HOURS.map((hour) => (
             <div
               key={hour}
-              className="absolute left-0 right-0 flex border-b border-[#1a1a1a]"
-              style={{ top: `${(hour - 6) * 80}px`, height: '80px' }}
+              className="flex-1 flex border-b border-[#1a1a1a] relative"
             >
               <div className="w-16 flex-shrink-0 pr-2 pt-1 text-right">
                 <span className="text-xs text-gray-500">
@@ -181,22 +188,32 @@ export function DayView({
           ))}
 
           {/* Current Time Indicator */}
-          {isTodayDate && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute left-16 right-0 flex items-center pointer-events-none z-10"
-              style={{
-                top: `${((new Date().getHours() - 6) * 60 + new Date().getMinutes()) * (80 / 60)}px`,
-              }}
-            >
-              <div className="w-3 h-3 rounded-full bg-[#ff0300] -ml-1.5" />
-              <div className="flex-1 h-0.5 bg-[#ff0300]" />
-            </motion.div>
-          )}
+          {isTodayDate && (() => {
+            const now = new Date()
+            const currentHour = now.getHours()
+            const currentMinute = now.getMinutes()
+            const hourPercentage = 100 / HOURS.length
+            const hoursFromStart = currentHour - 10
+            const minuteFraction = currentMinute / 60
+            const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
+
+            return (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute left-16 right-0 flex items-center pointer-events-none z-10"
+                style={{
+                  top: `${topPercentage}%`,
+                }}
+              >
+                <div className="w-3 h-3 rounded-full bg-[#ff0300] -ml-1.5" />
+                <div className="flex-1 h-0.5 bg-[#ff0300]" />
+              </motion.div>
+            )
+          })()}
 
           {/* Events */}
-          <div className="absolute left-16 right-4 top-0">
+          <div className="absolute left-16 right-4 top-0 bottom-0">
             {dayEvents.map((event, index) => {
               const style = getEventStyle(event)
               return (
@@ -240,7 +257,7 @@ export function DayView({
             })}
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }
