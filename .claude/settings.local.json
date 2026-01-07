@@ -21,7 +21,12 @@
       "mcp__ide__getDiagnostics",
       "Bash(ls -la \"C:\\\\Users\\\\ksinh\\\\Documents\\\\TRABALHOS 2026\\\\CLAUDE\\\\vibeoffice\\\\src\\\\lib\\\\notifications\"\" | grep -i \"eventbus \")",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__apply_migration",
+      "Bash(git log:*)",
+      "Bash(node -p:*)",
+      "Bash(npx tsx:*)"
     ]
   }
 }
