@@ -7,6 +7,9 @@ import { useAuth } from './useAuth'
 import type { Tables } from '@/lib/supabase/database.types'
 import type { Notification } from '@/types/notifications'
 
+// Re-export Notification type for convenience
+export type { Notification } from '@/types/notifications'
+
 // Type from Supabase (raw)
 type NotificationRow = Tables<'notifications'>
 

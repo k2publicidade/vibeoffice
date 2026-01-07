@@ -42,6 +42,29 @@ function getNotificationLink(notification: Notification): string | null {
   }
 }
 
+// Função para reproduzir som de notificação usando Web Audio API
+const playNotificationSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+
+    oscillator.frequency.value = 800 // Frequência em Hz (mais alto = tom mais agudo)
+    oscillator.type = 'sine' // Onda senoidal suave
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime) // Volume
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+
+    oscillator.start(audioContext.currentTime)
+    oscillator.stop(audioContext.currentTime + 0.5) // Duração 0.5s
+  } catch (error) {
+    console.error('Falha ao reproduzir som de notificação:', error)
+  }
+}
+
 export function NotificationToast() {
   const { notifications } = useNotifications()
   const router = useRouter()
@@ -59,6 +82,9 @@ export function NotificationToast() {
 
       // Marcar como exibida
       displayedNotificationsRef.current.add(latestUnread.id)
+
+      // Reproduzir som de notificação
+      playNotificationSound()
 
       const Icon = notificationIcons[latestUnread.type as keyof typeof notificationIcons] || Bell
       const iconColor = priorityColors[latestUnread.priority as keyof typeof priorityColors] || 'text-gray-500'
@@ -102,7 +128,7 @@ export function NotificationToast() {
         ),
         {
           duration: 5000,
-          position: 'top-right',
+          position: 'bottom-right',
         }
       )
     }

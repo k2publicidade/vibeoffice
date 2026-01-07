@@ -36,7 +36,7 @@ export function Providers({ children }: ProvidersProps) {
         {children}
         {/* Toaster com estilo premium */}
         <Toaster
-          position="top-right"
+          position="bottom-right"
           toastOptions={{
             style: {
               background: 'transparent',
