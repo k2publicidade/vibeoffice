@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 
@@ -19,6 +20,8 @@ interface EventBlockProps {
     endTime: Date
     color?: string
     attendees?: Attendee[]
+    linkedTaskId?: string
+    linkedTicketId?: string
   }
   onClick?: () => void
   compact?: boolean
@@ -44,7 +47,19 @@ export function EventBlock({ event, onClick, compact = false }: EventBlockProps)
           boxShadow: `0 4px 12px ${bgColor}40`
         }}
       >
-        <p className="font-medium truncate">{event.title}</p>
+        <div className="flex items-center gap-1">
+          <p className="font-medium truncate">{event.title}</p>
+          {event.linkedTaskId && (
+            <Badge className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/30 px-1.5 py-0">
+              📋
+            </Badge>
+          )}
+          {event.linkedTicketId && (
+            <Badge className="text-[10px] bg-orange-500/10 text-orange-400 border-orange-500/30 px-1.5 py-0">
+              🎫
+            </Badge>
+          )}
+        </div>
         <p className="opacity-80">{timeRange}</p>
       </motion.button>
     )
@@ -72,7 +87,19 @@ export function EventBlock({ event, onClick, compact = false }: EventBlockProps)
         boxShadow: `0 4px 12px ${bgColor}30`
       }}
     >
-      <p className="font-semibold text-sm truncate">{event.title}</p>
+      <div className="flex items-center gap-1">
+        <p className="font-semibold text-sm truncate">{event.title}</p>
+        {event.linkedTaskId && (
+          <Badge className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/30 px-1.5 py-0">
+            📋
+          </Badge>
+        )}
+        {event.linkedTicketId && (
+          <Badge className="text-[10px] bg-orange-500/10 text-orange-400 border-orange-500/30 px-1.5 py-0">
+            🎫
+          </Badge>
+        )}
+      </div>
       <p className="text-xs opacity-80 mt-0.5 font-medium">{timeRange}</p>
 
       {event.attendees && event.attendees.length > 0 && (
