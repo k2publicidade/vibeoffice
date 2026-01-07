@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { NotificationEvent, NotificationPreference } from '@/types/notifications'
+import { NotificationEvent, NotificationPreference, NotificationType } from '@/types/notifications'
 import { InAppHandler } from './handlers/inAppHandler'
 import { PushHandler } from './handlers/pushHandler'
 import { EmailHandler } from './handlers/emailHandler'
@@ -60,7 +60,7 @@ export class NotificationProcessor {
 
   private async getUserPreferences(
     userId: string,
-    notificationType: string
+    notificationType: NotificationType
   ): Promise<NotificationPreference> {
     const { data } = await this.supabase
       .from('notification_preferences')
@@ -79,7 +79,7 @@ export class NotificationProcessor {
 
   private getDefaultPreferences(
     userId: string,
-    notificationType: string
+    notificationType: NotificationType
   ): NotificationPreference {
     return {
       id: '',

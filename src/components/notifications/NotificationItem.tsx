@@ -14,13 +14,13 @@ interface NotificationItemProps {
 
 const priorityColors = {
   low: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
-  normal: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
+  medium: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
   high: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
 }
 
 const priorityLabels = {
   low: 'Baixa',
-  normal: 'Normal',
+  medium: 'Normal',
   high: 'Alta',
 }
 
@@ -33,8 +33,17 @@ export function NotificationItem({ notification }: NotificationItemProps) {
       markAsRead(notification.id)
     }
 
-    if (notification.link) {
-      router.push(notification.link)
+    // Construir link baseado em entity_type e entity_id
+    if (notification.entity_type && notification.entity_id) {
+      const linkMap: Record<string, string> = {
+        task: `/tasks?id=${notification.entity_id}`,
+        ticket: `/tickets/${notification.entity_id}`,
+        message: `/chat?room=${notification.entity_id}`,
+      }
+      const link = linkMap[notification.entity_type]
+      if (link) {
+        router.push(link)
+      }
     }
   }
 

@@ -298,6 +298,144 @@ export type Database = {
           }
         ]
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          message: string
+          priority: Database["public"]["Enums"]["notification_priority"]
+          entity_type: Database["public"]["Enums"]["entity_type"] | null
+          entity_id: string | null
+          metadata: Json
+          read: boolean
+          read_at: string | null
+          archived: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          message: string
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
+          entity_id?: string | null
+          metadata?: Json
+          read?: boolean
+          read_at?: string | null
+          archived?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          title?: string
+          message?: string
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
+          entity_id?: string | null
+          metadata?: Json
+          read?: boolean
+          read_at?: string | null
+          archived?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          enable_in_app: boolean
+          enable_push: boolean
+          enable_email: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          enable_in_app?: boolean
+          enable_push?: boolean
+          enable_email?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          enable_in_app?: boolean
+          enable_push?: boolean
+          enable_email?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          user_agent: string | null
+          created_at: string
+          last_used_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          user_agent?: string | null
+          created_at?: string
+          last_used_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          user_agent?: string | null
+          created_at?: string
+          last_used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       shared_access: {
         Row: {
           id: string
@@ -623,9 +761,23 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      entity_type: "task" | "ticket" | "message"
       event_type: "personal" | "sector" | "company"
       item_type: "file" | "folder"
       message_type: "text" | "image" | "file"
+      notification_priority: "low" | "medium" | "high"
+      notification_type:
+        | "task_assigned"
+        | "task_status_changed"
+        | "task_comment_added"
+        | "task_due_soon"
+        | "ticket_created"
+        | "ticket_assigned"
+        | "ticket_status_changed"
+        | "ticket_comment_added"
+        | "message_received"
+        | "mentioned_in_chat"
+        | "announcement"
       priority_type: "low" | "medium" | "high"
       role_type: "Admin" | "Gerente" | "Colaborador"
       room_type: "sector" | "dm"
