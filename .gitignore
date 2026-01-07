@@ -52,3 +52,6 @@ multiselect.md
 
 # Auto Claude data directory
 .auto-claude/
+
+# Worktrees directory
+.worktrees/
