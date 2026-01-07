@@ -71,9 +71,17 @@ export function MessageListPremium({
     <ScrollArea className="flex-1 p-4 lg:p-6 bg-black">
       <div className="space-y-4">
         <AnimatePresence>
-          {messages.map((message) => {
+          {messages.map((message, index) => {
             const isOwn = message.userId === currentUser?.id
-            const user = users?.find(u => u.id === message.userId)
+            const sender = users?.find(u => u.id === message.userId)
+            const previousMessage = index > 0 ? messages[index - 1] : null
+
+            // Grouping logic: show sender info if first message, different sender, or > 5 min gap
+            const showSenderInfo =
+              !previousMessage ||
+              previousMessage.userId !== message.userId ||
+              (new Date(message.timestamp).getTime() -
+               new Date(previousMessage.timestamp).getTime()) > 300000 // 5 min
 
             const timeString = new Date(message.timestamp).toLocaleTimeString('pt-BR', {
               hour: '2-digit',
@@ -101,19 +109,30 @@ export function MessageListPremium({
                   isOwn ? "flex-row-reverse" : "flex-row"
                 )}
               >
-                {!isOwn && (
+                {/* Avatar: show only if showSenderInfo and not own message */}
+                {!isOwn && showSenderInfo ? (
                   <Avatar className="w-8 h-8 shrink-0 border-2 border-[#ff0300]/20">
-                    <AvatarImage src={user?.avatar ?? undefined} />
+                    <AvatarImage src={sender?.avatar ?? undefined} />
                     <AvatarFallback className="bg-[#fc7a67] text-black text-[10px] font-bold">
-                      {user?.name.charAt(0).toUpperCase()}
+                      {sender?.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                )}
+                ) : !isOwn ? (
+                  // Spacer to maintain alignment when avatar is hidden
+                  <div className="w-8 h-8 shrink-0" />
+                ) : null}
 
                 <div className={cn(
-                  "max-w-[80%] lg:max-w-[70%] space-y-1",
+                  "max-w-[80%] lg:max-w-[70%] space-y-1 flex flex-col",
                   isOwn ? "items-end" : "items-start"
                 )}>
+                  {/* Sender name: show only if showSenderInfo and not own message */}
+                  {showSenderInfo && !isOwn && (
+                    <span className="text-xs text-gray-400 font-medium px-1 mb-0.5">
+                      {sender?.name}
+                    </span>
+                  )}
+
                   <div
                     className={cn(
                       "px-4 py-2 rounded-2xl relative",
