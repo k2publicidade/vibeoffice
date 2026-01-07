@@ -5,6 +5,7 @@ import { Task } from "@/types/tasks"
 import { cn } from "@/lib/utils"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +17,7 @@ interface PremiumTaskCardProps {
     onClick?: () => void
 }
 
-export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
+export const PremiumTaskCard = React.memo(({ task, onClick }: PremiumTaskCardProps) => {
     const {
         attributes,
         listeners,
@@ -43,11 +44,17 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
     const isOverdue = dueDate && dueDate < new Date() && task.status !== 'done'
 
     return (
-        <div
+        <motion.div
             ref={setNodeRef}
             style={style}
             {...attributes}
             {...listeners}
+            layout
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className={cn(
                 "group cursor-grab active:cursor-grabbing touch-none",
                 isDragging && "opacity-50 z-50"
@@ -133,6 +140,17 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
                     </div>
                 </div>
             </Card>
-        </div>
+        </motion.div>
     )
-}
+}, (prevProps, nextProps) => {
+    // Só re-renderiza se task mudou significativamente
+    return (
+        prevProps.task.id === nextProps.task.id &&
+        prevProps.task.status === nextProps.task.status &&
+        prevProps.task.title === nextProps.task.title &&
+        prevProps.task.priority === nextProps.task.priority &&
+        prevProps.task.dueDate?.getTime() === nextProps.task.dueDate?.getTime() &&
+        prevProps.task.assignedTo === nextProps.task.assignedTo &&
+        prevProps.task.updatedAt.getTime() === nextProps.task.updatedAt.getTime()
+    )
+})

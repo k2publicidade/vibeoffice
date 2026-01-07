@@ -101,8 +101,31 @@ export default function TasksPage() {
   }
 
   // Handler para mover tarefa entre colunas
-  const handleTaskMove = (taskId: string, toStatus: TaskStatus) => {
-    updateTask(taskId, { status: toStatus })
+  const handleTaskMove = async (taskId: string, toStatus: TaskStatus) => {
+    try {
+      await updateTask(taskId, { status: toStatus })
+
+      // Toast de sucesso com emoji contextual
+      const statusEmoji = {
+        todo: '📝',
+        in_progress: '⚡',
+        done: '✅'
+      }
+      const statusText = {
+        todo: 'A Fazer',
+        in_progress: 'Em Progresso',
+        done: 'Concluído'
+      }
+      const task = filteredTasks.find(t => t.id === taskId)
+      if (task) {
+        const { toast } = await import('sonner')
+        toast.success(`${statusEmoji[toStatus]} "${task.title}" movido para ${statusText[toStatus]}`)
+      }
+    } catch (error) {
+      const { toast } = await import('sonner')
+      toast.error('Erro ao mover tarefa. Tente novamente.')
+      console.error('Error moving task:', error)
+    }
   }
 
   // Handler para adicionar tarefa em coluna específica

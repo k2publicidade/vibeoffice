@@ -53,7 +53,7 @@ function KanbanColumn({
     onTaskClick: (task: Task) => void
     className?: string
 }) {
-    const { setNodeRef } = useDroppable({
+    const { isOver, setNodeRef } = useDroppable({
         id: column.id,
     })
 
@@ -61,7 +61,10 @@ function KanbanColumn({
         <div
             ref={setNodeRef}
             className={cn(
-                "flex-1 min-w-[320px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border border-[#2a2a2a] shadow-inner h-full min-h-[500px]",
+                "flex-1 min-w-[320px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border shadow-inner h-full min-h-[500px] transition-all duration-200",
+                isOver
+                    ? "border-[#fc7a67] bg-[#fc7a67]/5 ring-2 ring-[#fc7a67]/20 scale-[1.01]"
+                    : "border-[#2a2a2a]",
                 className
             )}
         >
@@ -136,6 +139,11 @@ export function PremiumKanbanBoard({
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveId(event.active.id)
+
+        // Vibração tátil em dispositivos mobile
+        if (typeof window !== 'undefined' && window.navigator.vibrate) {
+            window.navigator.vibrate(10) // 10ms - muito sutil
+        }
     }
 
     const handleDragOver = (event: DragOverEvent) => {
@@ -196,6 +204,11 @@ export function PremiumKanbanBoard({
         if (activeContainer !== overContainer) {
             // Find source column to confirm the move
             onTaskMove(activeIdVal, overContainer)
+
+            // Vibração de confirmação (padrão diferente)
+            if (typeof window !== 'undefined' && window.navigator.vibrate) {
+                window.navigator.vibrate([15, 50, 15]) // Duplo tap
+            }
         } else {
             // Reordering within same column
             const column = columns.find((col) => col.id === activeContainer)
@@ -248,9 +261,14 @@ export function PremiumKanbanBoard({
                     />
                 ))}
             </div>
-            <DragOverlay dropAnimation={null}>
+            <DragOverlay
+                dropAnimation={{
+                    duration: 250,
+                    easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)', // Bounce suave
+                }}
+            >
                 {activeTask ? (
-                    <div className="rotate-3 scale-105 shadow-2xl z-[100] opacity-90 transition-transform duration-200">
+                    <div className="rotate-[5deg] scale-110 shadow-2xl z-[100] opacity-95 transition-all duration-200">
                         <PremiumTaskCard task={activeTask} />
                     </div>
                 ) : null}

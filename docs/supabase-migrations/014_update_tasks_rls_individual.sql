@@ -4,12 +4,14 @@
 -- Descrição: Ajustar RLS para que Colaboradores vejam apenas tarefas atribuídas a eles
 -- ============================================
 
--- Remover policies antigas
+-- Remover TODAS as policies existentes (antigas E novas)
 DROP POLICY IF EXISTS "Admins have full access to tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Managers can manage own sector tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Managers can view other sectors tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Users can view own sector tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Users can view assigned tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Users can update assigned tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Users can delete own tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Users can create tasks in own sector" ON public.tasks;
 
 -- ============================================
