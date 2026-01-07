@@ -13,6 +13,7 @@ import {
   isPast,
   startOfDay,
 } from 'date-fns'
+import { EventBus } from '@/lib/notifications/eventBus'
 
 export type DateFilter = 'all' | 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'this_month' | 'no_date'
 
@@ -226,6 +227,25 @@ export function useTasks(): UseTasksReturn {
         updatedAt: new Date(data.updated_at),
       }
 
+      // NOVO: Emitir evento de notificação
+      if (taskData.assignedTo) {
+        EventBus.emit({
+          type: 'task_assigned',
+          recipientIds: [taskData.assignedTo],
+          priority: taskData.priority === 'high' ? 'high' : 'medium',
+          entityType: 'task',
+          entityId: newTask.id,
+          metadata: {
+            taskTitle: taskData.title,
+            dueDate: taskData.dueDate,
+            assignedBy: user?.id,
+            assignedByName: user?.name,
+          },
+        }).catch((err) => {
+          console.error('[useTasks] Failed to emit notification:', err)
+        })
+      }
+
       setTasks((prev) => [newTask, ...prev])
       return newTask
     },
@@ -234,6 +254,9 @@ export function useTasks(): UseTasksReturn {
 
   // Atualizar tarefa
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
+    // Guardar referência do oldTask ANTES do update
+    const oldTask = tasks.find(t => t.id === id)
+
     // ✅ Validação com Zod antes de atualizar no banco
     const validation = UpdateTaskSchema.safeParse(updates)
     if (!validation.success) {
@@ -274,12 +297,37 @@ export function useTasks(): UseTasksReturn {
       updatedAt: new Date(data.updated_at),
     }
 
+    // NOVO: Emitir evento se status mudou
+    if (updates.status && oldTask && updates.status !== oldTask.status) {
+      const recipientIds = [
+        updatedTask.createdBy,
+        updatedTask.assignedTo,
+      ].filter((id): id is string => id !== null && id !== undefined)
+
+      if (recipientIds.length > 0) {
+        EventBus.emit({
+          type: 'task_status_changed',
+          recipientIds,
+          priority: 'low',
+          entityType: 'task',
+          entityId: id,
+          metadata: {
+            taskTitle: updatedTask.title,
+            oldStatus: oldTask.status,
+            newStatus: updates.status,
+          },
+        }).catch((err) => {
+          console.error('[useTasks] Failed to emit notification:', err)
+        })
+      }
+    }
+
     setTasks((prev) =>
       prev.map((task) => (task.id === id ? updatedTask : task))
     )
 
     return updatedTask
-  }, [])
+  }, [tasks])
 
   // Deletar tarefa
   const deleteTask = useCallback(async (id: string) => {
