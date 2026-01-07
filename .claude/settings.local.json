@@ -15,7 +15,13 @@
       "Bash(supabase:*)",
       "Bash(git push:*)",
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(find:*)",
+      "Bash(cd:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(ls -la \"C:\\\\Users\\\\ksinh\\\\Documents\\\\TRABALHOS 2026\\\\CLAUDE\\\\vibeoffice\\\\src\\\\lib\\\\notifications\"\" | grep -i \"eventbus \")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

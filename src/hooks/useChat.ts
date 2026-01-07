@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { ChatRoom, Message } from '@/types/chat'
 import { RealtimeChannel } from '@supabase/supabase-js'
+import { EventBus } from '@/lib/notifications/eventBus'
 
 export interface ChatUser {
   id: string
@@ -246,11 +247,15 @@ export function useChat(): UseChatReturn {
     if (!currentRoom || !content.trim() || !user) return
 
     try {
-      const { error } = await supabase.from('messages').insert({
-        room_id: currentRoom.id,
-        user_id: user.id,
-        content: content.trim(),
-      })
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          room_id: currentRoom.id,
+          user_id: user.id,
+          content: content.trim(),
+        })
+        .select()
+        .single()
 
       if (error) throw error
 
@@ -259,6 +264,27 @@ export function useChat(): UseChatReturn {
         .from('chat_rooms')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', currentRoom.id)
+
+      // Emitir notificação para todos os membros da sala (exceto o sender)
+      const recipients = currentRoom.participants.filter(memberId => memberId !== user.id)
+
+      if (recipients.length > 0) {
+        EventBus.emit({
+          type: 'message_received',
+          recipientIds: recipients,
+          priority: 'low',
+          entityType: 'message',
+          entityId: data.id,
+          metadata: {
+            roomName: currentRoom.name,
+            roomId: currentRoom.id,
+            senderName: user.name,
+            messagePreview: content.trim().substring(0, 50),
+          },
+        }).catch((err) => {
+          console.error('[useChat] Failed to emit notification:', err)
+        })
+      }
     } catch (error) {
       console.error('Error sending message:', error)
     }
