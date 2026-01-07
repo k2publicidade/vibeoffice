@@ -1,6 +1,7 @@
 'use client'
 
 import { useTickets } from '@/hooks/useTickets'
+import { useAuth } from '@/hooks/useAuth'
 import { Ticket } from '@/types/tickets'
 import { TicketDetailModal } from '@/components/tickets/TicketDetailModal'
 import { CreateTicketModal } from '@/components/tickets/CreateTicketModal'
@@ -25,6 +26,7 @@ export default function TicketsPage() {
     deleteComment,
     getUserById,
   } = useTickets()
+  const { user } = useAuth()
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
@@ -49,13 +51,23 @@ export default function TicketsPage() {
     }, 300)
   }
 
-  const handleCreateTicket = (data: CreateTicketInput) => {
-    createTicket({
-      ...data,
-      status: 'open',
-      requester: 'current-user', // Usuário logado
-    })
-    toast.success('Ticket criado com sucesso!')
+  const handleCreateTicket = async (data: CreateTicketInput) => {
+    if (!user) {
+      toast.error('Usuário não autenticado')
+      return
+    }
+
+    try {
+      await createTicket({
+        ...data,
+        status: 'open',
+        requester: user.id,
+      })
+      toast.success('Ticket criado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao criar ticket:', error)
+      toast.error('Erro ao criar ticket')
+    }
   }
 
   const handleAddComment = (content: string, isInternal: boolean) => {
