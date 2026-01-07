@@ -921,3 +921,72 @@ CREATE POLICY "Creators can delete their events"
   ON public.calendar_events
   FOR DELETE
   USING (created_by = auth.uid());
+
+-- =====================================================
+-- Migration 012: Grupos de Projeto no Chat
+-- =====================================================
+-- Data: 2026-01-07
+-- Descrição: Adiciona suporte a grupos personalizados de projeto
+
+-- Adicionar novo tipo ao enum room_type
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum
+    WHERE enumlabel = 'project'
+    AND enumtypid = 'room_type'::regtype
+  ) THEN
+    ALTER TYPE room_type ADD VALUE 'project';
+  END IF;
+END $$;
+
+-- Adicionar campos para grupos de projeto
+ALTER TABLE chat_rooms
+  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id);
+
+-- Comentários para documentação
+COMMENT ON COLUMN chat_rooms.description IS 'Descrição/objetivo do grupo de projeto (apenas para type=project)';
+COMMENT ON COLUMN chat_rooms.created_by IS 'UUID do criador do grupo (apenas para type=project)';
+
+-- Índice para performance em queries por criador
+CREATE INDEX IF NOT EXISTS idx_chat_rooms_created_by
+  ON chat_rooms(created_by)
+  WHERE created_by IS NOT NULL;
+
+-- =====================================================
+-- RLS Policies para Grupos de Projeto
+-- =====================================================
+
+-- Permitir usuários criarem grupos de projeto
+CREATE POLICY "Users can create project groups"
+  ON chat_rooms FOR INSERT
+  WITH CHECK (
+    type = 'project'
+    AND created_by = auth.uid()
+    AND auth.uid() = ANY(participants)
+  );
+
+-- Apenas criador pode deletar grupo de projeto
+CREATE POLICY "Creator can delete project groups"
+  ON chat_rooms FOR DELETE
+  USING (
+    type = 'project'
+    AND created_by = auth.uid()
+  );
+
+-- Apenas criador pode atualizar grupo de projeto
+CREATE POLICY "Creator can update project groups"
+  ON chat_rooms FOR UPDATE
+  USING (
+    type = 'project'
+    AND created_by = auth.uid()
+  );
+
+-- Permitir usuários verem grupos de projeto onde são participantes
+-- (isso já é coberto pela policy existente de SELECT em chat_rooms,
+-- mas vamos garantir que funciona para type='project' também)
+DROP POLICY IF EXISTS "Users can view their chat rooms" ON chat_rooms;
+CREATE POLICY "Users can view their chat rooms"
+  ON chat_rooms FOR SELECT
+  USING (auth.uid() = ANY(participants));
