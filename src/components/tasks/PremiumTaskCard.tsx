@@ -53,7 +53,7 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
                 isDragging && "opacity-50 z-50"
             )}
         >
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative pointer-events-none">
+            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative">
                 {/* Botão de edição (não interfere com drag) */}
                 {onClick && (
                     <button
@@ -68,7 +68,7 @@ export function PremiumTaskCard({ task, onClick }: PremiumTaskCardProps) {
                     </button>
                 )}
 
-                <div className="space-y-3 pointer-events-none">
+                <div className="space-y-3">
                     {/* Tags/Labels e Badge de Ticket Vinculado */}
                     {(task.tags && task.tags.length > 0) || task.linkedTicketId ? (
                         <div className="flex flex-wrap gap-1.5">

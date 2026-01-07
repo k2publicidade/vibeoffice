@@ -56,7 +56,10 @@ function KanbanColumn({
     })
 
     return (
-        <div className="flex-1 min-w-[320px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border border-[#2a2a2a] shadow-inner h-full min-h-[500px]">
+        <div
+            ref={setNodeRef}
+            className="flex-1 min-w-[320px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border border-[#2a2a2a] shadow-inner h-full min-h-[500px]"
+        >
             <div className="flex items-center justify-between mb-5 px-1">
                 <div className="flex items-center gap-2.5">
                     <div
@@ -74,10 +77,7 @@ function KanbanColumn({
             </div>
 
             <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                <div
-                    ref={setNodeRef}
-                    className="flex flex-col gap-3 min-h-[200px] flex-1"
-                >
+                <div className="flex flex-col gap-3 min-h-[200px] flex-1">
                     {column.tasks.map((task) => (
                         <PremiumTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
                     ))}
@@ -232,13 +232,14 @@ export function PremiumKanbanBoard({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
-            <div className={cn("flex gap-6 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-[#2a2a2a] scrollbar-track-transparent", className)}>
+            <div className={cn("flex flex-col md:flex-row gap-4 md:gap-6 overflow-x-hidden md:overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-[#2a2a2a] scrollbar-track-transparent", className)}>
                 {columns.map((column) => (
                     <KanbanColumn
                         key={column.id}
                         column={column}
                         onAddTask={onAddTask}
                         onTaskClick={onTaskClick}
+                        className="w-full md:w-[320px] md:min-w-[320px]"
                     />
                 ))}
             </div>

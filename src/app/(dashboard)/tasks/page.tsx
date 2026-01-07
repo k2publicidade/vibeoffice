@@ -102,10 +102,7 @@ export default function TasksPage() {
 
   // Handler para mover tarefa entre colunas
   const handleTaskMove = (taskId: string, toStatus: TaskStatus) => {
-    const task = filteredTasks.find(t => t.id === taskId)
-    if (task) {
-      updateTask(taskId, { ...task, status: toStatus })
-    }
+    updateTask(taskId, { status: toStatus })
   }
 
   // Handler para adicionar tarefa em coluna específica
