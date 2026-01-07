@@ -11,15 +11,16 @@ export function NotificationList() {
   const {
     notifications,
     loading,
+    error,
     markAllAsRead,
   } = useNotifications()
 
   return (
-    <div className="w-[380px]">
+    <div className="w-full max-w-[380px]">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold text-sm">Notificações</h3>
-        {notifications.length > 0 && (
+        {notifications.some(n => !n.read) && (
           <Button
             variant="ghost"
             size="sm"
@@ -37,6 +38,10 @@ export function NotificationList() {
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full p-6">
+            <p className="text-sm text-destructive text-center">{error}</p>
+          </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <Bell className="h-12 w-12 text-muted-foreground/40 mb-3" />
@@ -46,7 +51,7 @@ export function NotificationList() {
           </div>
         ) : (
           <div className="divide-y">
-            {notifications.slice(0, 20).map((notification) => (
+            {notifications.map((notification) => (
               <NotificationItem
                 key={notification.id}
                 notification={notification}
