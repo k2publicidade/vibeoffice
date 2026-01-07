@@ -5,6 +5,7 @@ import { Message } from '@/types/chat'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUsers } from '@/hooks/useUsers'
+import { useAuth } from '@/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -22,6 +23,7 @@ export function MessageListPremium({
 }: MessageListPremiumProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { users } = useUsers()
+  const { user: currentUser } = useAuth()
 
   // Auto scroll para a última mensagem
   useEffect(() => {
@@ -54,7 +56,7 @@ export function MessageListPremium({
       <div className="space-y-4">
         <AnimatePresence>
           {messages.map((message) => {
-            const isOwn = message.userId === 'current-user'
+            const isOwn = message.userId === currentUser?.id
             const user = users?.find(u => u.id === message.userId)
 
             const timeString = new Date(message.timestamp).toLocaleTimeString('pt-BR', {

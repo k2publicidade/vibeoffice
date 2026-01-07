@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { Message } from '@/types/chat'
 import { MessageBubble } from './MessageBubble'
 import { Loader2 } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 
 interface MessageListProps {
   messages: Message[]
@@ -13,6 +14,7 @@ interface MessageListProps {
 
 export function MessageList({ messages, typingUsers = [], isLoading }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { user } = useAuth()
 
   // Auto scroll para a última mensagem
   useEffect(() => {
@@ -51,7 +53,7 @@ export function MessageList({ messages, typingUsers = [], isLoading }: MessageLi
           <MessageBubble
             key={message.id}
             message={message}
-            isCurrentUser={message.userId === 'current-user'}
+            isCurrentUser={message.userId === user?.id}
           />
         ))
       )}
