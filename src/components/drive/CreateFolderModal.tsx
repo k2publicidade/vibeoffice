@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FolderPlus } from 'lucide-react'
+import { FolderPlus, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 interface CreateFolderModalProps {
   open: boolean
   onClose: () => void
-  onCreateFolder: (name: string) => void
+  onCreateFolder: (name: string) => void | Promise<void>
   currentFolderName?: string
 }
 
@@ -27,8 +27,9 @@ export function CreateFolderModal({
 }: CreateFolderModalProps) {
   const [folderName, setFolderName] = useState('')
   const [error, setError] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const trimmedName = folderName.trim()
@@ -50,11 +51,20 @@ export function CreateFolderModal({
       return
     }
 
-    onCreateFolder(trimmedName)
-    handleClose()
+    setIsCreating(true)
+    try {
+      await onCreateFolder(trimmedName)
+      handleClose()
+    } catch (err) {
+      console.error('Error creating folder:', err)
+      setError('Erro ao criar pasta. Tente novamente.')
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const handleClose = () => {
+    if (isCreating) return // Não fechar enquanto estiver criando
     setFolderName('')
     setError('')
     onClose()
@@ -101,17 +111,27 @@ export function CreateFolderModal({
               type="button"
               variant="outline"
               onClick={handleClose}
+              disabled={isCreating}
               className="border-[#262626] text-white hover:bg-[#1a1a1a] hover:text-white"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={!folderName.trim()}
-              className="bg-gradient-to-r from-[#0c67ff] to-[#0c67ff]/80 text-white hover:from-[#0c67ff]/90 hover:to-[#0c67ff] gap-2"
+              disabled={!folderName.trim() || isCreating}
+              className="bg-gradient-to-r from-[#0c67ff] to-[#0c67ff]/80 text-white hover:from-[#0c67ff]/90 hover:to-[#0c67ff] gap-2 min-w-[120px]"
             >
-              <FolderPlus className="h-4 w-4" />
-              Criar Pasta
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Criando...
+                </>
+              ) : (
+                <>
+                  <FolderPlus className="h-4 w-4" />
+                  Criar Pasta
+                </>
+              )}
             </Button>
           </div>
         </form>

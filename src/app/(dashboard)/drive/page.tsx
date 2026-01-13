@@ -134,21 +134,12 @@ export default function DrivePage() {
   }
 
   const handleCreateFolder = async (name: string) => {
-    try {
-      await createFolder({ name, parentId: currentFolderId })
-      setSuccessModal({
-        open: true,
-        title: 'Pasta criada!',
-        description: `A pasta "${name}" foi criada com sucesso.`
-      })
-    } catch (error) {
-      console.error('Create folder error:', error)
-      setErrorModal({
-        open: true,
-        title: 'Erro ao criar pasta',
-        description: 'Não foi possível criar a pasta. Tente novamente.'
-      })
-    }
+    await createFolder({ name, parentId: currentFolderId })
+    setSuccessModal({
+      open: true,
+      title: 'Pasta criada!',
+      description: `A pasta "${name}" foi criada com sucesso.`
+    })
   }
 
   // Handlers de compartilhamento
