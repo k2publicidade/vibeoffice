@@ -4,6 +4,16 @@
 -- Descrição: Tabela para gerenciar agendamentos de estúdio (baseado no vibe-distro-studio)
 -- ============================================
 
+-- 0. Função utilitária para updated_at (caso não exista)
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- 1. Tabela studio_bookings
 CREATE TABLE IF NOT EXISTS public.studio_bookings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   track_title TEXT NOT NULL,
@@ -60,6 +70,7 @@ CREATE POLICY "Users can delete own bookings"
   USING (auth.uid() = created_by);
 
 -- Trigger para updated_at
-CREATE OR REPLACE TRIGGER update_studio_bookings_modtime
+DROP TRIGGER IF EXISTS update_studio_bookings_modtime ON public.studio_bookings;
+CREATE TRIGGER update_studio_bookings_modtime
   BEFORE UPDATE ON public.studio_bookings
   FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
