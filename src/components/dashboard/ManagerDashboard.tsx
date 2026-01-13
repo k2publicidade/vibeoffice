@@ -81,7 +81,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
     }
 
     // Tarefas do setor
-    const sectorTasks = tasks.filter(t => t.assignedTo && teamMemberIds.includes(t.assignedTo))
+    const sectorTasks = tasks.filter(t => t.assignees?.some(a => teamMemberIds.includes(a)))
     const completedTasks = sectorTasks.filter(t => t.status === 'done').length
     const inProgressTasks = sectorTasks.filter(t => t.status === 'in_progress').length
     const overdueTasks = sectorTasks.filter(t => {
@@ -123,7 +123,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
     if (!tasks) return []
 
     return teamMembers.map(member => {
-      const memberTasks = tasks.filter(t => t.assignedTo === member.id)
+      const memberTasks = tasks.filter(t => t.assignees?.includes(member.id))
       const completed = memberTasks.filter(t => t.status === 'done').length
       const total = memberTasks.length
       const overdue = memberTasks.filter(t => {
@@ -146,7 +146,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
     if (!tasks) return []
 
     return tasks
-      .filter(t => t.assignedTo && teamMemberIds.includes(t.assignedTo) && t.status !== 'done')
+      .filter(t => t.assignees?.some(a => teamMemberIds.includes(a)) && t.status !== 'done')
       .sort((a, b) => {
         // Priorizar por data de vencimento
         if (!a.dueDate && !b.dueDate) return 0
@@ -410,7 +410,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               {recentTasks.length > 0 ? (
                 recentTasks.map((task) => {
-                  const assignee = users?.find(u => u.id === task.assignedTo)
+                  const assignee = users?.find(u => task.assignees?.includes(u.id))
                   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date()
 
                   return (

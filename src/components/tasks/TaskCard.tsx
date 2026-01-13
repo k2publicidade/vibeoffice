@@ -28,7 +28,7 @@ const statusConfig = {
 
 export const TaskCard = memo(function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
   const { users } = useUsers()
-  const assignee = users?.find(u => u.id === task.assignedTo)
+  const assignee = users?.find(u => task.assignees?.includes(u.id))
   const priority = priorityConfig[task.priority as keyof typeof priorityConfig]
   const status = statusConfig[task.status as keyof typeof statusConfig]
 

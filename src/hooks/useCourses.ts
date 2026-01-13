@@ -16,30 +16,33 @@ export function useCourses() {
     setLoading(true)
     try {
       // 1. Fetch Courses
-      const { data: coursesData, error: coursesError } = await supabase
+      const { data: coursesDataRaw, error: coursesError } = await supabase
         .from('courses')
         .select('*')
         .order('created_at', { ascending: false })
 
       if (coursesError) throw coursesError
+      const coursesData = coursesDataRaw as any[]
 
       // 2. Fetch Modules & Lessons (This could be optimized with a join, but separate calls are safer for nested arrays initially)
       // For simplicity/performance in small apps, we fetch all relevant modules/lessons or we could fetch on demand.
       // Let's fetch strict structure for now. To avoid N+1, we fetch all modules and lessons and map them.
 
-      const { data: modulesData, error: modulesError } = await supabase
+      const { data: modulesDataRaw, error: modulesError } = await supabase
         .from('modules' as any)
         .select('*')
         .order('order')
 
       if (modulesError) throw modulesError
+      const modulesData = modulesDataRaw as any[]
 
-      const { data: lessonsData, error: lessonsError } = await supabase
+      const { data: lessonsDataRaw, error: lessonsError } = await supabase
         .from('lessons')
         .select('*')
         .order('order')
 
       if (lessonsError) throw lessonsError
+      const lessonsData = lessonsDataRaw as any[]
 
       // 3. Assemble Structure
       const fullCourses: Course[] = coursesData.map(course => {
@@ -47,14 +50,17 @@ export function useCourses() {
           .filter(m => m.course_id === course.id)
           .map(m => ({
             ...m,
-            lessons: lessonsData.filter(l => l.module_id === m.id)
+            lessons: lessonsData.filter((l: any) => l.module_id === m.id)
           }));
 
         return {
           ...course,
+          difficulty: course.difficulty || 'beginner',
+          tags: course.tags || [],
+          updated_at: course.updated_at || course.created_at,
           modules: courseModules,
-          lessons_count: lessonsData.filter(l => l.course_id === course.id).length
-        };
+          lessons_count: lessonsData.filter((l: any) => l.course_id === course.id).length
+        } as Course;
       });
 
       setCourses(fullCourses)
@@ -148,10 +154,15 @@ export function useCourses() {
     };
   }, [courses, progressData]);
 
+  const isLessonCompleted = useCallback((courseId: string, lessonId: string): boolean => {
+    const completed = progressData[courseId] || [];
+    return completed.includes(lessonId);
+  }, [progressData]);
+
   // --- Admin Actions ---
 
-  const createCourse = async (courseData: Partial<Course>) => {
-    if (!user) return;
+  const createCourse = async (courseData: Partial<Course>): Promise<Course | undefined> => {
+    if (!user) return undefined;
 
     try {
       const { data, error } = await supabase
@@ -163,12 +174,16 @@ export function useCourses() {
       if (error) throw error;
 
       const newCourse = data as any;
-      // Refresh list
-      setCourses(prev => [
-        { ...newCourse, modules: [], lessons_count: 0, createdAt: new Date(newCourse.created_at), updatedAt: new Date(newCourse.updated_at) } as Course,
-        ...prev
-      ]);
-      return data;
+      const courseResult: Course = {
+        ...newCourse,
+        modules: [],
+        lessons_count: 0,
+        createdAt: new Date(newCourse.created_at),
+        updatedAt: new Date(newCourse.updated_at)
+      };
+
+      setCourses(prev => [courseResult, ...prev]);
+      return courseResult;
     } catch (error) {
       console.error('Error creating course:', error);
       throw error;
@@ -305,6 +320,7 @@ export function useCourses() {
     getCourseById,
     toggleLessonComplete,
     getProgressStats,
+    isLessonCompleted,
     // Admin ops
     createCourse,
     updateCourse,

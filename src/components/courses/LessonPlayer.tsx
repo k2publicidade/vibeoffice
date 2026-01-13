@@ -40,9 +40,9 @@ export function LessonPlayer({
     <div className="space-y-6">
       {/* Video placeholder */}
       <div className="w-full bg-black rounded-lg overflow-hidden">
-        {lesson.videoUrl ? (
+        {lesson.content_url ? (
           <iframe
-            src={lesson.videoUrl}
+            src={lesson.content_url}
             className="w-full aspect-video"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -134,7 +134,7 @@ export function LessonPlayer({
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {course.lessons.map((l) => (
+                {course.modules?.flatMap((m) => m.lessons).map((l) => (
                   <div
                     key={l.id}
                     className={`p-3 rounded border cursor-pointer transition-colors ${

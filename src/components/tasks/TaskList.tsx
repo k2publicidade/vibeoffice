@@ -60,7 +60,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
         </TableHeader>
         <TableBody>
           {tasks.map((task) => {
-            const assignee = users?.find(u => u.id === task.assignedTo)
+            const assignee = users?.find(u => task.assignees?.includes(u.id))
             const priority = priorityConfig[task.priority as keyof typeof priorityConfig]
             const status = statusConfig[task.status as keyof typeof statusConfig]
             const dueDate = new Date(task.dueDate || new Date())

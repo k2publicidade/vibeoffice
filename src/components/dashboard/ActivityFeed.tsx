@@ -38,7 +38,7 @@ export function ActivityFeed() {
         id: task.id,
         type: 'task' as const,
         title: `Tarefa "${task.title}" foi concluída`,
-        user: mapUser(users.find(u => u.id === task.assignedTo) || users[0]),
+        user: mapUser(users.find(u => task.assignees?.includes(u.id)) || users[0]),
         timestamp: new Date(now - (index + 1) * 3600000), // 1h, 2h atrás
       })),
       ...(tickets || []).slice(0, 2).map((ticket, index) => ({

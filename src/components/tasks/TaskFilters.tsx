@@ -213,7 +213,7 @@ export function TaskFilters({ filters, onFiltersChange, stats }: TaskFiltersProp
         {/* Responsável */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-300">Responsável</label>
-          <Select value={filters.assignedTo || ALL_VALUE} onValueChange={(value) => handleFilterChange('assignedTo', value)}>
+          <Select value={filters.assignees?.[0] || ALL_VALUE} onValueChange={(value) => onFiltersChange({ ...filters, assignees: value === ALL_VALUE ? undefined : [value] })}>
             <SelectTrigger className="bg-[#1a1a1a] border-[#2a2a2a] text-white">
               <SelectValue placeholder="Todas as pessoas" />
             </SelectTrigger>

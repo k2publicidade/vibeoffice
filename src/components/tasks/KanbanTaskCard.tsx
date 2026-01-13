@@ -43,7 +43,7 @@ export const KanbanTaskCard = memo(function KanbanTaskCard({
   isDragging = false,
 }: KanbanTaskCardProps) {
   const { users } = useUsers()
-  const assignee = users?.find(u => u.id === task.assignedTo)
+  const assignee = users?.find(u => task.assignees?.includes(u.id))
   const priority = priorityConfig[task.priority]
   const dueDate = task.dueDate ? new Date(task.dueDate) : null
   const isOverdue = dueDate && dueDate < new Date() && task.status !== 'done'

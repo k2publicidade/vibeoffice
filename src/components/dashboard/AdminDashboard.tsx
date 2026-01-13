@@ -128,7 +128,7 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
     }, {} as Record<string, { users: number; tasks: number; completed: number }>)
 
     tasks.forEach(task => {
-      const user = users.find(u => u.id === task.assignedTo)
+      const user = users.find(u => task.assignees?.includes(u.id))
       if (user && sectorStats[user.sector]) {
         sectorStats[user.sector].tasks++
         if (task.status === 'done') {

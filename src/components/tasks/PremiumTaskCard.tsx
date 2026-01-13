@@ -40,7 +40,7 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
     }
 
     const { users } = useUsers()
-    const assignee = users?.find(u => u.id === task.assignedTo)
+    const assignee = users?.find(u => task.assignees?.includes(u.id))
     const dueDate = task.dueDate ? new Date(task.dueDate) : null
     const isOverdue = dueDate && dueDate < new Date() && task.status !== 'done'
 
@@ -167,7 +167,7 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
         prevProps.task.title === nextProps.task.title &&
         prevProps.task.priority === nextProps.task.priority &&
         prevProps.task.dueDate?.getTime() === nextProps.task.dueDate?.getTime() &&
-        prevProps.task.assignedTo === nextProps.task.assignedTo &&
+        JSON.stringify(prevProps.task.assignees) === JSON.stringify(nextProps.task.assignees) &&
         prevProps.task.updatedAt.getTime() === nextProps.task.updatedAt.getTime()
     )
 })

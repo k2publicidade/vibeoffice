@@ -91,7 +91,7 @@ export function useTasks(): UseTasksReturn {
               status: payload.new.status,
               priority: payload.new.priority,
               dueDate: payload.new.due_date ? new Date(payload.new.due_date) : undefined,
-              assignedTo: payload.new.assigned_to,
+              assignees: payload.new.assignees || [],
               sector: payload.new.sector,
               createdBy: payload.new.created_by,
               tags: payload.new.tags || [],
@@ -114,7 +114,7 @@ export function useTasks(): UseTasksReturn {
               status: payload.new.status,
               priority: payload.new.priority,
               dueDate: payload.new.due_date ? new Date(payload.new.due_date) : undefined,
-              assignedTo: payload.new.assigned_to,
+              assignees: payload.new.assignees || [],
               sector: payload.new.sector,
               createdBy: payload.new.created_by,
               tags: payload.new.tags || [],
@@ -468,7 +468,7 @@ export function useTasks(): UseTasksReturn {
     // 1.5 Atualizar Assignees se fornecido
     if (updates.assignees !== undefined) {
       // Remove old
-      await supabase.from('task_assignees').delete().eq('task_id', id)
+      await supabase.from('task_assignees' as any).delete().eq('task_id', id)
       // Insert new
       if (updates.assignees.length > 0) {
         const assigneesInsert = updates.assignees.map(userId => ({
