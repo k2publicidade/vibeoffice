@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { UserMenu } from './UserMenu'
 import { NavBar } from '@/components/ui/tubelight-navbar'
-import { Home, Calendar, Ticket, MessageSquare, CheckSquare, FolderOpen, GraduationCap } from 'lucide-react'
+import { Home, Calendar, Ticket, MessageSquare, CheckSquare, FolderOpen, GraduationCap, Mic2 } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 interface TopNavigationProps {
@@ -24,6 +24,7 @@ const navItems = [
   { name: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { name: 'Drive', url: '/drive', icon: FolderOpen },
   { name: 'Cursos', url: '/courses', icon: GraduationCap },
+  { name: 'Estúdio', url: '/studio', icon: Mic2 },
 ]
 
 export function TopNavigation({ onMenuClick }: TopNavigationProps) {
