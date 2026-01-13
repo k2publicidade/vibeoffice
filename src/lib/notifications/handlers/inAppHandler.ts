@@ -29,13 +29,16 @@ export class InAppHandler {
       throw error
     }
 
-    // 2. Broadcast via Realtime
+    // 2. Broadcast manual via Realtime removido pois o INSERT já dispara o evento 'postgres_changes'
+    // e o envio manual estava causando warnings de fallback para REST.
+    /* 
     const channel = this.supabase.channel(`user:${userId}:notifications`)
     await channel.send({
       type: 'broadcast',
       event: 'notification_created',
       payload: notification,
-    })
+    }) 
+    */
   }
 
   private generateTitle(event: NotificationEvent): string {

@@ -6,10 +6,21 @@ export class PushHandler {
 
   async send(userId: string, event: NotificationEvent): Promise<void> {
     // Buscar subscriptions do usuário
-    const { data: subscriptions } = await this.supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('user_id', userId)
+    let subscriptions: any[] | null = []
+
+    try {
+      const { data, error } = await this.supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+
+      if (error) throw error
+      subscriptions = data
+    } catch (err) {
+      // Silenciar erro se tabela não existir (404) ou RLS bloquear
+      // console.debug('[PushHandler] Could not fetch subscriptions', err)
+      return
+    }
 
     if (!subscriptions || subscriptions.length === 0) {
       // console.log('[PushHandler] No subscriptions found for user:', userId)
