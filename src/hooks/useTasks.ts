@@ -440,16 +440,26 @@ export function useTasks(): UseTasksReturn {
     }
 
     // NOVO: Sincronizar status com ticket vinculado
-    if (updates.status && updatedTask.linkedTicketId && oldTask && updates.status !== oldTask.status) {
+    // Atualizado para buscar pelo linked_task_id para maior robustez (caso o link reverso falhe)
+    if (updates.status && oldTask && updates.status !== oldTask.status) {
       const ticketStatus = mapTaskStatusToTicketStatus(updates.status)
 
-      const { error: ticketError } = await supabase
-        .from('tickets')
-        .update({ status: ticketStatus })
-        .eq('id', updatedTask.linkedTicketId)
+      // Tenta atualizar pelo ID do ticket vinculado OU pelo ID da task
+      let query = supabase.from('tickets').update({ status: ticketStatus })
+
+      if (updatedTask.linkedTicketId) {
+        query = query.eq('id', updatedTask.linkedTicketId)
+      } else {
+        query = query.eq('linked_task_id', id)
+      }
+
+      const { error: ticketError } = await query
 
       if (ticketError) {
         console.error('[useTasks] Failed to sync ticket status:', ticketError)
+      } else {
+        // Notificar sucesso (opcional, para debug)
+        console.log('[useTasks] Ticket status synced to:', ticketStatus)
       }
     }
 
