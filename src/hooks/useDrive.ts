@@ -143,8 +143,15 @@ export function useDrive(): UseDriveReturn {
     : null
 
   // Obter itens dentro da pasta atual
+  // Nota: parentId pode ser undefined (raiz) enquanto currentFolderId é null
   const currentFolderItems = useMemo(() => {
-    return items.filter(i => i.parentId === currentFolderId)
+    return items.filter(i => {
+      // Tratar null e undefined como equivalentes para itens na raiz
+      if (currentFolderId === null) {
+        return i.parentId === null || i.parentId === undefined
+      }
+      return i.parentId === currentFolderId
+    })
   }, [items, currentFolderId])
 
   // Construir breadcrumbs (caminho)
@@ -186,7 +193,13 @@ export function useDrive(): UseDriveReturn {
   }, [items, currentFolderId])
 
   const getItemsInFolder = useCallback((folderId: string | null) => {
-    return items.filter(i => i.parentId === folderId)
+    return items.filter(i => {
+      // Tratar null e undefined como equivalentes para itens na raiz
+      if (folderId === null) {
+        return i.parentId === null || i.parentId === undefined
+      }
+      return i.parentId === folderId
+    })
   }, [items])
 
   const getItemById = useCallback((id: string) => {
