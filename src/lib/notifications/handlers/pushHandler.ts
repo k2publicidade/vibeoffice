@@ -12,7 +12,7 @@ export class PushHandler {
       .eq('user_id', userId)
 
     if (!subscriptions || subscriptions.length === 0) {
-      console.log('[PushHandler] No subscriptions found for user:', userId)
+      // console.log('[PushHandler] No subscriptions found for user:', userId)
       return
     }
 

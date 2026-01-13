@@ -36,7 +36,7 @@ export class NotificationProcessor {
         this.inAppHandler.send(userId, event).catch((error) => {
           // Ignorar erros de RLS (permissão) silenciosamente ou com aviso leve
           if (error?.code === '42501' || error?.status === 403 || error?.message?.includes('row-level security')) {
-            console.warn('[Processor] InApp notification skipped due to permissions (RLS)')
+            // console.debug('[Processor] InApp notification skipped due to permissions (RLS)')
           } else {
             console.error('[Processor] InApp failed:', error)
           }
