@@ -147,7 +147,7 @@ const StudioBookingForm: React.FC<StudioBookingFormProps> = ({ onSuccess, onCanc
                 </div>
 
                 {/* Grid Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div className="space-y-2">
                         <label className="text-xs font-medium text-zinc-400 pl-1">Estúdio</label>
                         <div className="relative group">

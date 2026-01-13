@@ -1,6 +1,6 @@
 import React from 'react';
 import { StudioBooking } from '@/types/studio';
-import { Clock, MapPin, Edit, Trash2, Mic2, User, MoreHorizontal, CalendarRange, Share2, Disc } from 'lucide-react';
+import { Clock, MapPin, Edit, Trash2, Mic2, User, MoreHorizontal, CalendarRange, Share2, Disc, Headphones } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

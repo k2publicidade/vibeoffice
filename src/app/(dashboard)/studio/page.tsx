@@ -263,7 +263,7 @@ export default function StudioPage() {
 
                 {/* Form Modal */}
                 <Dialog open={showForm} onOpenChange={setShowForm}>
-                    <DialogContent className="max-w-4xl bg-transparent border-0 p-0 shadow-none">
+                    <DialogContent className="w-full max-w-6xl bg-transparent border-0 p-0 shadow-none">
                         <StudioBookingForm
                             onSuccess={handleFormSuccess}
                             onCancel={() => setShowForm(false)}
