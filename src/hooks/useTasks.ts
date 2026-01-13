@@ -497,10 +497,24 @@ export function useTasks(): UseTasksReturn {
 
   // Deletar tarefa
   const deleteTask = useCallback(async (id: string) => {
+    // 1. Deletar notificações relacionadas à tarefa ANTES de deletar a tarefa
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('entity_type', 'task')
+      .eq('entity_id', id)
+
+    if (notifError) {
+      console.error('Erro ao limpar notificações:', notifError)
+      // Continuar mesmo se falhar - não bloquear deleção da tarefa
+    }
+
+    // 2. Deletar a tarefa
     const { error } = await supabase.from('tasks').delete().eq('id', id)
 
     if (error) throw error
 
+    // 3. Atualizar state local
     setTasks((prev) => prev.filter((t) => t.id !== id))
     return true
   }, [])

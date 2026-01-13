@@ -408,6 +408,43 @@ export function useTickets(): UseTicketsReturn {
           })
         }
 
+        // NOVO: Sincronizar com Task vinculada (Reverse Sync)
+        if ((statusChanged || assigneeChanged) && (oldTicket.linkedTaskId || (data as any).linked_task_id)) {
+          const linkedTaskId = oldTicket.linkedTaskId || (data as any).linked_task_id
+          const taskUpdates: any = {}
+
+          if (statusChanged && updates.status) {
+            // Map TicketStatus -> TaskStatus
+            let taskStatus = 'todo'
+            if (updates.status === 'in_progress') taskStatus = 'in_progress'
+            if (updates.status === 'completed') taskStatus = 'done'
+            // 'analyzing' defaults to 'todo' or maybe 'in_progress'? Let's keep 'todo' for now or 'in_progress' if analyzing? 
+            // Usually Analyzing is actively working, so 'in_progress' might be better, but let's stick to 'todo' if it aligns with "Backlog" mental model, or 'in_progress' if it means "Started".
+            // User previously mapped 'todo' -> 'open'. 'in_progress' -> 'in_progress'.
+            // Let's map 'analyzing' to 'in_progress' to be safe, as it implies work.
+            if (updates.status === 'analyzing') taskStatus = 'in_progress'
+
+            taskUpdates.status = taskStatus
+          }
+
+          if (assigneeChanged && updates.assignedTo) {
+            taskUpdates.assigned_to = updates.assignedTo
+          }
+
+          if (Object.keys(taskUpdates).length > 0) {
+            const { error: taskError } = await supabase
+              .from('tasks')
+              .update(taskUpdates)
+              .eq('id', linkedTaskId)
+
+            if (taskError) {
+              console.error('[useTickets] Failed to sync task:', taskError)
+            } else {
+              console.log('[useTickets] Task synced successfully')
+            }
+          }
+        }
+
         return updatedTicket
       } catch (error) {
         console.error('Error updating ticket:', error)
