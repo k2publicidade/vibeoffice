@@ -5,7 +5,7 @@ import * as Storage from './services/storageService';
 import SessionForm from './components/SessionForm';
 import SessionList from './components/SessionList';
 import DashboardStats from './components/DashboardStats';
-import AIAssistant from './components/AIAssistant';
+
 import LoginScreen from './components/LoginScreen';
 import { PlusCircle, List, LayoutDashboard, AudioWaveform, Download, Filter, XCircle, CalendarRange, LogOut, ShieldCheck, User, Mic2, Headphones, Music } from 'lucide-react';
 
@@ -22,7 +22,7 @@ const App: React.FC = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [view, setView] = useState<ViewState>(ViewState.LIST);
   const [editingSession, setEditingSession] = useState<Session | undefined>(undefined);
-  
+
   // Filter State
   const [filterTitle, setFilterTitle] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -150,7 +150,7 @@ const App: React.FC = () => {
       'Compositores (Nome - Função - Tel - Email)',
       'Observações'
     ];
-    
+
     const escapeCsv = (str: string | undefined | null) => {
       if (!str) return '';
       const stringValue = String(str);
@@ -162,15 +162,15 @@ const App: React.FC = () => {
 
     const formatPeople = (people: Person[]) => {
       return people.map(p => {
-          let parts = [p.name];
-          if (p.contactRole) parts.push(`(${p.contactRole})`);
-          
-          // Handle new and old fields
-          if (p.phone) parts.push(`[Tel: ${p.phone}]`);
-          if (p.email) parts.push(`[Email: ${p.email}]`);
-          if (p.contact && !p.phone && !p.email) parts.push(`[Contato: ${p.contact}]`); // Legacy fallback
+        let parts = [p.name];
+        if (p.contactRole) parts.push(`(${p.contactRole})`);
 
-          return parts.join(' ');
+        // Handle new and old fields
+        if (p.phone) parts.push(`[Tel: ${p.phone}]`);
+        if (p.email) parts.push(`[Email: ${p.email}]`);
+        if (p.contact && !p.phone && !p.email) parts.push(`[Contato: ${p.contact}]`); // Legacy fallback
+
+        return parts.join(' ');
       }).join('; ');
     };
 
@@ -196,7 +196,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `vibe_distro_sessões_completo_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('download', `vibe_distro_sessões_completo_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -213,30 +213,29 @@ const App: React.FC = () => {
       <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
-             <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-orange-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-red-500/20">
-               <AudioWaveform size={24} />
-             </div>
-             <div>
-               <h1 className="text-2xl font-black tracking-tighter text-white uppercase italic">
-                 Vibe <span className="text-red-500">Distro</span>
-               </h1>
-               <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-orange-600 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-red-500/20">
+              <AudioWaveform size={24} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tighter text-white uppercase italic">
+                Vibe <span className="text-red-500">Distro</span>
+              </h1>
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400 font-medium tracking-widest uppercase">Studio Manager</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded border font-bold ${userRole === 'ADMIN' ? 'border-red-500 text-red-500' : 'border-slate-500 text-slate-400'}`}>
                   {userRole}
                 </span>
-               </div>
-             </div>
+              </div>
+            </div>
           </div>
-          
+
           <nav className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => { setView(ViewState.LIST); setEditingSession(undefined); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all hidden sm:flex ${
-                view === ViewState.LIST 
-                  ? 'text-white bg-red-600 shadow-lg shadow-red-600/20' 
-                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all hidden sm:flex ${view === ViewState.LIST
+                ? 'text-white bg-red-600 shadow-lg shadow-red-600/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                }`}
             >
               <LayoutDashboard size={18} />
               Dashboard
@@ -248,13 +247,13 @@ const App: React.FC = () => {
               <div className="text-right hidden md:block">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Logado como</p>
                 <div className="flex items-center justify-end gap-1.5">
-                   <p className="text-sm font-medium text-white">
+                  <p className="text-sm font-medium text-white">
                     {userEmail.split('@')[0]}
                   </p>
                   {userRole === 'ADMIN' ? <ShieldCheck size={14} className="text-red-500" /> : <User size={14} className="text-slate-500" />}
                 </div>
               </div>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-600"
                 title="Sair"
@@ -268,10 +267,10 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        
+
         {view === ViewState.LIST && (
           <div className="space-y-8 animate-fadeIn">
-            
+
             {/* Header Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
@@ -279,7 +278,7 @@ const App: React.FC = () => {
                 <p className="text-slate-400 mt-1">Gerencie suas sessões de estúdio com eficiência.</p>
               </div>
               <div className="flex gap-3">
-                 <button
+                <button
                   onClick={exportSessionsToCSV}
                   className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 px-5 py-3 rounded-lg transition-all font-bold uppercase text-xs tracking-wide"
                 >
@@ -304,14 +303,14 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full">
-                
+
                 {/* Title Filter */}
                 <div className="relative">
                   <label className="block text-xs text-slate-400 mb-1 ml-1">Título / Projeto</label>
-                   <div className="relative">
-                     <Music size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input 
-                      type="text" 
+                  <div className="relative">
+                    <Music size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
                       value={filterTitle}
                       onChange={(e) => setFilterTitle(e.target.value)}
                       placeholder="Buscar faixa..."
@@ -324,9 +323,9 @@ const App: React.FC = () => {
                 <div className="relative">
                   <label className="block text-xs text-slate-400 mb-1 ml-1">Data Início</label>
                   <div className="relative">
-                     <CalendarRange size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                     <input 
-                      type="date" 
+                    <CalendarRange size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="date"
                       value={filterStartDate}
                       onChange={(e) => setFilterStartDate(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg pl-9 pr-3 py-2 focus:ring-red-500 focus:border-red-500 placeholder-slate-500"
@@ -337,10 +336,10 @@ const App: React.FC = () => {
                 {/* Date End */}
                 <div className="relative">
                   <label className="block text-xs text-slate-400 mb-1 ml-1">Data Fim</label>
-                   <div className="relative">
-                     <CalendarRange size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input 
-                      type="date" 
+                  <div className="relative">
+                    <CalendarRange size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="date"
                       value={filterEndDate}
                       onChange={(e) => setFilterEndDate(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg pl-9 pr-3 py-2 focus:ring-red-500 focus:border-red-500 placeholder-slate-500"
@@ -351,10 +350,10 @@ const App: React.FC = () => {
                 {/* Producer Filter */}
                 <div className="relative">
                   <label className="block text-xs text-slate-400 mb-1 ml-1">Produtor</label>
-                   <div className="relative">
-                     <Headphones size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input 
-                      type="text" 
+                  <div className="relative">
+                    <Headphones size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
                       value={filterProducer}
                       onChange={(e) => setFilterProducer(e.target.value)}
                       placeholder="Nome do produtor..."
@@ -366,10 +365,10 @@ const App: React.FC = () => {
                 {/* Artist Filter */}
                 <div className="relative">
                   <label className="block text-xs text-slate-400 mb-1 ml-1">Artista</label>
-                   <div className="relative">
-                     <Mic2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input 
-                      type="text" 
+                  <div className="relative">
+                    <Mic2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
                       value={filterArtist}
                       onChange={(e) => setFilterArtist(e.target.value)}
                       placeholder="Nome do artista..."
@@ -380,7 +379,7 @@ const App: React.FC = () => {
               </div>
 
               {(filterTitle || filterStartDate || filterEndDate || filterProducer || filterArtist) && (
-                <button 
+                <button
                   onClick={clearFilters}
                   className="flex items-center gap-1 text-slate-400 hover:text-red-400 text-xs font-medium uppercase tracking-wide px-3 py-2 transition-colors self-end xl:self-center"
                 >
@@ -392,7 +391,7 @@ const App: React.FC = () => {
 
             {/* Stats */}
             {filteredSessions.length > 0 ? (
-               <DashboardStats sessions={filteredSessions} />
+              <DashboardStats sessions={filteredSessions} />
             ) : sessions.length > 0 ? (
               <div className="text-center py-8 bg-slate-800/30 rounded-xl border border-dashed border-slate-700 text-slate-500">
                 Nenhuma sessão encontrada para os filtros selecionados.
@@ -403,7 +402,7 @@ const App: React.FC = () => {
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-slate-800 rounded-lg">
-                   <List size={20} className="text-red-500" />
+                  <List size={20} className="text-red-500" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-200">
                   {filteredSessions.length !== sessions.length ? 'Sessões Filtradas' : 'Histórico de Sessões'}
@@ -412,32 +411,31 @@ const App: React.FC = () => {
                   </span>
                 </h3>
               </div>
-              <SessionList 
-                sessions={filteredSessions} 
-                onDelete={handleDeleteSession} 
+              <SessionList
+                sessions={filteredSessions}
+                onDelete={handleDeleteSession}
                 onEdit={handleEditSession}
-                userRole={userRole} 
+                userRole={userRole}
               />
             </div>
 
-            {/* AI Assistant - Passing filtered sessions ensures context awareness of filters */}
-            <AIAssistant sessions={filteredSessions} />
+
           </div>
         )}
 
         {view === ViewState.FORM && (
           <div className="animate-fadeIn">
-             <div className="mb-6">
-               <button 
-                 onClick={handleCancelForm}
-                 className="text-slate-400 hover:text-white text-sm flex items-center gap-2 transition-colors group"
-               >
-                 <span className="group-hover:-translate-x-1 transition-transform">←</span> Voltar para Dashboard
-               </button>
-             </div>
-            <SessionForm 
-              onSave={handleSaveSession} 
-              onCancel={handleCancelForm} 
+            <div className="mb-6">
+              <button
+                onClick={handleCancelForm}
+                className="text-slate-400 hover:text-white text-sm flex items-center gap-2 transition-colors group"
+              >
+                <span className="group-hover:-translate-x-1 transition-transform">←</span> Voltar para Dashboard
+              </button>
+            </div>
+            <SessionForm
+              onSave={handleSaveSession}
+              onCancel={handleCancelForm}
               currentUserEmail={userEmail}
               initialData={editingSession}
             />
