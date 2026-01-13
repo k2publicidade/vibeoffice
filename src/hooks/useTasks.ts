@@ -488,6 +488,8 @@ export function useTasks(): UseTasksReturn {
     // Executar em background para não bloquear o fluxo principal ou causar erros visíveis se RLS falhar
     if (updates.status && oldTask && updates.status !== oldTask.status) {
       setTimeout(() => {
+        // Notificações desabilitadas temporariamente para debug de RLS/403
+        /*
         const recipientIds = [
           updatedTask.createdBy,
           updatedTask.assignedTo,
@@ -509,6 +511,7 @@ export function useTasks(): UseTasksReturn {
             console.error('[useTasks] Failed to emit notification (likely RLS denied):', err)
           })
         }
+        */
       }, 0)
     }
 
