@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { ArrowLeft, Plus, Save, GripVertical, Trash2, Video, FileText, Check } from 'lucide-react'
+import { ArrowLeft, Plus, Save, GripVertical, Trash2, Video, FileText, Check, Edit2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Lesson, LessonType } from '@/types/courses'
 

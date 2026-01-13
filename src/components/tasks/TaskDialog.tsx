@@ -24,9 +24,8 @@ import {
 } from '@/components/ui/select'
 import { Plus, Edit2, Calendar as CalendarIcon } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
-
-
-MultiSelect,
+import {
+  MultiSelect,
   MultiSelectContent,
   MultiSelectItem,
 } from '@/components/ui/multi-select'

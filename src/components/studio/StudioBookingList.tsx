@@ -1,7 +1,6 @@
-```
 import React from 'react';
 import { StudioBooking } from '@/types/studio';
-import { Trash2, Headphones, User, Clock, AlertCircle, Edit2 } from 'lucide-react';
+import { Trash2, Headphones, User, Clock, AlertCircle, Edit, MapPin, Mic2, CalendarRange, Disc } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -70,7 +69,7 @@ const StudioBookingList: React.FC<StudioBookingListProps> = ({ bookings, onDelet
                                 {/* Top Row: Meta & Status */}
                                 <div className="flex items-center justify-between gap-4 mb-3">
                                     <div className="flex items-center gap-3">
-                                        <span className={`px - 2.5 py - 1 rounded - md text - [10px] uppercase font - bold tracking - wider border ring - 1 ${ getStatusStyle(booking.status) } `}>
+                                        <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider border ring-1 ${getStatusStyle(booking.status)}`}>
                                             {getStatusLabel(booking.status)}
                                         </span>
                                         {/* Mobile Date Fallback */}
