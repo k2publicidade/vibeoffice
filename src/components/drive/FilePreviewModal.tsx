@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   X,
   Download,
@@ -15,18 +15,25 @@ import {
   FileCode,
   FileArchive,
   Presentation,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Maximize2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase/client'
 import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { DriveItem } from '@/types/drive'
+import { toast } from 'sonner'
 
 interface FilePreviewModalProps {
   open: boolean
@@ -79,6 +86,49 @@ const getFileInfo = (mimeType?: string) => {
   return { icon: File, color: 'text-gray-400', bgColor: 'bg-gray-500/20', label: 'Arquivo' }
 }
 
+// Função para obter URL pública do Supabase Storage
+const getPublicUrl = (storagePath: string | undefined): string | null => {
+  if (!storagePath) return null
+
+  const { data } = supabase.storage
+    .from('drive-files')
+    .getPublicUrl(storagePath)
+
+  return data?.publicUrl || null
+}
+
+// Função para fazer download do arquivo
+const downloadFile = async (file: DriveItem) => {
+  if (!file.url) {
+    toast.error('Arquivo não disponível para download')
+    return
+  }
+
+  try {
+    const { data, error } = await supabase.storage
+      .from('drive-files')
+      .download(file.url)
+
+    if (error) throw error
+
+    // Criar blob URL e fazer download
+    const blob = new Blob([data], { type: file.mimeType || 'application/octet-stream' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = file.name
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    toast.success(`${file.name} baixado com sucesso!`)
+  } catch (error) {
+    console.error('Download error:', error)
+    toast.error('Erro ao baixar arquivo')
+  }
+}
+
 export function FilePreviewModal({
   open,
   onClose,
@@ -87,70 +137,250 @@ export function FilePreviewModal({
   onShare,
   onDelete,
 }: FilePreviewModalProps) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [isLoadingImage, setIsLoadingImage] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const [isDownloading, setIsDownloading] = useState(false)
+
   const fileInfo = useMemo(() => {
     return getFileInfo(file?.mimeType)
   }, [file?.mimeType])
 
   const FileIcon = fileInfo.icon
+  const isImage = file?.mimeType?.startsWith('image/')
+  const isVideo = file?.mimeType?.startsWith('video/')
+  const isAudio = file?.mimeType?.startsWith('audio/')
+  const isPdf = file?.mimeType?.includes('pdf')
+
+  // Carregar URL da imagem quando abrir o modal
+  useEffect(() => {
+    if (open && file && isImage && file.url) {
+      setIsLoadingImage(true)
+      setImageError(false)
+
+      const url = getPublicUrl(file.url)
+      if (url) {
+        setImageUrl(url)
+      } else {
+        setImageError(true)
+      }
+      setIsLoadingImage(false)
+    } else {
+      setImageUrl(null)
+      setZoom(1)
+    }
+  }, [open, file, isImage])
+
+  // Handler de download
+  const handleDownload = async () => {
+    if (!file) return
+
+    setIsDownloading(true)
+    try {
+      await downloadFile(file)
+      onDownload?.(file)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  // Zoom controls
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3))
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.5))
+  const handleZoomReset = () => setZoom(1)
 
   if (!file) return null
 
-  const isImage = file.mimeType?.startsWith('image/')
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] bg-black border-[#262626] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] bg-black border-[#262626] p-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#262626]">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={cn('p-2 rounded-lg', fileInfo.bgColor)}>
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className={cn('p-2 rounded-lg shrink-0', fileInfo.bgColor)}>
               <FileIcon className={cn('h-5 w-5', fileInfo.color)} />
             </div>
             <div className="min-w-0">
               <h3 className="font-semibold text-white truncate">{file.name}</h3>
-              <p className="text-xs text-gray-400">{fileInfo.label}</p>
+              <p className="text-xs text-gray-400">{fileInfo.label} • {formatFileSize(file.size)}</p>
             </div>
           </div>
+
+          {/* Zoom controls para imagens */}
+          {isImage && imageUrl && !imageError && (
+            <div className="flex items-center gap-1 mr-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.5}
+                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-gray-400 w-12 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleZoomIn}
+                disabled={zoom >= 3}
+                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleZoomReset}
+                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                <RotateCw className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+            className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a] shrink-0"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Preview Area */}
-        <div className="relative min-h-[300px] max-h-[400px] bg-[#0a0a0a] flex items-center justify-center p-8">
-          {isImage ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="relative max-w-full max-h-full"
-            >
-              {/* Placeholder para imagem - em produção usaria a URL real */}
-              <div className="flex flex-col items-center justify-center p-8 rounded-lg border-2 border-dashed border-[#262626]">
-                <Image className="h-16 w-16 text-purple-400 mb-4" />
-                <p className="text-white font-medium">{file.name}</p>
-                <p className="text-sm text-gray-400 mt-1">Preview da imagem</p>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center text-center"
-            >
-              <div className={cn('p-6 rounded-2xl mb-4', fileInfo.bgColor)}>
-                <FileIcon className={cn('h-16 w-16', fileInfo.color)} />
-              </div>
-              <p className="text-lg font-medium text-white">{file.name}</p>
-              <p className="text-sm text-gray-400 mt-1">
-                Preview não disponível para este tipo de arquivo
-              </p>
-            </motion.div>
-          )}
+        <div className="relative min-h-[350px] max-h-[500px] bg-[#0a0a0a] flex items-center justify-center overflow-auto">
+          <AnimatePresence mode="wait">
+            {isImage ? (
+              isLoadingImage ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center p-8"
+                >
+                  <Loader2 className="h-10 w-10 text-purple-400 animate-spin mb-4" />
+                  <p className="text-gray-400">Carregando preview...</p>
+                </motion.div>
+              ) : imageUrl && !imageError ? (
+                <motion.div
+                  key="image"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="p-4 overflow-auto w-full h-full flex items-center justify-center"
+                  style={{ cursor: zoom > 1 ? 'move' : 'default' }}
+                >
+                  <img
+                    src={imageUrl}
+                    alt={file.name}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-200"
+                    style={{ transform: `scale(${zoom})` }}
+                    onError={() => setImageError(true)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="error"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex flex-col items-center justify-center p-8"
+                >
+                  <div className={cn('p-4 rounded-xl mb-4', fileInfo.bgColor)}>
+                    <Image className={cn('h-12 w-12', fileInfo.color)} />
+                  </div>
+                  <p className="text-white font-medium">{file.name}</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Não foi possível carregar o preview da imagem
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownload}
+                    className="mt-4 border-[#262626] text-white hover:bg-[#1a1a1a]"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar para visualizar
+                  </Button>
+                </motion.div>
+              )
+            ) : isVideo ? (
+              <motion.div
+                key="video"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center p-8"
+              >
+                <div className={cn('p-6 rounded-2xl mb-4', fileInfo.bgColor)}>
+                  <Video className={cn('h-16 w-16', fileInfo.color)} />
+                </div>
+                <p className="text-lg font-medium text-white">{file.name}</p>
+                <p className="text-sm text-gray-400 mt-1 mb-4">
+                  Faça o download para assistir ao vídeo
+                </p>
+                <Button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67] gap-2"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isDownloading ? 'Baixando...' : 'Download'}
+                </Button>
+              </motion.div>
+            ) : isAudio ? (
+              <motion.div
+                key="audio"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center p-8"
+              >
+                <div className={cn('p-6 rounded-2xl mb-4', fileInfo.bgColor)}>
+                  <Music className={cn('h-16 w-16', fileInfo.color)} />
+                </div>
+                <p className="text-lg font-medium text-white">{file.name}</p>
+                <p className="text-sm text-gray-400 mt-1 mb-4">
+                  Faça o download para ouvir o áudio
+                </p>
+                <Button
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67] gap-2"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isDownloading ? 'Baixando...' : 'Download'}
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="default"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center text-center p-8"
+              >
+                <div className={cn('p-6 rounded-2xl mb-4', fileInfo.bgColor)}>
+                  <FileIcon className={cn('h-16 w-16', fileInfo.color)} />
+                </div>
+                <p className="text-lg font-medium text-white">{file.name}</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Preview não disponível para este tipo de arquivo
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* File Info */}
@@ -203,11 +433,21 @@ export function FilePreviewModal({
             </Button>
             <Button
               size="sm"
-              onClick={() => onDownload?.(file)}
-              className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67] gap-2"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67] gap-2 min-w-[120px]"
             >
-              <Download className="h-4 w-4" />
-              Download
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Baixando...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download
+                </>
+              )}
             </Button>
           </div>
         </div>

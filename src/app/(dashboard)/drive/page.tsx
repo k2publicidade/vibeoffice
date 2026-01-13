@@ -12,14 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Upload, ArrowUp, Users } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { DeleteConfirmModal, SuccessModal, ErrorModal } from '@/components/drive/AlertModal'
 import { DriveItem, SharePermission } from '@/types/drive'
 
 export default function DrivePage() {
@@ -52,6 +45,9 @@ export default function DrivePage() {
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
   const [previewFile, setPreviewFile] = useState<DriveItem | null>(null)
   const [shareItem_, setShareItem] = useState<DriveItem | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [successModal, setSuccessModal] = useState<{ open: boolean; title: string; description?: string }>({ open: false, title: '' })
+  const [errorModal, setErrorModal] = useState<{ open: boolean; title: string; description?: string }>({ open: false, title: '' })
 
   // Obter compartilhamentos do item selecionado
   const itemShares = useMemo(() => {
@@ -72,14 +68,30 @@ export default function DrivePage() {
     setShowDeleteDialog(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteItemId) {
       const item = getItemById(deleteItemId)
-      deleteItem(deleteItemId)
-      toast.success(`"${item?.name}" foi excluído com sucesso`)
+      setIsDeleting(true)
+      try {
+        await deleteItem(deleteItemId)
+        setShowDeleteDialog(false)
+        setDeleteItemId(null)
+        setSuccessModal({
+          open: true,
+          title: 'Arquivo excluído!',
+          description: `"${item?.name}" foi removido com sucesso.`
+        })
+      } catch (error) {
+        console.error('Delete error:', error)
+        setErrorModal({
+          open: true,
+          title: 'Erro ao excluir',
+          description: 'Não foi possível excluir o item. Tente novamente.'
+        })
+      } finally {
+        setIsDeleting(false)
+      }
     }
-    setShowDeleteDialog(false)
-    setDeleteItemId(null)
   }
 
   const handleDownload = (itemId: string) => {
@@ -104,13 +116,39 @@ export default function DrivePage() {
   }
 
   const handleUpload = async (files: File[]) => {
-    await uploadFiles(files, currentFolderId)
-    toast.success(`${files.length} arquivo(s) enviado(s) com sucesso!`)
+    try {
+      await uploadFiles(files, currentFolderId)
+      setSuccessModal({
+        open: true,
+        title: 'Upload concluído!',
+        description: `${files.length} arquivo(s) enviado(s) com sucesso.`
+      })
+    } catch (error) {
+      console.error('Upload error:', error)
+      setErrorModal({
+        open: true,
+        title: 'Erro no upload',
+        description: 'Não foi possível enviar os arquivos. Tente novamente.'
+      })
+    }
   }
 
-  const handleCreateFolder = (name: string) => {
-    createFolder({ name, parentId: currentFolderId })
-    toast.success(`Pasta "${name}" criada com sucesso!`)
+  const handleCreateFolder = async (name: string) => {
+    try {
+      await createFolder({ name, parentId: currentFolderId })
+      setSuccessModal({
+        open: true,
+        title: 'Pasta criada!',
+        description: `A pasta "${name}" foi criada com sucesso.`
+      })
+    } catch (error) {
+      console.error('Create folder error:', error)
+      setErrorModal({
+        open: true,
+        title: 'Erro ao criar pasta',
+        description: 'Não foi possível criar a pasta. Tente novamente.'
+      })
+    }
   }
 
   // Handlers de compartilhamento
@@ -312,27 +350,34 @@ export default function DrivePage() {
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="bg-black border-[#262626]">
-          <AlertDialogTitle className="text-white">Deletar item</AlertDialogTitle>
-          <AlertDialogDescription className="text-gray-400">
-            Tem certeza que deseja deletar este item? Esta ação não pode ser
-            desfeita.
-          </AlertDialogDescription>
-          <div className="flex gap-2 justify-end">
-            <AlertDialogCancel className="border-[#262626] text-white hover:bg-[#1a1a1a] hover:text-white">
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-500 text-white hover:bg-red-600"
-            >
-              Deletar
-            </AlertDialogAction>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        open={showDeleteDialog}
+        onClose={() => {
+          setShowDeleteDialog(false)
+          setDeleteItemId(null)
+        }}
+        itemName={deleteItemId ? getItemById(deleteItemId)?.name || 'Item' : 'Item'}
+        itemType={deleteItemId ? (getItemById(deleteItemId)?.type === 'folder' ? 'folder' : 'file') : 'file'}
+        onConfirm={confirmDelete}
+        isLoading={isDeleting}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        open={successModal.open}
+        onClose={() => setSuccessModal({ open: false, title: '' })}
+        title={successModal.title}
+        description={successModal.description}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        open={errorModal.open}
+        onClose={() => setErrorModal({ open: false, title: '' })}
+        title={errorModal.title}
+        description={errorModal.description}
+      />
 
       {/* Upload Modal */}
       <UploadModal
