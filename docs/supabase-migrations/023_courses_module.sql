@@ -73,12 +73,13 @@ CREATE POLICY "Users can track their own progress" ON user_course_progress
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
 
--- Admin policies (assuming check_is_admin function exists)
+-- Admin policies (using direct role check like other migrations)
 CREATE POLICY "Admins can insert/update/delete courses" ON courses
-    FOR ALL USING (public.check_is_admin(auth.uid()));
+    FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) = 'Admin');
 
 CREATE POLICY "Admins can insert/update/delete modules" ON modules
-    FOR ALL USING (public.check_is_admin(auth.uid()));
+    FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) = 'Admin');
 
 CREATE POLICY "Admins can insert/update/delete lessons" ON lessons
-    FOR ALL USING (public.check_is_admin(auth.uid()));
+    FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) = 'Admin');
+
