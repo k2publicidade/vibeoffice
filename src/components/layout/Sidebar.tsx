@@ -11,6 +11,7 @@ import {
   BookOpen,
   Calendar,
   X,
+  Mic2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -56,6 +57,11 @@ const navigation = [
     name: 'Agenda',
     href: '/calendar',
     icon: Calendar,
+  },
+  {
+    name: 'Estúdio',
+    href: '/studio',
+    icon: Mic2,
   },
 ]
 

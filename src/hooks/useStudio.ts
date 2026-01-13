@@ -12,13 +12,13 @@ export function useStudio() {
         setLoading(true)
         try {
             const { data, error } = await supabase
-                .from('studio_bookings')
+                .from('studio_bookings' as any)
                 .select('*')
                 .order('booking_date', { ascending: false })
                 .order('start_time', { ascending: false })
 
             if (error) throw error
-            setBookings(data as StudioBooking[])
+            setBookings(data as any as StudioBooking[])
         } catch (error) {
             console.error('Error fetching bookings:', error)
             toast.error('Erro ao carregar agendamentos')
@@ -33,7 +33,7 @@ export function useStudio() {
             if (!user) throw new Error('User not authenticated')
 
             const { data, error } = await supabase
-                .from('studio_bookings')
+                .from('studio_bookings' as any)
                 .insert({
                     ...booking,
                     created_by: user.id
@@ -43,7 +43,7 @@ export function useStudio() {
 
             if (error) throw error
 
-            setBookings(prev => [data as StudioBooking, ...prev])
+            setBookings(prev => [data as any as StudioBooking, ...prev])
             toast.success('Sessão agendada com sucesso!')
             return data
         } catch (error) {
@@ -56,7 +56,7 @@ export function useStudio() {
     const updateBooking = async (id: string, updates: Partial<StudioBooking>) => {
         try {
             const { data, error } = await supabase
-                .from('studio_bookings')
+                .from('studio_bookings' as any)
                 .update(updates)
                 .eq('id', id)
                 .select()
@@ -64,7 +64,7 @@ export function useStudio() {
 
             if (error) throw error
 
-            setBookings(prev => prev.map(b => b.id === id ? (data as StudioBooking) : b))
+            setBookings(prev => prev.map(b => b.id === id ? (data as any as StudioBooking) : b))
             toast.success('Sessão atualizada!')
             return data
         } catch (error) {
@@ -77,7 +77,7 @@ export function useStudio() {
     const deleteBooking = async (id: string) => {
         try {
             const { error } = await supabase
-                .from('studio_bookings')
+                .from('studio_bookings' as any)
                 .delete()
                 .eq('id', id)
 
