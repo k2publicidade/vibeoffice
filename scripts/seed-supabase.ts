@@ -80,13 +80,13 @@ async function seedTasks() {
   console.log('📋 Seeding Tasks...')
 
   const { error } = await supabase.from('tasks').insert(
-    mockTasks.map((task) => ({
+    (mockTasks as any[]).map((task: any) => ({
       title: task.title,
       description: task.description,
       status: task.status,
       priority: task.priority,
       due_date: task.dueDate?.toISOString(),
-      assigned_to: task.assignedTo ? userIdMap[task.assignedTo] : null,
+      assigned_to: task.assignees?.[0] ? userIdMap[task.assignees[0]] : (task.assignedTo ? userIdMap[task.assignedTo] : null),
       sector: task.sector,
       created_by: userIdMap[task.createdBy],
       tags: task.tags || [],
@@ -211,9 +211,9 @@ async function seedDrive() {
 async function seedCourses() {
   console.log('📚 Seeding Courses...')
 
-  // Inserir cursos
+  // Inserir cursos - cast to any since mock data format differs from new types
   const { error: coursesError } = await supabase.from('courses').insert(
-    mockCourses.map((course) => ({
+    (mockCourses as any[]).map((course: any) => ({
       id: course.id,
       title: course.title,
       description: course.description,
@@ -227,8 +227,8 @@ async function seedCourses() {
   console.log(`  ✅ ${mockCourses.length} cursos inseridos`)
 
   // Inserir lições
-  const allLessons = mockCourses.flatMap((course) =>
-    course.lessons.map((lesson, idx) => ({
+  const allLessons = (mockCourses as any[]).flatMap((course: any) =>
+    course.lessons.map((lesson: any, idx: number) => ({
       id: lesson.id,
       course_id: course.id,
       title: lesson.title,
@@ -245,7 +245,7 @@ async function seedCourses() {
 
   // Inserir progresso de cursos
   const { error: progressError } = await supabase.from('course_progress').insert(
-    mockCourseProgress.map((progress) => ({
+    (mockCourseProgress as any[]).map((progress: any) => ({
       user_id: userIdMap[progress.userId],
       course_id: progress.courseId,
       completed_lessons: progress.completedLessons || [],
