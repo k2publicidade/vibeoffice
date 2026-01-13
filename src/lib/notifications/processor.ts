@@ -34,7 +34,12 @@ export class NotificationProcessor {
     if (preferences.enable_in_app) {
       channelPromises.push(
         this.inAppHandler.send(userId, event).catch((error) => {
-          console.error('[Processor] InApp failed:', error)
+          // Ignorar erros de RLS (permissão) silenciosamente ou com aviso leve
+          if (error?.code === '42501' || error?.status === 403 || error?.message?.includes('row-level security')) {
+            console.warn('[Processor] InApp notification skipped due to permissions (RLS)')
+          } else {
+            console.error('[Processor] InApp failed:', error)
+          }
         })
       )
     }
@@ -42,7 +47,13 @@ export class NotificationProcessor {
     if (preferences.enable_push) {
       channelPromises.push(
         this.pushHandler.send(userId, event).catch((error) => {
-          console.error('[Processor] Push failed:', error)
+          // Ignorar erros de 404 (subscription not found) que são comuns
+          if (error?.message?.includes('No subscriptions found') || error?.code === 'PGRST116') {
+            // Debug level log
+            // console.debug('[Processor] Push skipped: No subscription')
+          } else {
+            console.error('[Processor] Push failed:', error)
+          }
         })
       )
     }
@@ -62,19 +73,31 @@ export class NotificationProcessor {
     userId: string,
     notificationType: NotificationType
   ): Promise<NotificationPreference> {
-    const { data } = await this.supabase
-      .from('notification_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('notification_type', notificationType)
-      .single()
+    try {
+      // Usar maybeSingle para evitar erro 406/JSON se não existir
+      const { data, error } = await this.supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('notification_type', notificationType)
+        .maybeSingle()
 
-    // Se não encontrar preferências, usar defaults
-    if (!data) {
+      if (error) {
+        // Se for erro de conexão ou outro, logar e retornar default
+        console.warn('[Processor] Error fetching preferences, using default:', error.message)
+        return this.getDefaultPreferences(userId, notificationType)
+      }
+
+      // Se não encontrar preferências (data null), usar defaults
+      if (!data) {
+        return this.getDefaultPreferences(userId, notificationType)
+      }
+
+      return data
+    } catch (err) {
+      // Fallback de segurança para qualquer exceção
       return this.getDefaultPreferences(userId, notificationType)
     }
-
-    return data
   }
 
   private getDefaultPreferences(
