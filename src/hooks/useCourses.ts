@@ -3,39 +3,19 @@
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
-import type { Course, Lesson, CourseProgress } from '@/types/courses'
+import type { Course, Module, Lesson, CourseProgress } from '@/types/courses'
 
-export interface UseCoursesReturn {
-  courses: Course[]
-  progress: CourseProgress[]
-  getCourseById: (id: string) => Course | null
-  getLessonById: (courseId: string, lessonId: string) => Lesson | null
-  getCourseProgress: (courseId: string) => CourseProgress | null
-  updateLessonProgress: (courseId: string, lessonId: string, completed: boolean) => void
-  getCourseLessons: (courseId: string) => Lesson[]
-  getProgressPercentage: (courseId: string) => number
-  getNextLesson: (courseId: string, currentLessonId: string) => Lesson | null
-  getPreviousLesson: (courseId: string, currentLessonId: string) => Lesson | null
-  isLessonCompleted: (courseId: string, lessonId: string) => boolean
-}
-
-export function useCourses(): UseCoursesReturn {
+export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([])
-  const [progress, setProgress] = useState<CourseProgress[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [progressData, setProgressData] = useState<Record<string, string[]>>({}) // courseId -> [completedLessonIds]
   const { user } = useAuth()
 
-  // Fetch inicial de courses com lessons
-  useEffect(() => {
-    if (!user) return
-
-    fetchCourses()
-    fetchProgress()
-  }, [user])
-
-  async function fetchCourses() {
-    setIsLoading(true)
+  // --- Fetch Data ---
+  const fetchCourses = useCallback(async () => {
+    setLoading(true)
     try {
+      // 1. Fetch Courses
       const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
         .select('*')
@@ -43,235 +23,137 @@ export function useCourses(): UseCoursesReturn {
 
       if (coursesError) throw coursesError
 
-      // Para cada curso, buscar as lições
-      const coursesWithLessons = await Promise.all(
-        coursesData.map(async (course) => {
-          const { data: lessonsData, error: lessonsError } = await supabase
-            .from('lessons')
-            .select('*')
-            .eq('course_id', course.id)
-            .order('order')
+      // 2. Fetch Modules & Lessons (This could be optimized with a join, but separate calls are safer for nested arrays initially)
+      // For simplicity/performance in small apps, we fetch all relevant modules/lessons or we could fetch on demand.
+      // Let's fetch strict structure for now. To avoid N+1, we fetch all modules and lessons and map them.
 
-          if (lessonsError) throw lessonsError
+      const { data: modulesData, error: modulesError } = await supabase
+        .from('modules')
+        .select('*')
+        .order('order')
 
-          return {
-            id: course.id,
-            title: course.title,
-            description: course.description || '',
-            instructor: course.instructor || '',
-            lessons: lessonsData.map((lesson, index) => ({
-              id: lesson.id,
-              courseId: course.id,
-              title: lesson.title,
-              videoUrl: lesson.video_url ?? undefined,
-              content: lesson.content || '',
-              order: lesson.order ?? index,
-            })),
-            createdAt: new Date(course.created_at),
-            updatedAt: new Date(course.created_at), // DB não tem updated_at
-          }
-        })
-      )
+      if (modulesError) throw modulesError
 
-      setCourses(coursesWithLessons)
+      const { data: lessonsData, error: lessonsError } = await supabase
+        .from('lessons')
+        .select('*')
+        .order('order')
+
+      if (lessonsError) throw lessonsError
+
+      // 3. Assemble Structure
+      const fullCourses: Course[] = coursesData.map(course => {
+        const courseModules = modulesData
+          .filter(m => m.course_id === course.id)
+          .map(m => ({
+            ...m,
+            lessons: lessonsData.filter(l => l.module_id === m.id)
+          }));
+
+        return {
+          ...course,
+          modules: courseModules,
+          lessons_count: lessonsData.filter(l => l.course_id === course.id).length
+        };
+      });
+
+      setCourses(fullCourses)
+
     } catch (error) {
       console.error('Error fetching courses:', error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
-  }
+  }, [])
 
-  async function fetchProgress() {
-    if (!user) return
 
+  const fetchUserProgress = useCallback(async () => {
+    if (!user) return;
     try {
       const { data, error } = await supabase
-        .from('course_progress')
-        .select('*')
+        .from('user_course_progress')
+        .select('course_id, lesson_id')
         .eq('user_id', user.id)
 
-      if (error) throw error
+      if (error) throw error;
 
-      setProgress(
-        data.map((p) => ({
-          id: p.id,
-          userId: p.user_id,
-          courseId: p.course_id,
-          completedLessons: p.completed_lessons || [],
-          progress: 0, // Calculado dinamicamente via getProgressPercentage
-          lastAccessedAt: p.last_accessed_at ? new Date(p.last_accessed_at) : new Date(),
-        }))
-      )
-    } catch (error) {
-      console.error('Error fetching progress:', error)
+      // Group by course
+      const prog: Record<string, string[]> = {};
+      data.forEach(p => {
+        if (!prog[p.course_id]) prog[p.course_id] = [];
+        prog[p.course_id].push(p.lesson_id);
+      });
+
+      setProgressData(prog);
+
+    } catch (err) {
+      console.error("Error fetching progress", err);
     }
-  }
+  }, [user]);
 
-  const getCourseById = useCallback(
-    (id: string) => {
-      return courses.find((c) => c.id === id) || null
-    },
-    [courses]
-  )
+  useEffect(() => {
+    if (user) {
+      fetchCourses();
+      fetchUserProgress();
+    }
+  }, [user, fetchCourses, fetchUserProgress])
 
-  const getLessonById = useCallback(
-    (courseId: string, lessonId: string) => {
-      const course = getCourseById(courseId)
-      if (!course) return null
-      return course.lessons.find((l) => l.id === lessonId) || null
-    },
-    [getCourseById]
-  )
 
-  const getCourseProgress = useCallback(
-    (courseId: string) => {
-      return progress.find((p) => p.courseId === courseId) || null
-    },
-    [progress]
-  )
+  // --- Actions ---
 
-  const getCourseLessons = useCallback(
-    (courseId: string) => {
-      const course = getCourseById(courseId)
-      return course?.lessons || []
-    },
-    [getCourseById]
-  )
+  const getCourseById = useCallback((id: string) => {
+    return courses.find(c => c.id === id);
+  }, [courses]);
 
-  const getProgressPercentage = useCallback(
-    (courseId: string) => {
-      const courseProgress = getCourseProgress(courseId)
-      const course = getCourseById(courseId)
+  const toggleLessonComplete = async (courseId: string, lessonId: string, isCompleted: boolean) => {
+    if (!user) return;
 
-      if (!courseProgress || !course || course.lessons.length === 0) return 0
+    // Optimistic Update
+    setProgressData(prev => {
+      const current = prev[courseId] || [];
+      const updated = isCompleted
+        ? [...current, lessonId]
+        : current.filter(id => id !== lessonId);
+      return { ...prev, [courseId]: updated };
+    });
 
-      const completedCount = courseProgress.completedLessons.length
-      const totalCount = course.lessons.length
-
-      return Math.round((completedCount / totalCount) * 100)
-    },
-    [getCourseProgress, getCourseById]
-  )
-
-  const updateLessonProgress = useCallback(
-    async (courseId: string, lessonId: string, completed: boolean) => {
-      if (!user) return
-
-      const currentProgress = progress.find((p) => p.courseId === courseId)
-
-      let newCompletedLessons: string[]
-      if (completed) {
-        newCompletedLessons = currentProgress
-          ? Array.from(new Set([...currentProgress.completedLessons, lessonId]))
-          : [lessonId]
+    try {
+      if (isCompleted) {
+        await supabase.from('user_course_progress').insert({
+          user_id: user.id,
+          course_id: courseId,
+          lesson_id: lessonId
+        });
       } else {
-        newCompletedLessons = currentProgress
-          ? currentProgress.completedLessons.filter((id) => id !== lessonId)
-          : []
+        await supabase.from('user_course_progress').delete()
+          .match({ user_id: user.id, lesson_id: lessonId });
       }
+    } catch (err) {
+      console.error("Error updating progress", err);
+      fetchUserProgress(); // Revert on error
+    }
+  };
 
-      try {
-        // Upsert no banco
-        const { error } = await supabase
-          .from('course_progress')
-          .upsert(
-            {
-              user_id: user.id,
-              course_id: courseId,
-              completed_lessons: newCompletedLessons,
-              last_accessed_at: new Date().toISOString(),
-            },
-            { onConflict: 'user_id,course_id' }
-          )
+  const getProgressStats = useCallback((courseId: string): CourseProgress => {
+    const course = courses.find(c => c.id === courseId);
+    const completed = progressData[courseId] || [];
+    const total = course?.lessons_count || 0;
 
-        if (error) throw error
-
-        // Atualizar estado local
-        setProgress((prev) => {
-          const exists = prev.find((p) => p.courseId === courseId)
-          if (exists) {
-            return prev.map((p) =>
-              p.courseId === courseId
-                ? {
-                    ...p,
-                    completedLessons: newCompletedLessons,
-                    lastAccessedAt: new Date(),
-                  }
-                : p
-            )
-          } else {
-            return [
-              ...prev,
-              {
-                id: `${user.id}-${courseId}`, // ID temporário (será substituído ao recarregar)
-                userId: user.id,
-                courseId,
-                completedLessons: newCompletedLessons,
-                progress: 0, // Calculado dinamicamente
-                lastAccessedAt: new Date(),
-              },
-            ]
-          }
-        })
-      } catch (error) {
-        console.error('Error updating lesson progress:', error)
-        throw error
-      }
-    },
-    [user, progress]
-  )
-
-  const getNextLesson = useCallback(
-    (courseId: string, currentLessonId: string) => {
-      const course = getCourseById(courseId)
-      if (!course) return null
-
-      const currentIndex = course.lessons.findIndex((l) => l.id === currentLessonId)
-      if (currentIndex === -1 || currentIndex === course.lessons.length - 1) {
-        return null
-      }
-
-      return course.lessons[currentIndex + 1]
-    },
-    [getCourseById]
-  )
-
-  const getPreviousLesson = useCallback(
-    (courseId: string, currentLessonId: string) => {
-      const course = getCourseById(courseId)
-      if (!course) return null
-
-      const currentIndex = course.lessons.findIndex((l) => l.id === currentLessonId)
-      if (currentIndex <= 0) {
-        return null
-      }
-
-      return course.lessons[currentIndex - 1]
-    },
-    [getCourseById]
-  )
-
-  const isLessonCompleted = useCallback(
-    (courseId: string, lessonId: string) => {
-      const courseProgress = getCourseProgress(courseId)
-      if (!courseProgress) return false
-
-      return courseProgress.completedLessons.includes(lessonId)
-    },
-    [getCourseProgress]
-  )
+    return {
+      course_id: courseId,
+      completed_lessons_count: completed.length,
+      total_lessons_count: total,
+      percentage: total > 0 ? Math.round((completed.length / total) * 100) : 0,
+      completed_lesson_ids: completed
+    };
+  }, [courses, progressData]);
 
   return {
     courses,
-    progress,
+    loading,
+    refresh: fetchCourses,
     getCourseById,
-    getLessonById,
-    getCourseProgress,
-    updateLessonProgress,
-    getCourseLessons,
-    getProgressPercentage,
-    getNextLesson,
-    getPreviousLesson,
-    isLessonCompleted,
+    toggleLessonComplete,
+    getProgressStats
   }
 }
