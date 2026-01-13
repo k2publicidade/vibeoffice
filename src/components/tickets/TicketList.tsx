@@ -14,9 +14,9 @@ interface TicketListProps {
 }
 
 const statusConfig = {
-  open: { label: 'Aberto', color: 'text-yellow-400', bg: 'bg-yellow-500/10', icon: AlertCircle },
+  open: { label: 'A Fazer', color: 'text-zinc-400', bg: 'bg-zinc-500/10', icon: AlertCircle },
   analyzing: { label: 'Em Análise', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: Clock },
-  in_progress: { label: 'Em Execução', color: 'text-orange-400', bg: 'bg-orange-500/10', icon: Clock },
+  in_progress: { label: 'Em Progresso', color: 'text-orange-400', bg: 'bg-orange-500/10', icon: Clock },
   completed: { label: 'Concluído', color: 'text-green-400', bg: 'bg-green-500/10', icon: CheckCircle2 },
 }
 

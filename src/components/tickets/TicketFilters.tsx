@@ -31,9 +31,9 @@ const categories = ['Bug', 'Feature', 'Melhoria', 'Dúvida', 'Outro']
 
 const statusConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   open: {
-    label: 'Aberto',
+    label: 'A Fazer',
     icon: <CircleDot className="h-3.5 w-3.5" />,
-    color: 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+    color: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/30'
   },
   analyzing: {
     label: 'Em Análise',
@@ -41,7 +41,7 @@ const statusConfig: Record<string, { label: string; icon: React.ReactNode; color
     color: 'bg-amber-500/10 text-amber-500 border-amber-500/30'
   },
   in_progress: {
-    label: 'Em Execução',
+    label: 'Em Progresso',
     icon: <PlayCircle className="h-3.5 w-3.5" />,
     color: 'bg-[#ef5907]/10 text-[#ef5907] border-[#ef5907]/30'
   },
