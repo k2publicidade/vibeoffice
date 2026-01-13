@@ -150,9 +150,9 @@ export default function TicketsPage() {
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         {[
-          { label: 'Abertos', count: openCount, borderColor: 'border-yellow-500/20', color: 'text-yellow-500', bg: 'bg-yellow-500/5' },
+          { label: 'A Fazer', count: openCount, borderColor: 'border-zinc-500/20', color: 'text-zinc-500', bg: 'bg-zinc-500/5' },
           { label: 'Em Análise', count: analyzingCount, borderColor: 'border-blue-500/20', color: 'text-blue-500', bg: 'bg-blue-500/5' },
-          { label: 'Em Execução', count: inProgressCount, borderColor: 'border-orange-500/20', color: 'text-orange-500', bg: 'bg-orange-500/5' },
+          { label: 'Em Progresso', count: inProgressCount, borderColor: 'border-orange-500/20', color: 'text-orange-500', bg: 'bg-orange-500/5' },
           { label: 'Concluídos', count: completedCount, borderColor: 'border-green-500/20', color: 'text-green-500', bg: 'bg-green-500/5' },
         ].map((stat, i) => (
           <div key={i} className={cn("rounded-2xl bg-zinc-800/50 border border-zinc-700/50 p-5 transition-all hover:bg-zinc-800/80 group", stat.bg)}>

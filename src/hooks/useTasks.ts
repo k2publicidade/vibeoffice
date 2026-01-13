@@ -405,7 +405,8 @@ export function useTasks(): UseTasksReturn {
       throw new Error(`Dados inválidos: ${errors.join(', ')}`)
     }
 
-    const { data, error } = await supabase
+    // 1. Executar update (sem select para evitar erro 406)
+    const { error: updateError } = await supabase
       .from('tasks')
       .update({
         title: updates.title,
@@ -418,10 +419,18 @@ export function useTasks(): UseTasksReturn {
         tags: updates.tags,
       })
       .eq('id', id)
-      .select()
+
+    if (updateError) throw updateError
+
+    // 2. Buscar dados atualizados
+    const { data: fetchedData, error: fetchError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', id)
       .single()
 
-    if (error) throw error
+    if (fetchError) throw fetchError
+    const data = fetchedData
 
     const updatedTask: Task = {
       id: data.id,
