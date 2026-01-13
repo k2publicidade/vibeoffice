@@ -22,7 +22,10 @@ export class InAppHandler {
       .single()
 
     if (error) {
-      console.error('[InAppHandler] Failed to insert notification:', error)
+      // Apenas logar erro se NÃO for RLS (42501) para evitar spam no console
+      if (error.code !== '42501') {
+        console.error('[InAppHandler] Failed to insert notification:', error)
+      }
       throw error
     }
 
