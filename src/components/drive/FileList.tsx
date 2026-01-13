@@ -26,7 +26,12 @@ export function FileList({
   onFileShare,
 }: FileListProps) {
   // Get items in current folder
-  const currentItems = items.filter((item) => item.parentId === currentFolderId)
+  const currentItems = items.filter((item) => {
+    if (currentFolderId === null) {
+      return item.parentId === null || item.parentId === undefined
+    }
+    return item.parentId === currentFolderId
+  })
 
   // Separate folders and files
   const folders = currentItems.filter((item) => item.type === 'folder')

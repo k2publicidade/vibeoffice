@@ -50,6 +50,8 @@ export interface UseDriveReturn {
   getUserById: (userId: string) => Promise<{ name: string; avatar?: string; email: string } | null>
   isLoading: boolean
   isUploading: boolean
+  storageUsage: number
+  storageLimit: number
 }
 
 export function useDrive(): UseDriveReturn {
@@ -539,7 +541,7 @@ export function useDrive(): UseDriveReturn {
     currentFolder,
     breadcrumbs,
     currentFolderId,
-    setCurrentFolder: () => {},
+    setCurrentFolder: () => { },
     navigateToFolder,
     goBack,
     getItemsInFolder,
@@ -561,5 +563,7 @@ export function useDrive(): UseDriveReturn {
     getUserById,
     isLoading,
     isUploading,
+    storageUsage: items.reduce((acc, item) => acc + (item.size || 0), 0),
+    storageLimit: 10 * 1024 * 1024 * 1024, // 10 GB
   }
 }

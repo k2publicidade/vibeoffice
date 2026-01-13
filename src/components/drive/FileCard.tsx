@@ -18,12 +18,15 @@ import {
   FileArchive,
   Presentation,
   Users,
-  Globe
+  Globe,
+  MoreVertical,
+  Star
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 interface FileCardProps {
   item: DriveItem
@@ -36,40 +39,45 @@ interface FileCardProps {
 // Função para obter informações visuais do arquivo
 const getFileInfo = (mimeType?: string, isFolder?: boolean) => {
   if (isFolder) {
-    return { icon: Folder, color: 'text-blue-400', bgColor: 'bg-blue-500/20' }
+    return {
+      icon: Folder,
+      color: 'text-amber-400',
+      bgColor: 'bg-amber-400/10',
+      gradient: 'from-amber-400/20 to-orange-400/5'
+    }
   }
 
-  if (!mimeType) return { icon: File, color: 'text-gray-400', bgColor: 'bg-gray-500/20' }
+  if (!mimeType) return { icon: File, color: 'text-slate-400', bgColor: 'bg-slate-500/10', gradient: 'from-slate-500/10 to-slate-600/5' }
 
   if (mimeType.startsWith('image/')) {
-    return { icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-500/20' }
+    return { icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-500/10', gradient: 'from-purple-500/20 to-indigo-500/5' }
   }
   if (mimeType.startsWith('video/')) {
-    return { icon: Video, color: 'text-pink-400', bgColor: 'bg-pink-500/20' }
+    return { icon: Video, color: 'text-rose-400', bgColor: 'bg-rose-500/10', gradient: 'from-rose-500/20 to-pink-500/5' }
   }
   if (mimeType.startsWith('audio/')) {
-    return { icon: Music, color: 'text-green-400', bgColor: 'bg-green-500/20' }
+    return { icon: Music, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', gradient: 'from-emerald-500/20 to-teal-500/5' }
   }
   if (mimeType.includes('pdf')) {
-    return { icon: FileText, color: 'text-red-400', bgColor: 'bg-red-500/20' }
+    return { icon: FileText, color: 'text-red-400', bgColor: 'bg-red-500/10', gradient: 'from-red-500/20 to-orange-500/5' }
   }
   if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) {
-    return { icon: FileSpreadsheet, color: 'text-green-400', bgColor: 'bg-green-500/20' }
+    return { icon: FileSpreadsheet, color: 'text-green-400', bgColor: 'bg-green-500/10', gradient: 'from-green-500/20 to-emerald-500/5' }
   }
   if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) {
-    return { icon: Presentation, color: 'text-orange-400', bgColor: 'bg-orange-500/20' }
+    return { icon: Presentation, color: 'text-orange-400', bgColor: 'bg-orange-500/10', gradient: 'from-orange-500/20 to-amber-500/5' }
   }
   if (mimeType.includes('document') || mimeType.includes('word') || mimeType.includes('text')) {
-    return { icon: FileText, color: 'text-blue-400', bgColor: 'bg-blue-500/20' }
+    return { icon: FileText, color: 'text-blue-400', bgColor: 'bg-blue-500/10', gradient: 'from-blue-500/20 to-cyan-500/5' }
   }
   if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('7z') || mimeType.includes('tar')) {
-    return { icon: FileArchive, color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' }
+    return { icon: FileArchive, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', gradient: 'from-yellow-500/20 to-amber-500/5' }
   }
   if (mimeType.includes('javascript') || mimeType.includes('typescript') || mimeType.includes('json') || mimeType.includes('html') || mimeType.includes('css')) {
-    return { icon: FileCode, color: 'text-cyan-400', bgColor: 'bg-cyan-500/20' }
+    return { icon: FileCode, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10', gradient: 'from-cyan-500/20 to-sky-500/5' }
   }
 
-  return { icon: File, color: 'text-gray-400', bgColor: 'bg-gray-500/20' }
+  return { icon: File, color: 'text-slate-400', bgColor: 'bg-slate-500/10', gradient: 'from-slate-500/10 to-gray-500/5' }
 }
 
 export function FileCard({
@@ -100,111 +108,87 @@ export function FileCard({
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all duration-200 group border-[#262626] bg-black/50",
-        "hover:border-[#404040] hover:bg-[#0a0a0a] hover:shadow-lg hover:shadow-black/20",
-        "hover:scale-[1.02]"
+        "cursor-pointer group relative overflow-hidden border-0 bg-zinc-900/40 backdrop-blur-sm",
+        "transition-all duration-300 ease-out",
+        "hover:bg-zinc-800/60 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1",
+        "ring-1 ring-white/5 hover:ring-white/10"
       )}
       onDoubleClick={onDoubleClick}
     >
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          {/* Icon and name */}
-          <div className="flex items-start gap-3">
-            <div className={cn(
-              'p-2.5 rounded-xl shrink-0 transition-transform duration-200 group-hover:scale-110',
-              fileInfo.bgColor
-            )}>
-              <FileIcon className={cn('h-6 w-6', fileInfo.color)} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-white line-clamp-2 text-sm">
-                {item.name}
-              </h3>
-              {/* Share indicator */}
-              {isShared && (
-                <div className="flex items-center gap-1 mt-1">
-                  {item.isPublic ? (
-                    <div className="flex items-center gap-1 text-xs text-green-400">
-                      <Globe className="h-3 w-3" />
-                      <span>Público</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-xs text-blue-400">
-                      <Users className="h-3 w-3" />
-                      <span>{item.sharedWith?.length} pessoa(s)</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+      <div className={cn(
+        "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-100",
+        fileInfo.gradient
+      )} />
+
+      <CardContent className="p-4 relative z-10">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className={cn(
+            'p-3 rounded-2xl transition-all duration-300 group-hover:scale-110 shadow-lg shadow-black/10',
+            fileInfo.bgColor
+          )}>
+            <FileIcon className={cn('h-6 w-6', fileInfo.color)} strokeWidth={isFolder ? 2 : 1.5} />
           </div>
 
-          {/* Metadata */}
-          <div className="flex flex-col gap-1.5">
-            {!isFolder && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">{getFileSize()}</span>
-                <span className="text-[10px] font-medium bg-[#1a1a1a] px-2 py-0.5 rounded text-gray-300 uppercase">
-                  {item.name.split('.').pop() || 'FILE'}
-                </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-zinc-950 border-zinc-800">
+              {!isFolder && (
+                <>
+                  <DropdownMenuItem onClick={onDownload} className="gap-2 text-zinc-300 focus:text-white focus:bg-white/10 cursor-pointer">
+                    <Download className="h-4 w-4" /> Download
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onShare} className="gap-2 text-zinc-300 focus:text-white focus:bg-white/10 cursor-pointer">
+                    <Share2 className="h-4 w-4" /> Compartilhar
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem onClick={onDelete} className="gap-2 text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer">
+                <Trash2 className="h-4 w-4" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="space-y-1">
+          <h3 className="font-medium text-zinc-200 text-sm truncate pr-2 group-hover:text-white transition-colors">
+            {item.name}
+          </h3>
+
+          <div className="flex items-center justify-between text-xs text-zinc-500">
+            <span>{isFolder ? 'Pasta' : getFileSize()}</span>
+            {isShared && (
+              <div className="flex items-center gap-1.5" title={item.isPublic ? "Público" : "Compartilhado"}>
+                {item.isPublic ? (
+                  <Globe className="h-3 w-3 text-emerald-500" />
+                ) : (
+                  <Users className="h-3 w-3 text-blue-500" />
+                )}
               </div>
             )}
-            <div className="text-xs text-gray-500">{timeAgo}</div>
           </div>
+        </div>
 
-          {/* Sector badge */}
+        <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+          <span className="text-[10px] text-zinc-600 font-medium uppercase tracking-wider">
+            {timeAgo}
+          </span>
+
           {item.sector && (
             <Badge
               variant="secondary"
-              className="w-fit text-[10px] bg-[#1a1a1a] text-gray-300 border-[#262626]"
+              className="h-5 px-1.5 text-[10px] bg-white/5 hover:bg-white/10 text-zinc-400 border-0"
             >
               {item.sector}
             </Badge>
           )}
-
-          {/* Actions - Always visible but subtle */}
-          <div className="flex gap-1 pt-1 border-t border-[#1a1a1a] opacity-60 group-hover:opacity-100 transition-opacity">
-            {!isFolder && (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 text-gray-400 hover:text-[#fc7a67] hover:bg-[#fc7a67]/10"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDownload?.()
-                  }}
-                  title="Download"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onShare?.()
-                  }}
-                  title="Compartilhar"
-                >
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 text-gray-400 hover:text-red-400 hover:bg-red-400/10 ml-auto"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete?.()
-              }}
-              title="Deletar"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </CardContent>
     </Card>

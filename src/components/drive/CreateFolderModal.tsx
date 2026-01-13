@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FolderPlus, Loader2 } from 'lucide-react'
+import { FolderPlus, Loader2, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface CreateFolderModalProps {
   open: boolean
@@ -64,7 +65,7 @@ export function CreateFolderModal({
   }
 
   const handleClose = () => {
-    if (isCreating) return // Não fechar enquanto estiver criando
+    if (isCreating) return
     setFolderName('')
     setError('')
     onClose()
@@ -72,22 +73,31 @@ export function CreateFolderModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px] bg-black border-[#262626] p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b border-[#262626]">
-          <DialogTitle className="text-xl font-bold text-white flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-[#0c67ff] to-[#0c67ff]/70">
-              <FolderPlus className="h-5 w-5 text-white" />
-            </div>
-            Nova Pasta
-          </DialogTitle>
-          <p className="text-sm text-gray-400 mt-1">
-            Criar em: <span className="text-white font-medium">{currentFolderName}</span>
-          </p>
+      <DialogContent className="sm:max-w-[425px] bg-zinc-950 border-zinc-800 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#fc7a67] to-[#ff0300]" />
+
+        <DialogHeader className="p-6 pb-2">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl font-bold text-white flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-zinc-900 border border-zinc-800">
+                <FolderPlus className="h-5 w-5 text-[#fc7a67]" />
+              </div>
+              Nova Pasta
+            </DialogTitle>
+            <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 text-zinc-500 hover:text-white">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          {currentFolderName && (
+            <p className="text-sm text-zinc-500 pl-[52px]">
+              Criar em: <span className="text-zinc-300 font-medium">{currentFolderName}</span>
+            </p>
+          )}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="folderName" className="text-sm font-medium text-white">
+            <Label htmlFor="folderName" className="text-sm font-medium text-zinc-400">
               Nome da pasta
             </Label>
             <Input
@@ -97,40 +107,46 @@ export function CreateFolderModal({
                 setFolderName(e.target.value)
                 setError('')
               }}
-              placeholder="Digite o nome da pasta"
-              className="bg-[#1a1a1a] border-[#262626] text-white placeholder:text-gray-500 focus:border-[#0c67ff] focus:ring-[#0c67ff]"
+              placeholder="Ex: Projetos 2024"
+              className="bg-zinc-900/50 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-[#fc7a67] focus:ring-[#fc7a67]/20 transition-all h-11"
               autoFocus
             />
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-xs text-red-400 font-medium"
+                >
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={handleClose}
               disabled={isCreating}
-              className="border-[#262626] text-white hover:bg-[#1a1a1a] hover:text-white"
+              className="text-zinc-400 hover:text-white hover:bg-zinc-900"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={!folderName.trim() || isCreating}
-              className="bg-gradient-to-r from-[#0c67ff] to-[#0c67ff]/80 text-white hover:from-[#0c67ff]/90 hover:to-[#0c67ff] gap-2 min-w-[120px]"
+              className="bg-white text-black hover:bg-zinc-200 min-w-[120px]"
             >
               {isCreating ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Criando...
                 </>
               ) : (
-                <>
-                  <FolderPlus className="h-4 w-4" />
-                  Criar Pasta
-                </>
+                'Criar Pasta'
               )}
             </Button>
           </div>

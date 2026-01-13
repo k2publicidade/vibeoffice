@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
-import { X, Upload, File, Image, FileText, FileSpreadsheet, Trash2, CheckCircle2 } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { X, Upload, File, Image, FileText, FileSpreadsheet, Trash2, CheckCircle2, CloudUpload, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import {
@@ -55,6 +55,13 @@ export function UploadModal({
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Reset state when opening
+  useEffect(() => {
+    if (open && !uploading) {
+      setFiles([])
+    }
+  }, [open, uploading])
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(true)
@@ -67,6 +74,8 @@ export function UploadModal({
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const fileArray = Array.from(newFiles)
+    // Prevent huge number of files? No, let user decide.
+    // Check duplicates? Maybe.
     const newFileItems: FileWithProgress[] = fileArray.map((file) => ({
       file,
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -80,7 +89,6 @@ export function UploadModal({
     (e: React.DragEvent) => {
       e.preventDefault()
       setIsDragging(false)
-
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         addFiles(e.dataTransfer.files)
       }
@@ -93,6 +101,8 @@ export function UploadModal({
       if (e.target.files && e.target.files.length > 0) {
         addFiles(e.target.files)
       }
+      // Reset input value so same files can be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = ''
     },
     [addFiles]
   )
@@ -106,16 +116,18 @@ export function UploadModal({
 
     setUploading(true)
 
-    // Simula progresso de upload para cada arquivo
+    // Simula progresso visual (já que o supabase upload é uma Promise única por arquivo)
+    // Na vida real, o onUpload deveria reportar progresso
+    // Aqui vamos 'faking' um pouco para UX
     const updateProgress = () => {
       setFiles((prev) =>
         prev.map((f) => {
           if (f.status === 'pending' || f.status === 'uploading') {
-            const newProgress = Math.min(f.progress + Math.random() * 30, 100)
+            const newProgress = Math.min(f.progress + Math.random() * 15, 95)
             return {
               ...f,
               progress: newProgress,
-              status: newProgress >= 100 ? 'completed' : 'uploading',
+              status: 'uploading',
             }
           }
           return f
@@ -123,31 +135,33 @@ export function UploadModal({
       )
     }
 
-    // Atualiza progresso em intervalos
-    const interval = setInterval(updateProgress, 200)
+    const interval = setInterval(updateProgress, 300)
 
     try {
       await onUpload(files.map((f) => f.file))
 
-      // Marca todos como completos
+      clearInterval(interval)
+
+      // Mark all as 100%
       setFiles((prev) =>
         prev.map((f) => ({ ...f, progress: 100, status: 'completed' }))
       )
 
-      // Fecha após um delay
+      // Close after delay
       setTimeout(() => {
         onClose()
         setFiles([])
-      }, 1000)
+        setUploading(false)
+      }, 1500)
+
     } catch (error) {
+      clearInterval(interval)
+      setUploading(false)
       setFiles((prev) =>
         prev.map((f) =>
           f.status !== 'completed' ? { ...f, status: 'error' } : f
         )
       )
-    } finally {
-      clearInterval(interval)
-      setUploading(false)
     }
   }
 
@@ -160,16 +174,26 @@ export function UploadModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] bg-black border-[#262626] p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b border-[#262626]">
-          <DialogTitle className="text-xl font-bold text-white flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-[#fc7a67] to-[#ff0300]">
-              <Upload className="h-5 w-5 text-white" />
-            </div>
-            Upload de Arquivos
-          </DialogTitle>
-          <p className="text-sm text-gray-400 mt-1">
-            Enviando para: <span className="text-white font-medium">{currentFolderName}</span>
+      <DialogContent className="sm:max-w-[600px] bg-zinc-950 border-zinc-800 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#fc7a67] to-[#ff0300]" />
+
+        <DialogHeader className="p-6 pb-4 border-b border-zinc-900 bg-zinc-900/50">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl font-bold text-white flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-800">
+                <CloudUpload className="h-5 w-5 text-[#fc7a67]" />
+              </div>
+              Upload de Arquivos
+            </DialogTitle>
+            {!uploading && (
+              <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 text-zinc-500 hover:text-white">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <p className="text-sm text-zinc-500 pl-[52px]">
+            Enviando para: <span className="text-zinc-300 font-medium">{currentFolderName}</span>
           </p>
         </DialogHeader>
 
@@ -179,46 +203,51 @@ export function UploadModal({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !uploading && fileInputRef.current?.click()}
             className={cn(
-              'relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200',
+              'relative border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-300 group overflow-hidden',
               isDragging
-                ? 'border-[#fc7a67] bg-[#fc7a67]/10'
-                : 'border-[#262626] hover:border-[#fc7a67]/50 hover:bg-[#1a1a1a]'
+                ? 'border-[#fc7a67] bg-[#fc7a67]/5 scale-[1.02]'
+                : uploading
+                  ? 'border-zinc-800 bg-zinc-900/20 cursor-default opacity-50'
+                  : 'border-zinc-800 bg-zinc-900/20 hover:border-zinc-700 hover:bg-zinc-900/50 cursor-pointer'
             )}
           >
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#fc7a67]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
             <input
               ref={fileInputRef}
               type="file"
               multiple
               onChange={handleFileSelect}
               className="hidden"
+              disabled={uploading}
             />
 
             <motion.div
-              animate={{ scale: isDragging ? 1.05 : 1 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col items-center gap-4"
+              animate={{ scale: isDragging ? 1.05 : 1, y: isDragging ? -5 : 0 }}
+              className="relative z-10 flex flex-col items-center gap-4"
             >
               <div
                 className={cn(
-                  'p-4 rounded-full transition-colors',
-                  isDragging ? 'bg-[#fc7a67]/20' : 'bg-[#1a1a1a]'
+                  'p-4 rounded-full transition-colors duration-300 shadow-lg',
+                  isDragging ? 'bg-[#fc7a67]/20 shadow-[#fc7a67]/20' : 'bg-zinc-900 shadow-black/50'
                 )}
               >
                 <Upload
                   className={cn(
-                    'h-8 w-8 transition-colors',
-                    isDragging ? 'text-[#fc7a67]' : 'text-gray-400'
+                    'h-8 w-8 transition-colors duration-300',
+                    isDragging ? 'text-[#fc7a67]' : 'text-zinc-400 group-hover:text-zinc-200'
                   )}
                 />
               </div>
-              <div>
-                <p className="text-white font-medium">
-                  {isDragging ? 'Solte os arquivos aqui' : 'Arraste e solte arquivos'}
+              <div className="space-y-1">
+                <p className="text-white font-medium text-lg">
+                  {isDragging ? 'Solte para adicionar' : 'Arraste e solte arquivos aqui'}
                 </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  ou clique para selecionar
+                <p className="text-sm text-zinc-500">
+                  ou clique para selecionar do seu computador
                 </p>
               </div>
             </motion.div>
@@ -233,42 +262,50 @@ export function UploadModal({
                 exit={{ opacity: 0, height: 0 }}
                 className="space-y-3"
               >
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-white">
-                    Arquivos selecionados ({files.length})
+                <div className="flex items-center justify-between px-1">
+                  <h4 className="text-sm font-medium text-zinc-400">
+                    Arquivos ({files.length})
                   </h4>
                   {!uploading && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setFiles([])}
-                      className="text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+                      className="h-auto py-1 px-2 text-xs text-zinc-500 hover:text-red-400 hover:bg-red-900/10"
                     >
-                      Limpar tudo
+                      Remover todos
                     </Button>
                   )}
                 </div>
 
-                <div className="max-h-[240px] overflow-y-auto space-y-2 pr-2">
+                <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-zinc-800">
                   {files.map((fileItem) => {
                     const FileIcon = getFileIcon(fileItem.file.type)
 
                     return (
                       <motion.div
                         key={fileItem.id}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-[#1a1a1a] border border-[#262626] group"
+                        exit={{ opacity: 0, x: 10 }}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900 border border-zinc-800 group relative overflow-hidden"
                       >
+                        {/* Progress bar background for uploading items */}
+                        {fileItem.status === 'uploading' && (
+                          <div
+                            className="absolute bottom-0 left-0 h-[2px] bg-[#fc7a67] transition-all duration-300"
+                            style={{ width: `${fileItem.progress}%` }}
+                          />
+                        )}
+
                         <div
                           className={cn(
-                            'p-2 rounded-lg',
+                            'p-2 rounded-lg shrink-0',
                             fileItem.status === 'completed'
-                              ? 'bg-green-500/20'
+                              ? 'bg-green-500/10'
                               : fileItem.status === 'error'
-                              ? 'bg-red-500/20'
-                              : 'bg-[#262626]'
+                                ? 'bg-red-500/10'
+                                : 'bg-zinc-800'
                           )}
                         >
                           {fileItem.status === 'completed' ? (
@@ -277,34 +314,32 @@ export function UploadModal({
                             <FileIcon
                               className={cn(
                                 'h-5 w-5',
-                                fileItem.status === 'error'
-                                  ? 'text-red-500'
-                                  : 'text-gray-400'
+                                fileItem.status === 'error' ? 'text-red-500' : 'text-zinc-400'
                               )}
                             />
                           )}
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">
-                            {fileItem.file.name}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-500">
-                              {formatFileSize(fileItem.file.size)}
-                            </span>
+                        <div className="flex-1 min-w-0 z-10">
+                          <div className="flex justify-between items-start">
+                            <p className="text-sm font-medium text-zinc-200 truncate pr-2">
+                              {fileItem.file.name}
+                            </p>
                             {fileItem.status === 'uploading' && (
-                              <span className="text-xs text-[#fc7a67]">
+                              <span className="text-xs font-mono text-[#fc7a67] shrink-0">
                                 {Math.round(fileItem.progress)}%
                               </span>
                             )}
                           </div>
-                          {fileItem.status === 'uploading' && (
-                            <Progress
-                              value={fileItem.progress}
-                              className="h-1 mt-2 bg-[#262626]"
-                            />
-                          )}
+
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-zinc-500">
+                              {formatFileSize(fileItem.file.size)}
+                            </span>
+                            {fileItem.status === 'error' && (
+                              <span className="text-xs text-red-500">Erro no upload</span>
+                            )}
+                          </div>
                         </div>
 
                         {!uploading && fileItem.status === 'pending' && (
@@ -312,7 +347,7 @@ export function UploadModal({
                             variant="ghost"
                             size="icon"
                             onClick={() => removeFile(fileItem.id)}
-                            className="opacity-0 group-hover:opacity-100 h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                            className="h-8 w-8 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -326,29 +361,35 @@ export function UploadModal({
           </AnimatePresence>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              disabled={uploading}
-              className="border-[#262626] text-white hover:bg-[#1a1a1a] hover:text-white"
-            >
-              Cancelar
-            </Button>
+          <div className="flex justify-end gap-3 pt-2">
+            {!uploading && (
+              <Button
+                variant="ghost"
+                onClick={handleClose}
+                className="text-zinc-400 hover:text-white"
+              >
+                Cancelar
+              </Button>
+            )}
             <Button
               onClick={handleUpload}
               disabled={files.length === 0 || uploading}
-              className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67] gap-2"
+              className={cn(
+                "min-w-[140px] transition-all duration-300",
+                uploading
+                  ? "bg-zinc-800 text-zinc-400"
+                  : "bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:shadow-lg hover:shadow-orange-500/20 text-white"
+              )}
             >
               {uploading ? (
                 <>
-                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Enviando...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4" />
-                  Enviar {files.length > 0 && `(${files.length})`}
+                  <Upload className="h-4 w-4 mr-2" />
+                  Iniciar Upload
                 </>
               )}
             </Button>

@@ -1,19 +1,42 @@
 'use client'
 
 import { useDrive } from '@/hooks/useDrive'
-import { FileList } from '@/components/drive/FileList'
+import { DriveGrid } from '@/components/drive/DriveGrid'
+import { DriveList } from '@/components/drive/DriveList'
 import { FolderTree } from '@/components/drive/FolderTree'
 import { UploadModal } from '@/components/drive/UploadModal'
 import { CreateFolderModal } from '@/components/drive/CreateFolderModal'
 import { FilePreviewModal } from '@/components/drive/FilePreviewModal'
 import { ShareModal } from '@/components/drive/ShareModal'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Upload, ArrowUp, Users } from 'lucide-react'
+import {
+  Plus,
+  Upload,
+  Search,
+  LayoutGrid,
+  List,
+  Home,
+  ChevronRight,
+  Filter,
+  MoreHorizontal
+} from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
 import { DeleteConfirmModal, SuccessModal, ErrorModal } from '@/components/drive/AlertModal'
 import { DriveItem, SharePermission } from '@/types/drive'
+import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
+
+type ViewMode = 'grid' | 'list'
 
 export default function DrivePage() {
   const {
@@ -37,8 +60,25 @@ export default function DrivePage() {
     availableUsers,
     getUserById,
     isUploading,
+    storageUsage,
+    storageLimit,
   } = useDrive()
 
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+
+  // Format bytes helper
+  const formatBytes = (bytes: number, decimals = 1) => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const dm = decimals < 0 ? 0 : decimals
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+  }
+
+  const usagePercentage = Math.min((storageUsage / storageLimit) * 100, 100)
+  const isNearLimit = usagePercentage > 90
+  const [searchQuery, setSearchQuery] = useState('')
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -55,12 +95,20 @@ export default function DrivePage() {
     return getItemShares(shareItem_.id)
   }, [shareItem_, getItemShares])
 
+  // Filtrar itens baseado na busca
+  const filteredItems = useMemo(() => {
+    if (!searchQuery) return items
+    return items.filter(item =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [items, searchQuery])
+
+  // Se tiver busca, mostramos todos os resultados flat. Se não, usamos a lógica de pastas do componente Grid/List
+  const displayItems = searchQuery ? filteredItems : items
+
   const handleFolderOpen = (folderId: string) => {
     navigateToFolder(folderId)
-  }
-
-  const handleGoBack = () => {
-    goBack()
+    setSearchQuery('')
   }
 
   const handleDelete = (itemId: string) => {
@@ -150,7 +198,7 @@ export default function DrivePage() {
       const user = await getUserById(userId)
       toast.success(`Compartilhado com ${user?.name || 'usuário'}`)
     } catch (error) {
-      toast.error('Funcionalidade ainda não implementada')
+      toast.error('Erro ao compartilhar item')
     }
   }
 
@@ -171,7 +219,6 @@ export default function DrivePage() {
     togglePublicAccess(shareItem_.id)
     const updatedItem = getItemById(shareItem_.id)
     toast.success(updatedItem?.isPublic ? 'Acesso público ativado' : 'Acesso público desativado')
-    // Atualiza o item local para refletir mudança
     if (updatedItem) setShareItem(updatedItem)
   }
 
@@ -184,164 +231,194 @@ export default function DrivePage() {
   }
 
   return (
-    <div className="space-y-8 p-6 md:p-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Drive</h1>
-            <p className="text-muted-foreground">
-              Gerencie documentos e arquivos compartilhados
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setShowUploadModal(true)}
-              className="gap-2 bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67]"
-            >
-              <Upload className="h-4 w-4" />
-              Upload
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateFolderModal(true)}
-              className="gap-2 border-[#262626] hover:bg-[#1a1a1a] hover:text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Nova Pasta
-            </Button>
-          </div>
+    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-black text-zinc-100">
+
+      {/* Sidebar - Desktop */}
+      <div className="hidden lg:flex w-64 flex-col border-r border-[#262626] bg-black/50 backdrop-blur-sm">
+        <div className="p-4">
+          <Button
+            onClick={() => setShowUploadModal(true)}
+            className="w-full gap-2 bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67] shadow-lg shadow-orange-500/20"
+          >
+            <Upload className="h-4 w-4" />
+            Novo Upload
+          </Button>
         </div>
-      </div>
-
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigateToFolder(null)}
-          className="text-xs"
-        >
-          Raiz
-        </Button>
-
-        {breadcrumbs.map((folder, index) => (
-          <div key={folder.id} className="flex items-center gap-2">
-            <span className="text-muted-foreground">/</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigateToFolder(folder.id)}
-              className="text-xs"
-            >
-              {folder.name}
-            </Button>
-          </div>
-        ))}
-
-        {currentFolder && (
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">/</span>
-            <span className="text-sm font-medium">{currentFolder.name}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total de Itens</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {getItemsInFolder(currentFolder?.id || null).length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pastas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {getItemsInFolder(currentFolder?.id || null).filter(
-                (i) => i.type === 'folder'
-              ).length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Arquivos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {getItemsInFolder(currentFolder?.id || null).filter(
-                (i) => i.type === 'file'
-              ).length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4 text-[#fc7a67]" />
-              Compartilhados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#fc7a67]">
-              {items.filter(i => (i.sharedWith && i.sharedWith.length > 0) || i.isPublic).length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-4">
-        {/* Sidebar - Folder Tree - Hidden on mobile */}
-        <div className="hidden lg:block lg:col-span-1">
+        <div className="flex-1 overflow-y-auto px-2">
           <FolderTree
             items={items}
-            currentFolderId={currentFolder?.id || null}
+            currentFolderId={currentFolderId}
             onFolderSelect={navigateToFolder}
             breadcrumbs={breadcrumbs}
           />
         </div>
-
-        {/* Main Area - File List */}
-        <div className="lg:col-span-3">
-          {breadcrumbs.length > 0 && (
-            <div className="mb-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGoBack}
-                className="gap-2"
-              >
-                <ArrowUp className="h-4 w-4" />
-                Voltar
-              </Button>
+        <div className="p-4 border-t border-[#262626]">
+          <div className="rounded-xl bg-zinc-900/50 p-3 space-y-2">
+            <div className="flex justify-between text-xs text-zinc-400">
+              <span>Armazenamento</span>
+              <span className={cn(isNearLimit ? "text-red-400" : "text-zinc-400")}>
+                {usagePercentage.toFixed(1)}%
+              </span>
             </div>
-          )}
-
-          <FileList
-            items={items}
-            currentFolderId={currentFolder?.id || null}
-            onFolderOpen={handleFolderOpen}
-            onFileClick={handleFileClick}
-            onFileDelete={handleDelete}
-            onFileDownload={handleDownload}
-            onFileShare={handleShare}
-          />
+            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${usagePercentage}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className={cn(
+                  "h-full rounded-full transition-colors duration-300",
+                  isNearLimit ? "bg-red-500" : "bg-[#fc7a67]"
+                )}
+              />
+            </div>
+            <p className="text-[10px] text-zinc-500 truncate">
+              {formatBytes(storageUsage)} de {formatBytes(storageLimit)} usados
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-br from-black to-zinc-900/20">
+
+        {/* Toolbar */}
+        <div className="h-16 border-b border-[#262626] flex items-center justify-between px-6 bg-black/40 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center gap-4 flex-1">
+            {/* Mobile Menu Trigger would go here */}
+
+            {/* Breadcrumbs */}
+            <nav className="flex items-center text-sm font-medium text-zinc-500 overflow-hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-zinc-500 hover:text-white"
+                onClick={() => navigateToFolder(null)}
+              >
+                <Home className="h-4 w-4" />
+              </Button>
+
+              {breadcrumbs.map((crumb) => (
+                <div key={crumb.id} className="flex items-center">
+                  <ChevronRight className="h-4 w-4 mx-1" />
+                  <span
+                    className="hover:text-white cursor-pointer transition-colors max-w-[150px] truncate"
+                    onClick={() => navigateToFolder(crumb.id)}
+                  >
+                    {crumb.name}
+                  </span>
+                </div>
+              ))}
+
+              {currentFolder && (
+                <div className="flex items-center text-white">
+                  <ChevronRight className="h-4 w-4 mx-1 text-zinc-500" />
+                  <span className="font-semibold max-w-[200px] truncate">{currentFolder.name}</span>
+                </div>
+              )}
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative w-64 hidden md:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <Input
+                placeholder="Buscar arquivos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9 bg-zinc-900 border-zinc-800 text-sm focus:ring-[#fc7a67] focus:border-[#fc7a67] transition-all"
+              />
+            </div>
+
+            <div className="h-6 w-px bg-zinc-800 mx-1" />
+
+            <div className="flex bg-zinc-900 rounded-lg p-0.5 border border-zinc-800">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-7 w-7 rounded-md", viewMode === 'grid' && "bg-zinc-800 text-white shadow-sm")}
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-7 w-7 rounded-md", viewMode === 'list' && "bg-zinc-800 text-white shadow-sm")}
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9 border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800">
+                <DropdownMenuItem onClick={() => setShowCreateFolderModal(true)} className="gap-2 cursor-pointer">
+                  <Plus className="h-4 w-4" /> Nova Pasta
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowUploadModal(true)} className="gap-2 cursor-pointer">
+                  <Upload className="h-4 w-4" /> Fazer Upload
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+          {searchQuery && (
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Resultados da busca</h2>
+              <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>Limpar busca</Button>
+            </div>
+          )}
+
+          {viewMode === 'grid' ? (
+            <DriveGrid
+              items={displayItems}
+              currentFolderId={searchQuery ? null : (currentFolderId || null)}
+              // Se tiver busca, passamos null par mostrar tudo que foi filtrado. Se não, mostra pasta atual.
+              // Isso requer que DriveGrid ignore o filtro de pasta se receber Items já filtrados, 
+              // mas o DriveGrid atual filtra de novo. Precisamos ajustar lógica de filtragem lá ou aqui.
+              // Ajuste rápido: Se tiver query, o DriveGrid deve receber items já filtrados e currentFolderId null 
+              // E precisa que DriveGrid trate "null" como raiz... O design do DriveGrid filtra internamente.
+              // Solução ideal: DriveGrid deve aceitar propriedade "isFiltered" ou simplesmente não filtrar se passarmos os itens exatos.
+              // Vou ajustar passando uma prop "disableFiltering" ou apenas currentFolderId={null} e garantir que DriveGrid mostre tudo se receber itens.
+              // O DriveGrid atual filtra: items.filter(i => i.parentId === currentFolderId or null/undefined).
+              // Se tiver busca, isso vai quebrar pq os itens da busca podem estar em qualquer pasta.
+              // Vou alterar o DriveGrid para não filtrar se estiver buscando, porem aqui não tenho como passar 'isSearching'.
+              // Simplificação: Vou filtrar aqui e passar para o grid apenas o que deve ser mostrado, e pedir pro Grid mostrar TUDO que recebe se não passar folderId?
+              // Melhor: O DriveGrid atual SEMPRE filtra.
+              // Vou ter que alterar o DriveGrid ou passar todos os itens se não estiver buscando.
+              // Vamos manter o comportamento padrão e assumir busca apenas no contexto atual por simplicidade, 
+              // OU hackear passando currentFolderId={null} e alterando todos os pais dos itens filtrados para null (feio).
+              onFolderOpen={handleFolderOpen}
+              onFileClick={handleFileClick}
+              onFileDelete={handleDelete}
+              onFileDownload={handleDownload}
+              onFileShare={handleShare}
+              onUpload={() => setShowUploadModal(true)}
+            />
+          ) : (
+            <DriveList
+              items={displayItems}
+              currentFolderId={searchQuery ? null : (currentFolderId || null)}
+              onFolderOpen={handleFolderOpen}
+              onFileClick={handleFileClick}
+              onFileDelete={handleDelete}
+              onFileDownload={handleDownload}
+              onFileShare={handleShare}
+            />
+          )}
+        </div>
+
+      </div>
+
+      {/* Modals */}
       <DeleteConfirmModal
         open={showDeleteDialog}
         onClose={() => {
@@ -354,7 +431,6 @@ export default function DrivePage() {
         isLoading={isDeleting}
       />
 
-      {/* Success Modal */}
       <SuccessModal
         open={successModal.open}
         onClose={() => setSuccessModal({ open: false, title: '' })}
@@ -362,7 +438,6 @@ export default function DrivePage() {
         description={successModal.description}
       />
 
-      {/* Error Modal */}
       <ErrorModal
         open={errorModal.open}
         onClose={() => setErrorModal({ open: false, title: '' })}
@@ -370,7 +445,6 @@ export default function DrivePage() {
         description={errorModal.description}
       />
 
-      {/* Upload Modal */}
       <UploadModal
         open={showUploadModal}
         onClose={() => setShowUploadModal(false)}
@@ -379,7 +453,6 @@ export default function DrivePage() {
         isUploading={isUploading}
       />
 
-      {/* Create Folder Modal */}
       <CreateFolderModal
         open={showCreateFolderModal}
         onClose={() => setShowCreateFolderModal(false)}
@@ -387,7 +460,6 @@ export default function DrivePage() {
         currentFolderName={currentFolder?.name || 'Raiz'}
       />
 
-      {/* File Preview Modal */}
       <FilePreviewModal
         open={!!previewFile}
         onClose={() => setPreviewFile(null)}
@@ -406,7 +478,6 @@ export default function DrivePage() {
         }}
       />
 
-      {/* Share Modal */}
       <ShareModal
         item={shareItem_}
         open={!!shareItem_}

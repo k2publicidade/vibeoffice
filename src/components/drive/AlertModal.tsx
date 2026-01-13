@@ -7,20 +7,17 @@ import {
   CheckCircle2,
   Info,
   XCircle,
-  X,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'confirm'
+export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'confirm' | 'delete'
 
 interface AlertModalProps {
   open: boolean
@@ -39,39 +36,52 @@ interface AlertModalProps {
 const alertConfig = {
   success: {
     icon: CheckCircle2,
-    iconColor: 'text-green-400',
-    bgColor: 'bg-green-500/20',
-    borderColor: 'border-green-500/30',
-    buttonClass: 'bg-green-600 hover:bg-green-700',
+    iconColor: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/20',
+    buttonClass: 'bg-emerald-600 hover:bg-emerald-500 text-white',
+    gradient: 'from-emerald-500/20 to-teal-500/5'
   },
   error: {
     icon: XCircle,
-    iconColor: 'text-red-400',
-    bgColor: 'bg-red-500/20',
-    borderColor: 'border-red-500/30',
-    buttonClass: 'bg-red-600 hover:bg-red-700',
+    iconColor: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/20',
+    buttonClass: 'bg-red-600 hover:bg-red-500 text-white',
+    gradient: 'from-red-500/20 to-orange-500/5'
   },
   warning: {
     icon: AlertTriangle,
-    iconColor: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/20',
-    borderColor: 'border-yellow-500/30',
-    buttonClass: 'bg-yellow-600 hover:bg-yellow-700',
+    iconColor: 'text-amber-500',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/20',
+    buttonClass: 'bg-amber-600 hover:bg-amber-500 text-white',
+    gradient: 'from-amber-500/20 to-yellow-500/5'
   },
   info: {
     icon: Info,
-    iconColor: 'text-blue-400',
-    bgColor: 'bg-blue-500/20',
-    borderColor: 'border-blue-500/30',
-    buttonClass: 'bg-blue-600 hover:bg-blue-700',
+    iconColor: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/20',
+    buttonClass: 'bg-blue-600 hover:bg-blue-500 text-white',
+    gradient: 'from-blue-500/20 to-sky-500/5'
   },
   confirm: {
-    icon: AlertTriangle,
-    iconColor: 'text-orange-400',
-    bgColor: 'bg-orange-500/20',
-    borderColor: 'border-orange-500/30',
-    buttonClass: 'bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:from-[#ff0300] hover:to-[#fc7a67]',
+    icon: Info,
+    iconColor: 'text-[#fc7a67]',
+    bgColor: 'bg-[#fc7a67]/10',
+    borderColor: 'border-[#fc7a67]/20',
+    buttonClass: 'bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:shadow-lg text-white',
+    gradient: 'from-[#fc7a67]/20 to-[#ff0300]/5'
   },
+  delete: {
+    icon: Trash2,
+    iconColor: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/20',
+    buttonClass: 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20',
+    gradient: 'from-red-500/20 to-pink-500/5'
+  }
 }
 
 export function AlertModal({
@@ -99,75 +109,79 @@ export function AlertModal({
     }
   }
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen && !isLoading) {
+      onClose()
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[420px] bg-black border-[#262626] p-0 overflow-hidden">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[400px] bg-zinc-950 border-zinc-900 p-0 overflow-hidden shadow-2xl">
         <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Header com ícone */}
-            <div className={cn(
-              'flex flex-col items-center justify-center p-6 pb-4 border-b',
-              config.borderColor,
-              config.bgColor
-            )}>
+            {/* Decorative background */}
+            <div className={cn("absolute inset-0 bg-gradient-to-b opacity-50 pointer-events-none", config.gradient)} />
+
+            <div className="relative z-10 p-6 flex flex-col items-center text-center">
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-                className={cn('p-4 rounded-full mb-4', config.bgColor)}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', delay: 0.1 }}
+                className={cn('p-4 rounded-full mb-5 border', config.bgColor, config.borderColor)}
               >
-                <Icon className={cn('h-10 w-10', config.iconColor)} />
+                <Icon className={cn('h-8 w-8', config.iconColor)} />
               </motion.div>
-              <DialogHeader className="text-center space-y-2">
-                <DialogTitle className="text-xl font-semibold text-white">
-                  {title}
-                </DialogTitle>
-                {description && (
-                  <DialogDescription className="text-gray-400 text-sm">
-                    {description}
-                  </DialogDescription>
-                )}
-              </DialogHeader>
+
+              <h2 className="text-xl font-bold text-white mb-2">
+                {title}
+              </h2>
+
+              {description && (
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-[90%]">
+                  {description}
+                </p>
+              )}
+
+              {children && (
+                <div className="mt-4 w-full text-left">
+                  {children}
+                </div>
+              )}
             </div>
 
-            {/* Content customizado */}
-            {children && (
-              <div className="p-4 border-b border-[#262626]">
-                {children}
-              </div>
-            )}
-
-            {/* Actions */}
             <div className={cn(
-              'flex items-center p-4 gap-3',
-              showCancel || type === 'confirm' ? 'justify-between' : 'justify-center'
+              'relative z-10 flex gap-3 p-4 bg-zinc-900/50 border-t border-zinc-900',
+              showCancel || type === 'confirm' || type === 'delete' ? 'justify-between' : 'justify-center'
             )}>
-              {(showCancel || type === 'confirm') && (
+              {(showCancel || type === 'confirm' || type === 'delete') && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={onClose}
                   disabled={isLoading}
-                  className="flex-1 border-[#262626] text-white hover:bg-[#1a1a1a] hover:text-white"
+                  className="flex-1 text-zinc-400 hover:text-white hover:bg-zinc-800"
                 >
                   {cancelText}
                 </Button>
               )}
+
               <Button
                 onClick={handleConfirm}
                 disabled={isLoading}
                 className={cn(
-                  'flex-1 text-white gap-2',
-                  config.buttonClass
+                  'flex-1 font-medium transition-all duration-200',
+                  config.buttonClass,
+                  isLoading && "opacity-80"
                 )}
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Processando...
                   </>
                 ) : (
@@ -204,12 +218,11 @@ export function DeleteConfirmModal({
     <AlertModal
       open={open}
       onClose={onClose}
-      type="confirm"
+      type="delete"
       title={`Excluir ${itemType === 'folder' ? 'pasta' : 'arquivo'}?`}
-      description={`Tem certeza que deseja excluir "${itemName}"? ${
-        itemType === 'folder' ? 'Todos os arquivos dentro da pasta também serão excluídos.' : ''
-      } Esta ação não pode ser desfeita.`}
-      confirmText="Excluir"
+      description={`Tem certeza que deseja excluir "${itemName}"? ${itemType === 'folder' ? 'Isso APAGARÁ PERMANENTEMENTE todos os arquivos dentro dela.' : 'Esta ação não pode ser desfeita.'
+        }`}
+      confirmText="Sim, excluir"
       cancelText="Cancelar"
       onConfirm={onConfirm}
       isLoading={isLoading}
@@ -238,7 +251,7 @@ export function SuccessModal({
       type="success"
       title={title}
       description={description}
-      confirmText="OK"
+      confirmText="Continuar"
     />
   )
 }
