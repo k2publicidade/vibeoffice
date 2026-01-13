@@ -2,12 +2,14 @@
 
 import { useState, useMemo } from 'react'
 import { useCalendar } from '@/hooks/useCalendar'
+import type { CalendarEvent } from '@/types/calendar'
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar'
-import { WeekView, CalendarEvent } from '@/components/calendar/WeekView'
+import { WeekView, CalendarEvent as ViewCalendarEvent } from '@/components/calendar/WeekView'
 import { MonthView } from '@/components/calendar/MonthView'
 import { DayView } from '@/components/calendar/DayView'
 import { AgendaView } from '@/components/calendar/AgendaView'
 import { CreateEventModal } from '@/components/calendar/CreateEventModal'
+import { EventDetailsModal } from '@/components/calendar/EventDetailsModal'
 import { useUsers } from '@/hooks/useUsers'
 import { toast } from 'sonner'
 
@@ -16,6 +18,9 @@ export default function CalendarPage() {
     events,
     getEventsByType,
     createEvent,
+    updateEvent,
+    deleteEvent,
+    getUpcomingEvents
   } = useCalendar()
   const { users } = useUsers()
 
@@ -31,33 +36,47 @@ export default function CalendarPage() {
     { id: 'company', name: 'Empresa', color: 'hsl(142, 76%, 36%)', checked: false, count: getEventsByType('company').length },
   ])
 
-  // Projects for sidebar
+  // TODO: Implement Real Projects Backend
+  // Currently using static mock data as requested until project module is fully integrated
   const projects = [
     { id: '1', name: 'Projeto WeBuild', hours: 16.5, color: 'hsl(218, 100%, 52%)' },
     { id: '2', name: 'Tarefas de Marketing', hours: 12.5, color: 'hsl(22, 94%, 48%)' },
     { id: '3', name: 'Reuniões', hours: 3, color: 'hsl(0, 0%, 0%)' },
   ]
 
-  // Upcoming event for sidebar
-  const upcomingEvent = {
-    id: 'upcoming-1',
-    title: 'Encontro com Gabriel na Biblioteca Internacional',
-    time: '12:00 - 13:30',
-    duration: '10 min',
-    location: 'Biblioteca Central',
-  }
+  // Get next upcoming event
+  const nextEvent = useMemo(() => {
+    const upcoming = getUpcomingEvents(14) // Look ahead 14 days
+    if (upcoming.length === 0) return undefined
+
+    const event = upcoming[0]
+    const start = new Date(event.startTime)
+    const end = new Date(event.endTime)
+
+    // Format duration
+    const diffMins = Math.round((end.getTime() - start.getTime()) / 60000)
+    let duration = `${diffMins} min`
+    if (diffMins >= 60) {
+      const hours = Math.floor(diffMins / 60)
+      const mins = diffMins % 60
+      duration = mins > 0 ? `${hours}h ${mins}min` : `${hours}h`
+    }
+
+    return {
+      id: event.id,
+      title: event.title,
+      time: `${start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+      duration,
+      location: event.location || undefined,
+    }
+  }, [getUpcomingEvents, events]) // Recalculate when events change
 
   // Transform events for WeekView
-  const weekEvents: CalendarEvent[] = useMemo(() => {
+  const weekEvents: ViewCalendarEvent[] = useMemo(() => {
     const activeFilters = filters.filter(f => f.checked).map(f => f.id)
 
     return events
       .filter(event => {
-        const typeMap: Record<string, string> = {
-          personal: 'personal',
-          sector: 'sector',
-          company: 'company',
-        }
         return activeFilters.includes(event.type)
       })
       .map(event => ({
@@ -68,8 +87,8 @@ export default function CalendarPage() {
         color: event.type === 'personal'
           ? 'hsl(218, 100%, 52%)'
           : event.type === 'sector'
-          ? 'hsl(22, 94%, 48%)'
-          : 'hsl(142, 76%, 36%)',
+            ? 'hsl(22, 94%, 48%)'
+            : 'hsl(142, 76%, 36%)',
         attendees: event.attendees
           .map(id => users?.find(u => u.id === id))
           .filter(Boolean)
@@ -88,11 +107,7 @@ export default function CalendarPage() {
     setCreateModalOpen(true)
   }
 
-  const handleEventClick = (event: CalendarEvent) => {
-    console.log('Event clicked:', event)
-    // TODO: Open event details modal
-  }
-
+  // Merged Create Event Handler
   const handleCreateEvent = async (eventData: {
     title: string
     date: Date
@@ -139,6 +154,59 @@ export default function CalendarPage() {
     avatar: u.avatar ?? undefined,
   }))
 
+  // Edit/View Event State
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+
+  // Handlers for CRUD (using functions from top-level hook)
+
+  const handleEventClick = (event: ViewCalendarEvent) => {
+    // Find full event data from hook events to ensure we have all fields
+    const fullEvent = events.find(e => e.id === event.id)
+    if (fullEvent) {
+      setSelectedEvent(fullEvent)
+      setDetailsModalOpen(true)
+    }
+  }
+
+  const handleUpdateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
+    try {
+      await updateEvent(id, updates)
+      toast.success('Evento atualizado com sucesso!')
+      // Optionally close modal or keep open
+      setDetailsModalOpen(false)
+    } catch (error) {
+      console.error("Error update", error)
+      toast.error("Erro ao atualizar evento")
+    }
+  }
+
+  const handleDeleteEvent = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este evento?')) {
+      try {
+        await deleteEvent(id)
+        toast.success('Evento excluído com sucesso!')
+        setDetailsModalOpen(false)
+      } catch (error) {
+        console.error("Error delete", error)
+        toast.error("Erro ao excluir evento")
+      }
+    }
+  }
+
+  const handleEventDrop = async (eventId: string, newStartTime: Date, newEndTime: Date) => {
+    try {
+      await updateEvent(eventId, {
+        startTime: newStartTime,
+        endTime: newEndTime,
+      })
+      toast.success('Evento movido com sucesso!')
+    } catch (error) {
+      console.error('Error moving event:', error)
+      toast.error('Erro ao mover evento')
+    }
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
       <div className="flex-1 overflow-auto flex gap-4 md:gap-6 px-4 sm:px-6 lg:px-8 py-4 md:py-6">
@@ -150,7 +218,7 @@ export default function CalendarPage() {
             filters={filters}
             onFilterChange={handleFilterChange}
             projects={projects}
-            upcomingEvent={upcomingEvent}
+            upcomingEvent={nextEvent}
           />
         </div>
 
@@ -165,6 +233,7 @@ export default function CalendarPage() {
               onSlotClick={handleSlotClick}
               view={view}
               onViewChange={setView}
+              onEventDrop={handleEventDrop}
             />
           )}
           {view === 'month' && (
@@ -179,6 +248,7 @@ export default function CalendarPage() {
               }}
               view={view}
               onViewChange={setView}
+              onEventDrop={handleEventDrop}
             />
           )}
           {view === 'day' && (
@@ -190,6 +260,7 @@ export default function CalendarPage() {
               onSlotClick={handleSlotClick}
               view={view}
               onViewChange={setView}
+              onEventDrop={handleEventDrop}
             />
           )}
           {view === 'agenda' && (
@@ -216,6 +287,17 @@ export default function CalendarPage() {
         selectedDate={selectedSlot?.date || selectedDate}
         availableAttendees={availableAttendees}
       />
+
+      {/* Edit/Details Modal */}
+      <EventDetailsModal
+        open={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        event={selectedEvent}
+        onUpdate={handleUpdateEvent}
+        onDelete={handleDeleteEvent}
+        availableAttendees={availableAttendees}
+      />
     </div>
   )
 }
+

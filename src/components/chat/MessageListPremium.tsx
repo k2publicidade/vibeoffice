@@ -28,7 +28,7 @@ export function MessageListPremium({
 }: MessageListPremiumProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { users } = useUsers()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isLoading: isAuthLoading } = useAuth()
   const { toggleReaction } = useMessageReactions()
   const { observeMessage } = useReadReceipts(
     currentUser?.id,
@@ -46,7 +46,7 @@ export function MessageListPremium({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-black">
         <div className="text-center space-y-2">
@@ -81,7 +81,7 @@ export function MessageListPremium({
               !previousMessage ||
               previousMessage.userId !== message.userId ||
               (new Date(message.timestamp).getTime() -
-               new Date(previousMessage.timestamp).getTime()) > 300000 // 5 min
+                new Date(previousMessage.timestamp).getTime()) > 300000 // 5 min
 
             const timeString = new Date(message.timestamp).toLocaleTimeString('pt-BR', {
               hour: '2-digit',

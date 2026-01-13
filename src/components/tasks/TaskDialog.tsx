@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { format } from 'date-fns'
 import { Task, TaskStatus, TaskPriority } from '@/types/tasks'
 import { Sector } from '@/types/auth'
 import {
@@ -24,6 +25,7 @@ import {
 import { Plus, Edit2, Calendar as CalendarIcon } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
+import { PremiumTimePicker } from '@/components/ui/premium-time-picker'
 
 interface TaskDialogProps {
   task?: Task
@@ -192,12 +194,33 @@ export function TaskDialog({
           </div>
 
           {/* Data de Vencimento */}
-          <div className="space-y-2">
-            <PremiumDatePicker
-              label="Data de Vencimento"
-              date={formData.dueDate}
-              onDateChange={(date) => setFormData({ ...formData, dueDate: date || new Date() })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <PremiumDatePicker
+                label="Data de Vencimento"
+                date={formData.dueDate}
+                onDateChange={(date) => {
+                  if (!date) return
+                  const newDate = new Date(date)
+                  // Manter a hora atual se já existir
+                  if (formData.dueDate) {
+                    newDate.setHours(formData.dueDate.getHours())
+                    newDate.setMinutes(formData.dueDate.getMinutes())
+                  }
+                  setFormData({ ...formData, dueDate: newDate })
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <PremiumTimePicker
+                label="Hora"
+                date={formData.dueDate}
+                onTimeChange={(newDate) => {
+                  // Ensure we keep the date part if it wasn't already set, defaults to today inside picker logic but let's be safe
+                  setFormData({ ...formData, dueDate: newDate })
+                }}
+              />
+            </div>
           </div>
 
           {/* Buttons */}
