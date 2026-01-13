@@ -315,12 +315,15 @@ export function useDrive(): UseDriveReturn {
   const createFolder = useCallback(async (input: CreateFolderInput): Promise<DriveItem> => {
     if (!user) throw new Error('User not authenticated')
 
+    // Normalizar parentId: undefined -> null para consistência
+    const normalizedParentId = input.parentId === undefined ? null : input.parentId
+
     const { data, error } = await supabase
       .from('drive_items')
       .insert({
         name: input.name,
         type: 'folder',
-        parent_id: input.parentId || null,
+        parent_id: normalizedParentId,
         uploaded_by: user.id,
       })
       .select()
@@ -332,15 +335,21 @@ export function useDrive(): UseDriveReturn {
       id: data.id,
       name: data.name,
       type: 'folder',
-      parentId: data.parent_id ?? undefined,
+      // Manter consistência: null do banco -> null no objeto (não undefined)
+      parentId: data.parent_id === null ? undefined : data.parent_id,
       uploadedBy: data.uploaded_by,
-      sharedWith: [], // TODO: Implementar compartilhamento
+      sharedWith: [],
       isPublic: data.is_public || false,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     }
 
+    // Atualizar estado local imediatamente
     setItems(prev => [...prev, newFolder])
+
+    // Recarregar dados do servidor para garantir consistência
+    await fetchItems()
+
     return newFolder
   }, [user])
 
