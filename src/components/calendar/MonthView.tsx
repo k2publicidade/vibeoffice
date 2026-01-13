@@ -66,6 +66,19 @@ export function MonthView({
   view = 'month',
   onViewChange,
 }: MonthViewProps) {
+  const monthStart = startOfMonth(selectedDate)
+  const monthEnd = endOfMonth(selectedDate)
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
+  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+
+  const handlePrevMonth = () => onDateChange(subMonths(selectedDate, 1))
+  const handleNextMonth = () => onDateChange(addMonths(selectedDate, 1))
+  const handleToday = () => onDateChange(new Date())
+
+  const getEventsForDay = (day: Date) => {
+    return events.filter((event) => isSameDay(new Date(event.startTime), day))
+  }
   // ... existing hooks and calculations
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
 
@@ -133,8 +146,70 @@ export function MonthView({
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col h-full bg-black rounded-2xl border border-[#262626] overflow-hidden">
-        {/* ... Header ... */}
-        {/* ... Weekday Headers ... */}
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-[#262626]">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-bold capitalize">
+              {format(selectedDate, 'MMMM yyyy', { locale: ptBR })}
+            </h2>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrevMonth}
+                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToday}
+                className="h-8 px-3 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                Hoje
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNextMonth}
+                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* View Toggle */}
+          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg p-1">
+            {(['month', 'week', 'day', 'agenda'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => onViewChange?.(v)}
+                className={cn(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
+                  view === v
+                    ? 'bg-[#fc7a67] text-black'
+                    : 'text-gray-400 hover:text-white'
+                )}
+              >
+                {v === 'month' ? 'Mês' : v === 'week' ? 'Semana' : v === 'day' ? 'Dia' : 'Agenda'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Weekday Headers */}
+        <div className="grid grid-cols-7 border-b border-[#262626]">
+          {WEEKDAYS.map((day) => (
+            <div
+              key={day}
+              className="py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
 
         {/* Calendar Grid */}
         <div className="flex-1 grid grid-cols-7 auto-rows-fr">
