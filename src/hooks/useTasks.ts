@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
@@ -453,48 +454,56 @@ export function useTasks(): UseTasksReturn {
     if (updates.status && oldTask && updates.status !== oldTask.status) {
       const ticketStatus = mapTaskStatusToTicketStatus(updates.status)
 
-      // Tenta atualizar pelo ID do ticket vinculado OU pelo ID da task
-      let query = supabase.from('tickets').update({ status: ticketStatus })
+      try {
+        // Tenta atualizar pelo ID do ticket vinculado OU pelo ID da task
+        let query = supabase.from('tickets').update({ status: ticketStatus })
 
-      if (updatedTask.linkedTicketId) {
-        query = query.eq('id', updatedTask.linkedTicketId)
-      } else {
-        query = query.eq('linked_task_id', id)
-      }
+        if (updatedTask.linkedTicketId) {
+          query = query.eq('id', updatedTask.linkedTicketId)
+        } else {
+          query = query.eq('linked_task_id', id)
+        }
 
-      const { error: ticketError } = await query
+        const { error: ticketError } = await query
 
-      if (ticketError) {
-        console.error('[useTasks] Failed to sync ticket status:', ticketError)
-      } else {
-        // Notificar sucesso (opcional, para debug)
-        console.log('[useTasks] Ticket status synced to:', ticketStatus)
+        if (ticketError) {
+          console.error('[useTasks] Failed to sync ticket status:', ticketError)
+          toast.error('Tarefa atualizada, mas falha ao sincronizar Ticket.')
+        } else {
+          console.log('[useTasks] Ticket status synced to:', ticketStatus)
+          toast.success(`Ticket vinculado atualizado para: ${ticketStatus === 'completed' ? 'Concluído' : ticketStatus === 'in_progress' ? 'Em Progresso' : 'A Fazer'}`)
+        }
+      } catch (err) {
+        console.error('[useTasks] Exception syncing ticket:', err)
       }
     }
 
     // NOVO: Emitir evento se status mudou
+    // Executar em background para não bloquear o fluxo principal ou causar erros visíveis se RLS falhar
     if (updates.status && oldTask && updates.status !== oldTask.status) {
-      const recipientIds = [
-        updatedTask.createdBy,
-        updatedTask.assignedTo,
-      ].filter((id): id is string => id !== null && id !== undefined)
+      setTimeout(() => {
+        const recipientIds = [
+          updatedTask.createdBy,
+          updatedTask.assignedTo,
+        ].filter((id): id is string => id !== null && id !== undefined)
 
-      if (recipientIds.length > 0) {
-        EventBus.emit({
-          type: 'task_status_changed',
-          recipientIds,
-          priority: 'low',
-          entityType: 'task',
-          entityId: id,
-          metadata: {
-            taskTitle: updatedTask.title,
-            oldStatus: oldTask.status,
-            newStatus: updates.status,
-          },
-        }).catch((err) => {
-          console.error('[useTasks] Failed to emit notification:', err)
-        })
-      }
+        if (recipientIds.length > 0) {
+          EventBus.emit({
+            type: 'task_status_changed',
+            recipientIds,
+            priority: 'low',
+            entityType: 'task',
+            entityId: id,
+            metadata: {
+              taskTitle: updatedTask.title,
+              oldStatus: oldTask.status,
+              newStatus: updates.status,
+            },
+          }).catch((err) => {
+            console.error('[useTasks] Failed to emit notification (likely RLS denied):', err)
+          })
+        }
+      }, 0)
     }
 
     setTasks((prev) =>
