@@ -25,19 +25,27 @@ export default function TicketsPage() {
     addComment,
     deleteComment,
     getUserById,
+    tickets, // Destructure tickets for realtime updates
   } = useTickets()
   const { user } = useAuth()
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
+
+  // Computar o ticket ativo baseado na lista atualizada (Realtime/Sync)
+  const activeTicket = useMemo(() => {
+    if (!selectedTicket) return null
+    return tickets.find(t => t.id === selectedTicket.id) || selectedTicket
+  }, [selectedTicket, tickets])
+
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   // Obter comentários do ticket selecionado
   const ticketComments = useMemo(() => {
-    if (!selectedTicket) return []
-    return getCommentsByTicketId(selectedTicket.id)
-  }, [selectedTicket, getCommentsByTicketId])
+    if (!activeTicket) return []
+    return getCommentsByTicketId(activeTicket.id)
+  }, [activeTicket, getCommentsByTicketId])
 
   const handleSelectTicket = (ticket: Ticket) => {
     setSelectedTicket(ticket)
@@ -71,10 +79,10 @@ export default function TicketsPage() {
   }
 
   const handleAddComment = (content: string, isInternal: boolean) => {
-    if (!selectedTicket) return
+    if (!activeTicket) return
 
     addComment({
-      ticketId: selectedTicket.id,
+      ticketId: activeTicket.id,
       content,
       isInternal,
     })
@@ -208,7 +216,7 @@ export default function TicketsPage() {
 
       {/* Ticket Detail Modal */}
       <TicketDetailModal
-        ticket={selectedTicket}
+        ticket={activeTicket}
         open={isDetailModalOpen}
         onClose={handleCloseDetailModal}
         comments={ticketComments}
