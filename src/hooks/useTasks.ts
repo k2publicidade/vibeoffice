@@ -407,6 +407,7 @@ export function useTasks(): UseTasksReturn {
     }
 
     // 1. Executar update (sem select para evitar erro 406)
+    console.log('[useTasks] updateTask Step 1: Updating DB...', { id, updates })
     const { error: updateError } = await supabase
       .from('tasks')
       .update({
@@ -421,7 +422,12 @@ export function useTasks(): UseTasksReturn {
       })
       .eq('id', id)
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error('[useTasks] Core update failed:', updateError)
+      toast.error(`Erro ao atualizar banco: ${updateError.message}`)
+      throw updateError
+    }
+    console.log('[useTasks] updateTask Step 2: DB Update Success. Fetching fresh data...')
 
     // 2. Buscar dados atualizados
     const { data: fetchedData, error: fetchError } = await supabase
@@ -577,5 +583,18 @@ export function useTasks(): UseTasksReturn {
     getTasksDueToday,
     getTasksDueThisWeek,
     isLoading,
+  }
+}
+
+function mapTaskStatusToTicketStatus(status: string): string {
+  switch (status) {
+    case 'todo':
+      return 'open'
+    case 'in_progress':
+      return 'in_progress'
+    case 'done':
+      return 'completed'
+    default:
+      return 'open'
   }
 }
