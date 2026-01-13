@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StudioBooking, Person, SessionType } from '@/types/studio';
 import DynamicPersonList from './DynamicPersonList';
-import { Save, Monitor, Clock, Calendar, Music2, StickyNote, Mic2 } from 'lucide-react';
+import { Save, Monitor, Clock, Calendar, Music2, StickyNote, Mic2, Edit, Plus } from 'lucide-react';
 import { useStudio } from '@/hooks/useStudio';
 
 interface StudioBookingFormProps {
@@ -108,121 +108,129 @@ const StudioBookingForm: React.FC<StudioBookingFormProps> = ({ onSuccess, onCanc
     };
 
     return (
-        <form onSubmit={handleSubmit} className="bg-zinc-800 rounded-xl shadow-xl border border-zinc-700 overflow-hidden">
-            <div className="p-6 border-b border-zinc-700 bg-gradient-to-r from-zinc-800 to-zinc-900">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span className="w-2 h-6 bg-red-600 rounded-full"></span>
-                    {initialData ? 'Editar Sessão' : 'Nova Sessão'}
-                </h2>
-                <p className="text-sm text-zinc-500 mt-1 ml-4">
-                    {initialData ? `Editando ID: ${initialData.id}` : 'Preencha os detalhes da produção'}
-                </p>
+        <form onSubmit={handleSubmit} className="bg-neutral-950/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden w-full max-w-6xl mx-auto flex flex-col max-h-[90vh]">
+
+            {/* Header */}
+            <div className="px-8 py-6 border-b border-white/10 bg-white/5 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                        <span className="flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10 text-red-500 ring-1 ring-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                            {initialData ? <Edit size={20} /> : <Plus size={20} />}
+                        </span>
+                        {initialData ? 'Editar Sessão' : 'Nova Sessão'}
+                    </h2>
+                    <p className="text-sm text-zinc-400 mt-1 pl-14">
+                        {initialData ? `Editando ID: ${initialData.id}` : 'Preencha os detalhes da nova produção'}
+                    </p>
+                </div>
+                {/* Optional: Add a close button here if needed, though usually handled by the dialog */}
             </div>
 
-            <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto">
+            {/* Scrollable Content */}
+            <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
 
                 {/* Track Title */}
-                <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wide">Título da Faixa / Projeto <span className="text-red-500">*</span></label>
-                    <div className="relative">
+                <div className="space-y-4">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Informações Principais</label>
+                    <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Music2 size={20} className="text-red-500" />
+                            <Music2 size={20} className="text-zinc-500 group-focus-within:text-red-500 transition-colors" />
                         </div>
                         <input
                             type="text"
                             value={trackTitle}
                             onChange={(e) => setTrackTitle(e.target.value)}
-                            placeholder="Ex: Nome da Música"
-                            className="pl-12 block w-full bg-zinc-900 border border-zinc-700 rounded-lg py-4 text-lg text-white placeholder-zinc-500 focus:ring-red-500 focus:border-red-500"
+                            placeholder="Título da Faixa / Projeto"
+                            className="pl-12 block w-full bg-white/5 border border-white/10 rounded-xl py-4 text-lg text-white placeholder-zinc-500 focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all"
                         />
                     </div>
                 </div>
 
-                {/* Row 1: Basic Info */}
+                {/* Grid Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-1">Estúdio <span className="text-red-500">*</span></label>
-                        <div className="relative">
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-zinc-400 pl-1">Estúdio</label>
+                        <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Mic2 size={18} className="text-zinc-500" />
+                                <Mic2 size={18} className="text-zinc-500 group-focus-within:text-red-500 transition-colors" />
                             </div>
                             <input
                                 type="text"
                                 value={studio}
                                 onChange={(e) => setStudio(e.target.value)}
                                 placeholder="Ex: Estúdio A"
-                                className="pl-10 block w-full bg-zinc-900 border border-zinc-700 rounded-md py-3 text-white focus:ring-red-500 focus:border-red-500"
+                                className="pl-10 block w-full bg-white/5 border border-white/10 rounded-lg py-3 text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all font-medium"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-1">Data <span className="text-red-500">*</span></label>
-                        <div className="relative">
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-zinc-400 pl-1">Data</label>
+                        <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Calendar size={18} className="text-zinc-500" />
+                                <Calendar size={18} className="text-zinc-500 group-focus-within:text-red-500 transition-colors" />
                             </div>
                             <input
                                 type="date"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
-                                className="pl-10 block w-full bg-zinc-900 border border-zinc-700 rounded-md py-3 text-white focus:ring-red-500 focus:border-red-500"
+                                className="pl-10 block w-full bg-white/5 border border-white/10 rounded-lg py-3 text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all font-medium appearance-none" // appearance-none helps with custom styling in some browsers
                             />
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        <div className="w-1/2">
-                            <label className="block text-sm font-medium text-zinc-400 mb-1">Início <span className="text-red-500">*</span></label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                    <Clock size={16} className="text-zinc-500" />
+                    <div className="lg:col-span-2 flex gap-4">
+                        <div className="w-1/2 space-y-2">
+                            <label className="text-xs font-medium text-zinc-400 pl-1">Início</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Clock size={16} className="text-zinc-500 group-focus-within:text-red-500 transition-colors" />
                                 </div>
                                 <input
                                     type="time"
                                     value={startTime}
                                     onChange={(e) => setStartTime(e.target.value)}
-                                    className="pl-8 block w-full bg-zinc-900 border border-zinc-700 rounded-md py-3 text-white focus:ring-red-500 focus:border-red-500"
+                                    className="pl-9 block w-full bg-white/5 border border-white/10 rounded-lg py-3 text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all font-medium"
                                 />
                             </div>
                         </div>
-                        <div className="w-1/2">
-                            <label className="block text-sm font-medium text-zinc-400 mb-1">Término <span className="text-red-500">*</span></label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                    <Clock size={16} className="text-zinc-500" />
+                        <div className="w-1/2 space-y-2">
+                            <label className="text-xs font-medium text-zinc-400 pl-1">Término</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Clock size={16} className="text-zinc-500 group-focus-within:text-red-500 transition-colors" />
                                 </div>
                                 <input
                                     type="time"
                                     value={endTime}
                                     onChange={(e) => setEndTime(e.target.value)}
-                                    className="pl-8 block w-full bg-zinc-900 border border-zinc-700 rounded-md py-3 text-white focus:ring-red-500 focus:border-red-500"
+                                    className="pl-9 block w-full bg-white/5 border border-white/10 rounded-lg py-3 text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all font-medium"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-1">Workstation (PC) <span className="text-red-500">*</span></label>
-                        <div className="relative">
+                    <div className="md:col-span-2 lg:col-span-4 space-y-2">
+                        <label className="text-xs font-medium text-zinc-400 pl-1">Workstation</label>
+                        <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Monitor size={18} className="text-zinc-500" />
+                                <Monitor size={18} className="text-zinc-500 group-focus-within:text-red-500 transition-colors" />
                             </div>
                             <input
                                 type="text"
                                 value={pc}
                                 onChange={(e) => setPc(e.target.value)}
-                                placeholder="Ex: Mac Studio A"
-                                className="pl-10 block w-full bg-zinc-900 border border-zinc-700 rounded-md py-3 text-white focus:ring-red-500 focus:border-red-500"
+                                placeholder="PC Principal (Ex: Mac Studio A)"
+                                className="pl-10 block w-full bg-white/5 border border-white/10 rounded-lg py-3 text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all font-medium"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Type Selection */}
-                <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wide">Tipo de Sessão (Selecione um ou mais) <span className="text-red-500">*</span></label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-4">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Tipo de Sessão</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {['Gravacao', 'Mix/Master', 'Edicao', 'Producao'].map((t) => {
                             const isSelected = types.includes(t as SessionType);
                             return (
@@ -230,62 +238,74 @@ const StudioBookingForm: React.FC<StudioBookingFormProps> = ({ onSuccess, onCanc
                                     key={t}
                                     type="button"
                                     onClick={() => toggleType(t as SessionType)}
-                                    className={`py-3 px-4 rounded-lg border text-sm font-medium transition-all relative overflow-hidden ${isSelected
-                                            ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-500/30'
-                                            : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800'
-                                        }`}
+                                    className={`
+                                        group relative overflow-hidden p-4 rounded-xl border transition-all duration-300
+                                        flex flex-col items-center justify-center gap-2 text-sm font-semibold
+                                        ${isSelected
+                                            ? 'bg-red-600/10 border-red-500 text-red-400 shadow-[0_0_20px_rgba(220,38,38,0.15)] ring-1 ring-red-500/20'
+                                            : 'bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10 hover:border-white/20'
+                                        }
+                                    `}
                                 >
-                                    {isSelected && (
-                                        <span className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full"></span>
-                                    )}
+                                    <span className={`w-2 h-2 rounded-full mb-1 transition-colors ${isSelected ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-zinc-700 group-hover:bg-zinc-600'}`}></span>
                                     {t}
+                                    {isSelected && <div className="absolute inset-0 bg-gradient-to-tr from-red-600/10 to-transparent pointer-events-none" />}
                                 </button>
                             );
                         })}
                     </div>
                 </div>
 
+                {/* Separator */}
+                <div className="h-px w-full bg-white/5" />
+
                 {/* Dynamic Lists */}
-                <div className="grid grid-cols-1 gap-8">
+                <div className="grid grid-cols-1 gap-12">
                     <DynamicPersonList title="Produtores" items={producers} onChange={setProducers} />
                     <DynamicPersonList title="Artistas" items={artists} onChange={setArtists} />
                     <DynamicPersonList title="Compositores" items={composers} onChange={setComposers} requiredFullname={true} />
                 </div>
 
                 {/* Notes */}
-                <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wide">Observações</label>
-                    <div className="relative">
-                        <div className="absolute top-3 left-0 pl-4 pointer-events-none">
-                            <StickyNote size={20} className="text-zinc-500" />
+                <div className="space-y-4">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Observações Gerais</label>
+                    <div className="relative group">
+                        <div className="absolute top-4 left-0 pl-4 pointer-events-none">
+                            <StickyNote size={20} className="text-zinc-500 group-focus-within:text-yellow-500 transition-colors" />
                         </div>
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Detalhes adicionais da sessão..."
-                            rows={3}
-                            className="pl-12 block w-full bg-zinc-900 border border-zinc-700 rounded-lg py-3 px-4 text-white placeholder-zinc-500 focus:ring-red-500 focus:border-red-500"
+                            placeholder="Detalhes adicionais, equipamentos específicos, etc..."
+                            rows={4}
+                            className="pl-12 block w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-zinc-500 focus:ring-2 focus:ring-yellow-500/20 focus:border-yellow-500/50 transition-all resize-none"
                         />
                     </div>
                 </div>
 
             </div>
 
-            <div className="bg-zinc-900/50 p-6 flex justify-end gap-3 border-t border-zinc-700">
+            {/* Footer */}
+            <div className="p-6 border-t border-white/10 bg-white/5 flex justify-end gap-3 shrink-0">
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="px-6 py-3 bg-transparent text-zinc-400 hover:text-white font-medium text-base transition-colors"
+                    className="px-6 py-3 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 font-medium transition-all"
                 >
                     Cancelar
                 </button>
                 <button
                     type="submit"
                     disabled={submitting}
-                    className="flex items-center gap-2 px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-base rounded-lg shadow-lg shadow-green-900/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="
+                        flex items-center gap-2 px-8 py-3 rounded-lg bg-red-600 text-white font-bold
+                        shadow-[0_4px_20px_rgba(220,38,38,0.4)] hover:shadow-[0_6px_25px_rgba(220,38,38,0.5)]
+                        hover:scale-[1.02] active:scale-[0.98] transition-all
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                    "
                 >
-                    <Save size={20} />
-                    {submitting ? 'Salvando...' : initialData ? 'Atualizar Sessão' : 'Salvar Sessão'}
+                    <Save size={18} />
+                    {submitting ? 'Salvando...' : initialData ? 'Salvar Alterações' : 'Criar Sessão'}
                 </button>
             </div>
         </form>

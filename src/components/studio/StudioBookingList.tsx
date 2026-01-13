@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { StudioBooking, Person, SessionType } from '@/types/studio';
-import { Calendar, Clock, MapPin, Music, Edit, Trash2, Users, Monitor, Headphones, Mic2, FileText, CheckCircle, XCircle } from 'lucide-react';
+import React from 'react';
+import { StudioBooking } from '@/types/studio';
+import { Clock, MapPin, Edit, Trash2, Mic2, User, MoreHorizontal, CalendarRange, Share2, Disc } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -12,30 +12,33 @@ interface StudioBookingListProps {
 
 const StudioBookingList: React.FC<StudioBookingListProps> = ({ bookings, onDelete, onEdit }) => {
 
-    const getStatusColor = (status: string) => {
+    const getStatusStyle = (status: string) => {
         switch (status) {
-            case 'completed': return 'bg-green-500/20 text-green-400 border-green-500/30';
-            case 'cancelled': return 'bg-red-500/20 text-red-400 border-red-500/30';
-            default: return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+            case 'completed': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 ring-emerald-500/10';
+            case 'cancelled': return 'bg-red-500/10 text-red-500 border-red-500/20 ring-red-500/10';
+            default: return 'bg-blue-500/10 text-blue-500 border-blue-500/20 ring-blue-500/10';
         }
     };
 
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'completed': return 'Concluída';
-            case 'cancelled': return 'Cancelada';
-            default: return 'Agendada';
+            case 'completed': return 'Realizado';
+            case 'cancelled': return 'Cancelado';
+            default: return 'Agendado';
         }
     };
 
     if (bookings.length === 0) {
         return (
-            <div className="text-center py-12 bg-zinc-800/30 rounded-xl border border-dashed border-zinc-700">
-                <div className="flex justify-center mb-4">
-                    <Music size={48} className="text-zinc-600" />
+            <div className="flex flex-col items-center justify-center py-20 bg-neutral-950/30 backdrop-blur-sm rounded-3xl border border-white/5 border-dashed">
+                <div className="w-24 h-24 bg-gradient-to-tr from-zinc-800 to-zinc-900 rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-black/50 ring-1 ring-white/5">
+                    <Disc size={40} className="text-zinc-600 animate-spin-slow" />
                 </div>
-                <h3 className="text-lg font-medium text-zinc-300">Nenhuma sessão encontrada</h3>
-                <p className="text-zinc-500 mt-1">Crie um novo agendamento para começar.</p>
+                <h3 className="text-xl font-bold text-white mb-2">Agenda Vazia</h3>
+                <p className="text-zinc-500 text-center max-w-md">
+                    Não encontramos sessões com os filtros atuais. <br />
+                    Crie um novo agendamento para movimentar o estúdio.
+                </p>
             </div>
         );
     }
@@ -45,117 +48,119 @@ const StudioBookingList: React.FC<StudioBookingListProps> = ({ bookings, onDelet
             {bookings.map((booking) => (
                 <div
                     key={booking.id}
-                    className="group relative bg-zinc-800 rounded-xl border border-zinc-700/50 hover:border-red-500/30 shadow-sm hover:shadow-red-900/10 transition-all duration-300 overflow-hidden"
+                    className="group relative bg-neutral-950/60 backdrop-blur-md rounded-2xl border border-white/5 hover:border-red-500/30 transition-all duration-300 overflow-hidden hover:shadow-[0_0_40px_-10px_rgba(239,68,68,0.1)] hover:bg-neutral-900/80"
                 >
-                    {/* Left colored accent bar */}
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-600 to-orange-600 group-hover:w-1.5 transition-all"></div>
+                    {/* Abstract Header Gradient */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600/50 via-orange-600/50 to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
 
-                    <div className="p-5 pl-7">
-                        <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="p-6">
+                        <div className="flex flex-col lg:flex-row gap-8">
 
-                            {/* Main Info */}
+                            {/* Date Badge - Left Side */}
+                            <div className="hidden lg:flex flex-col items-center justify-center w-20 shrink-0 bg-white/5 rounded-xl border border-white/5 p-3 h-fit group-hover:bg-white/10 transition-colors">
+                                <span className="text-xs font-bold text-red-500 uppercase">{format(new Date(booking.booking_date), 'MMM', { locale: ptBR })}</span>
+                                <span className="text-3xl font-black text-white">{format(new Date(booking.booking_date), 'dd')}</span>
+                                <span className="text-xs text-zinc-500 uppercase font-medium">{format(new Date(booking.booking_date), 'EEE', { locale: ptBR })}</span>
+                            </div>
+
+                            {/* Main Content */}
                             <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-2">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${getStatusColor(booking.status)}`}>
-                                        {getStatusLabel(booking.status)}
-                                    </span>
-                                    <span className="text-zinc-500 text-xs flex items-center gap-1">
-                                        <Clock size={12} />
-                                        Agendado em {new Date(booking.created_at || '').toLocaleDateString('pt-BR')}
-                                    </span>
+
+                                {/* Top Row: Meta & Status */}
+                                <div className="flex items-center justify-between gap-4 mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider border ring-1 ${getStatusStyle(booking.status)}`}>
+                                            {getStatusLabel(booking.status)}
+                                        </span>
+                                        {/* Mobile Date Fallback */}
+                                        <div className="lg:hidden flex items-center gap-1.5 text-zinc-400 text-xs font-medium">
+                                            <CalendarRange size={12} />
+                                            {format(new Date(booking.booking_date), "dd 'de' MMM", { locale: ptBR })}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        {booking.session_types.map(t => (
+                                            <span key={t} className="px-2 py-0.5 bg-zinc-900/80 border border-white/5 rounded text-[10px] uppercase tracking-wide text-zinc-400 font-medium">
+                                                {t}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
 
-                                <h3 className="text-xl font-bold text-white mb-2 leading-tight truncate group-hover:text-red-400 transition-colors">
-                                    {booking.track_title}
-                                </h3>
-
-                                <div className="flex flex-wrap items-center gap-y-2 gap-x-6 text-sm text-zinc-400">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-zinc-700/50 p-1.5 rounded-md">
+                                {/* Title & Studio */}
+                                <div className="mb-5">
+                                    <h3 className="text-2xl font-bold text-white mb-1.5 group-hover:text-red-500 transition-colors tracking-tight truncate">
+                                        {booking.track_title}
+                                    </h3>
+                                    <div className="flex items-center gap-4 text-sm">
+                                        <div className="flex items-center gap-2 text-zinc-400">
                                             <MapPin size={14} className="text-red-500" />
+                                            <span className="font-medium">{booking.studio_name}</span>
                                         </div>
-                                        <span className="font-medium text-zinc-300">{booking.studio_name}</span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-zinc-700/50 p-1.5 rounded-md">
-                                            <Calendar size={14} className="text-blue-400" />
+                                        <div className="w-1 h-1 bg-zinc-700 rounded-full"></div>
+                                        <div className="flex items-center gap-2 text-zinc-400">
+                                            <Clock size={14} className="text-orange-500" />
+                                            <span className="font-medium mono">{booking.start_time.slice(0, 5)}h - {booking.end_time.slice(0, 5)}h</span>
                                         </div>
-                                        <span className="font-medium text-zinc-300">
-                                            {format(new Date(booking.booking_date), "dd 'de' MMMM", { locale: ptBR })}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-zinc-700/50 p-1.5 rounded-md">
-                                            <Clock size={14} className="text-orange-400" />
-                                        </div>
-                                        <span className="font-medium text-zinc-300">
-                                            {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-zinc-700/50 p-1.5 rounded-md">
-                                            <Monitor size={14} className="text-purple-400" />
-                                        </div>
-                                        <span className="truncate max-w-[150px]" title={booking.workstation_id}>
-                                            {booking.workstation_id}
-                                        </span>
                                     </div>
                                 </div>
+
+                                {/* People / Resources Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-black/20 rounded-xl border border-white/5">
+
+                                    {/* Producers */}
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                                            <Headphones size={14} className="text-zinc-400" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-0.5">Produção</p>
+                                            <p className="text-sm text-zinc-200 truncate font-medium">
+                                                {booking.producers?.length > 0 ? booking.producers.map(p => p.name).join(', ') : <span className="text-zinc-600 italic">Não informado</span>}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Artists */}
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                                            <Mic2 size={14} className="text-zinc-400" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-0.5">Artistas</p>
+                                            <p className="text-sm text-zinc-200 truncate font-medium">
+                                                {booking.artists?.length > 0 ? booking.artists.map(p => p.name).join(', ') : <span className="text-zinc-600 italic">Não informado</span>}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                </div>
+
                             </div>
 
-                            {/* Types & Details */}
-                            <div className="lg:w-1/3 min-w-0 flex flex-col gap-3">
-                                <div className="flex flex-wrap gap-1.5">
-                                    {booking.session_types.map(t => (
-                                        <span key={t} className="px-2 py-1 bg-zinc-900 rounded border border-zinc-700 text-xs text-zinc-300">
-                                            {t}
-                                        </span>
-                                    ))}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
-                                    {booking.producers?.length > 0 && (
-                                        <div className="flex items-center gap-1.5 truncate" title="Produtores">
-                                            <Headphones size={12} className="shrink-0" />
-                                            <span className="truncate">{booking.producers.map(p => p.name).join(', ')}</span>
-                                        </div>
-                                    )}
-                                    {booking.artists?.length > 0 && (
-                                        <div className="flex items-center gap-1.5 truncate" title="Artistas">
-                                            <Mic2 size={12} className="shrink-0" />
-                                            <span className="truncate">{booking.artists.map(p => p.name).join(', ')}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {booking.notes && (
-                                    <div className="flex items-start gap-1.5 text-xs text-yellow-500/80 bg-yellow-900/10 p-2 rounded border border-yellow-900/20">
-                                        <FileText size={12} className="mt-0.5 shrink-0" />
-                                        <p className="line-clamp-2">{booking.notes}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="lg:w-auto flex lg:flex-col justify-end gap-2 pl-4 lg:border-l border-zinc-700/50">
+                            {/* Right Actions - Desktop */}
+                            <div className="flex lg:flex-col items-center lg:justify-center gap-2 border-t lg:border-t-0 lg:border-l border-white/5 pt-4 lg:pt-0 lg:pl-6 shrink-0">
                                 <button
                                     onClick={() => onEdit(booking)}
-                                    className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors group/edit"
-                                    title="Editar"
+                                    className="flex-1 lg:flex-none w-full lg:w-10 h-10 flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                                    title="Editar Detalhes"
                                 >
-                                    <Edit size={18} className="group-hover/edit:scale-110 transition-transform" />
+                                    <Edit size={18} />
                                 </button>
+
+                                <div className="w-px h-6 bg-white/10 lg:hidden"></div>
+                                <div className="h-px w-6 bg-white/10 hidden lg:block"></div>
+
                                 <button
                                     onClick={() => onDelete(booking.id)}
-                                    className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors group/del"
-                                    title="Excluir"
+                                    className="flex-1 lg:flex-none w-full lg:w-10 h-10 flex items-center justify-center rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all active:scale-95"
+                                    title="Excluir Sessão"
                                 >
-                                    <Trash2 size={18} className="group-hover/del:scale-110 transition-transform" />
+                                    <Trash2 size={18} />
                                 </button>
                             </div>
+
                         </div>
                     </div>
                 </div>
