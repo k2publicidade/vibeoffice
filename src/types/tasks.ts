@@ -8,6 +8,7 @@ import { Sector } from './auth'
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high'
 
+
 export interface Task {
   id: string
   title: string
@@ -15,7 +16,7 @@ export interface Task {
   status: TaskStatus
   priority: TaskPriority
   dueDate?: Date
-  assignedTo: string | null // User ID (null se não atribuído)
+  assignees: string[] // Array of User IDs
   sector: Sector
   createdBy: string // User ID
   createdAt: Date
@@ -28,7 +29,7 @@ export interface CreateTaskInput {
   title: string
   description?: string
   priority: TaskPriority
-  assignedTo: string
+  assignees: string[]
   dueDate?: string
 }
 
@@ -37,7 +38,7 @@ export interface UpdateTaskInput {
   description?: string
   status?: TaskStatus
   priority?: TaskPriority
-  assignedTo?: string
+  assignees?: string[]
   dueDate?: string
 }
 
@@ -45,6 +46,7 @@ export interface TaskFilters {
   status?: TaskStatus
   priority?: TaskPriority
   sector?: Sector
-  assignedTo?: string
+  assignees?: string[] // Agora busca se contem algum dos assignees
   searchTerm?: string
 }
+

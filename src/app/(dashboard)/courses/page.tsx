@@ -7,10 +7,12 @@ import { AlertCircle, GraduationCap, BookOpen, TrendingUp, Search, SlidersHorizo
 import { motion } from 'framer-motion'
 import { useState, useMemo } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function CoursesPage() {
   const router = useRouter()
   const { courses, loading, getProgressStats } = useCourses()
+  const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
 
   // Calculate stats
@@ -71,23 +73,37 @@ export default function CoursesPage() {
             </p>
           </motion.div>
 
-          {/* Search Bar */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="relative w-full md:w-96"
-          >
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-zinc-500" />
-            </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar cursos..."
-              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all placeholder-zinc-600"
-            />
-          </motion.div>
+          {/* Search Bar & Admin Actions */}
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            {user?.role === 'Admin' && (
+              <motion.button
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                onClick={() => router.push('/courses/manage')}
+                className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-xl border border-white/5 transition-all text-sm font-medium whitespace-nowrap"
+              >
+                <SlidersHorizontal size={16} />
+                Gerenciar Cursos
+              </motion.button>
+            )}
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="relative w-full md:w-96"
+            >
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-zinc-500" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar cursos..."
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all placeholder-zinc-600"
+              />
+            </motion.div>
+          </div>
         </div>
 
         {/* Stats Grid */}

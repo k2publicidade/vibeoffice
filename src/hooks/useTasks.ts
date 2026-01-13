@@ -18,11 +18,12 @@ import { EventBus } from '@/lib/notifications/eventBus'
 
 export type DateFilter = 'all' | 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'this_month' | 'no_date'
 
+
 export interface TaskFilters {
   sector?: string
   priority?: string
   status?: string
-  assignedTo?: string
+  assignees?: string[]
   dateFilter?: DateFilter
   searchQuery?: string
 }
@@ -140,22 +141,30 @@ export function useTasks(): UseTasksReturn {
   async function fetchTasks() {
     setIsLoading(true)
     try {
-      const { data, error } = await supabase
+
+
+      const { data, error } = await (supabase
         .from('tasks')
-        .select('*')
+        .select(`
+          *,
+          task_assignees (
+            user_id
+          )
+        `) as any)
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
+
       setTasks(
-        data.map((t) => ({
+        data.map((t: any) => ({
           id: t.id,
           title: t.title,
           description: t.description || '',
           status: t.status,
           priority: t.priority,
           dueDate: t.due_date ? new Date(t.due_date) : undefined,
-          assignedTo: t.assigned_to,
+          assignees: t.task_assignees?.map((ta: any) => ta.user_id) || [],
           sector: t.sector,
           createdBy: t.created_by,
           tags: t.tags || [],
@@ -232,8 +241,15 @@ export function useTasks(): UseTasksReturn {
       // Filtro de status
       if (filters.status && task.status !== filters.status) return false
 
-      // Filtro de responsável
-      if (filters.assignedTo && task.assignedTo !== filters.assignedTo) return false
+
+      // Filtro de responsável (agora verifica se o filtro está incluso na lista de assignees)
+      if (filters.assignees && filters.assignees.length > 0) {
+        // Se o filtro fosse multi-select também, seria interseção. 
+        // Mas o filtro atual parece ser single select no visual, vamos assumir que queremos tasks que contenham QUALQUER um dos selecionados no filtro.
+        // Se filtro.assignees for array de strings.
+        const hasMatch = task.assignees.some(assigneeId => filters.assignees?.includes(assigneeId))
+        if (!hasMatch) return false
+      }
 
       // Filtro de data
       if (filters.dateFilter && filters.dateFilter !== 'all') {
@@ -264,6 +280,7 @@ export function useTasks(): UseTasksReturn {
         throw new Error(`Dados inválidos: ${errors.join(', ')}`)
       }
 
+
       // 1. Criar a task no banco
       const { data: taskInserted, error: taskError } = await supabase
         .from('tasks')
@@ -273,8 +290,9 @@ export function useTasks(): UseTasksReturn {
           status: taskData.status,
           priority: taskData.priority,
           due_date: taskData.dueDate?.toISOString(),
-          assigned_to: taskData.assignedTo,
+          // assigned_to removido
           sector: taskData.sector,
+
           created_by: user.id,
           tags: taskData.tags || [],
         })
@@ -282,6 +300,23 @@ export function useTasks(): UseTasksReturn {
         .single()
 
       if (taskError) throw taskError
+
+      // 1.5 Inserir Assignees
+      if (taskData.assignees && taskData.assignees.length > 0) {
+        const assigneesInsert = taskData.assignees.map(userId => ({
+          task_id: taskInserted.id,
+          user_id: userId
+        }))
+
+        const { error: assigneesError } = await supabase
+          .from('task_assignees' as any)
+          .insert(assigneesInsert)
+
+        if (assigneesError) {
+          console.error('[useTasks] Failed to insert assignees:', assigneesError)
+          // Non-blocking for now
+        }
+      }
 
       // 2. Criar ticket vinculado automaticamente
       const { data: ticketData, error: ticketError } = await supabase
@@ -294,7 +329,7 @@ export function useTasks(): UseTasksReturn {
           priority: taskInserted.priority,
           requester: user.id,
           created_by: user.id,
-          assigned_to: taskInserted.assigned_to,
+          assigned_to: taskData.assignees?.[0], // Ticket só suporta um assignee, pegamos o primeiro
           linked_task_id: taskInserted.id,
         })
         .select()
@@ -340,6 +375,7 @@ export function useTasks(): UseTasksReturn {
         }
       }
 
+
       // 5. Criar objeto Task para o state
       const newTask: Task = {
         id: taskInserted.id,
@@ -348,7 +384,7 @@ export function useTasks(): UseTasksReturn {
         status: taskInserted.status,
         priority: taskInserted.priority,
         dueDate: taskInserted.due_date ? new Date(taskInserted.due_date) : undefined,
-        assignedTo: taskInserted.assigned_to,
+        assignees: taskData.assignees || [],
         sector: taskInserted.sector,
         createdBy: taskInserted.created_by,
         tags: taskInserted.tags || [],
@@ -358,10 +394,10 @@ export function useTasks(): UseTasksReturn {
       }
 
       // 6. Emitir evento de notificação
-      if (taskData.assignedTo) {
+      if (taskData.assignees && taskData.assignees.length > 0) {
         EventBus.emit({
           type: 'task_assigned',
-          recipientIds: [taskData.assignedTo],
+          recipientIds: taskData.assignees,
           priority: taskData.priority === 'high' ? 'high' : 'medium',
           entityType: 'task',
           entityId: newTask.id,
@@ -406,6 +442,7 @@ export function useTasks(): UseTasksReturn {
       throw new Error(`Dados inválidos: ${errors.join(', ')}`)
     }
 
+
     // 1. Executar update (sem select para evitar erro 406)
     console.log('[useTasks] updateTask Step 1: Updating DB...', { id, updates })
     const { error: updateError } = await supabase
@@ -416,7 +453,7 @@ export function useTasks(): UseTasksReturn {
         status: updates.status,
         priority: updates.priority,
         due_date: updates.dueDate?.toISOString(),
-        assigned_to: updates.assignedTo,
+        // assigned_to: updates.assignedTo, // REMOVIDO
         sector: updates.sector,
         tags: updates.tags,
       })
@@ -427,12 +464,34 @@ export function useTasks(): UseTasksReturn {
       toast.error(`Erro ao atualizar banco: ${updateError.message}`)
       throw updateError
     }
+
+    // 1.5 Atualizar Assignees se fornecido
+    if (updates.assignees !== undefined) {
+      // Remove old
+      await supabase.from('task_assignees').delete().eq('task_id', id)
+      // Insert new
+      if (updates.assignees.length > 0) {
+        const assigneesInsert = updates.assignees.map(userId => ({
+          task_id: id,
+          user_id: userId
+        }))
+        const { error: assignError } = await supabase.from('task_assignees' as any).insert(assigneesInsert)
+        if (assignError) console.error('Error updating assignees', assignError)
+      }
+    }
+
     console.log('[useTasks] updateTask Step 2: DB Update Success. Fetching fresh data...')
 
+
     // 2. Buscar dados atualizados
-    const { data: fetchedData, error: fetchError } = await supabase
+    const { data: fetchedData, error: fetchError } = await (supabase
       .from('tasks')
-      .select('*')
+      .select(`
+        *,
+        task_assignees (
+          user_id
+        )
+      `) as any)
       .eq('id', id)
       .single()
 
@@ -446,7 +505,7 @@ export function useTasks(): UseTasksReturn {
       status: data.status,
       priority: data.priority,
       dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      assignedTo: data.assigned_to,
+      assignees: data.task_assignees?.map((ta: any) => ta.user_id) || [],
       sector: data.sector,
       createdBy: data.created_by,
       tags: data.tags || [],

@@ -24,6 +24,12 @@ import {
 } from '@/components/ui/select'
 import { Plus, Edit2, Calendar as CalendarIcon } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
+
+
+MultiSelect,
+  MultiSelectContent,
+  MultiSelectItem,
+} from '@/components/ui/multi-select'
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
 import { PremiumTimePicker } from '@/components/ui/premium-time-picker'
 
@@ -37,6 +43,7 @@ interface TaskDialogProps {
 
 const sectors = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
 
+
 // Função para criar o estado inicial do form
 function getInitialFormData(task?: Task, defaultStatus?: TaskStatus): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
   return {
@@ -45,7 +52,7 @@ function getInitialFormData(task?: Task, defaultStatus?: TaskStatus): Omit<Task,
     status: task?.status || defaultStatus || 'todo',
     priority: task?.priority || 'medium',
     sector: task?.sector || 'A&R',
-    assignedTo: task?.assignedTo || '',
+    assignees: task?.assignees || [],
     createdBy: task?.createdBy || 'user-001',
     dueDate: task?.dueDate || new Date(),
   }
@@ -146,21 +153,24 @@ export function TaskDialog({
             </Select>
           </div>
 
+
           {/* Responsável */}
           <div className="space-y-2">
-            <Label htmlFor="assignedTo">Responsável</Label>
-            <Select value={formData.assignedTo || ''} onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}>
-              <SelectTrigger id="assignedTo">
-                <SelectValue placeholder="Selecione uma pessoa" />
-              </SelectTrigger>
-              <SelectContent>
+            <Label>Responsáveis</Label>
+            <MultiSelect
+              value={formData.assignees || []}
+              onValueChange={(value) => setFormData({ ...formData, assignees: value })}
+              placeholder="Selecione os responsáveis"
+              maxDisplayItems={3}
+            >
+              <MultiSelectContent>
                 {(users || []).map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
+                  <MultiSelectItem key={user.id} value={user.id}>
                     {user.name}
-                  </SelectItem>
+                  </MultiSelectItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </MultiSelectContent>
+            </MultiSelect>
           </div>
 
           {/* Prioridade */}

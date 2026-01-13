@@ -28,7 +28,7 @@ export function useCourses() {
       // Let's fetch strict structure for now. To avoid N+1, we fetch all modules and lessons and map them.
 
       const { data: modulesData, error: modulesError } = await supabase
-        .from('modules')
+        .from('modules' as any)
         .select('*')
         .order('order')
 
@@ -71,7 +71,7 @@ export function useCourses() {
     if (!user) return;
     try {
       const { data, error } = await supabase
-        .from('user_course_progress')
+        .from('user_course_progress' as any)
         .select('course_id, lesson_id')
         .eq('user_id', user.id)
 
@@ -79,7 +79,7 @@ export function useCourses() {
 
       // Group by course
       const prog: Record<string, string[]> = {};
-      data.forEach(p => {
+      (data as any[]).forEach(p => {
         if (!prog[p.course_id]) prog[p.course_id] = [];
         prog[p.course_id].push(p.lesson_id);
       });
@@ -119,13 +119,13 @@ export function useCourses() {
 
     try {
       if (isCompleted) {
-        await supabase.from('user_course_progress').insert({
+        await supabase.from('user_course_progress' as any).insert({
           user_id: user.id,
           course_id: courseId,
           lesson_id: lessonId
         });
       } else {
-        await supabase.from('user_course_progress').delete()
+        await supabase.from('user_course_progress' as any).delete()
           .match({ user_id: user.id, lesson_id: lessonId });
       }
     } catch (err) {
@@ -148,12 +148,171 @@ export function useCourses() {
     };
   }, [courses, progressData]);
 
+  // --- Admin Actions ---
+
+  const createCourse = async (courseData: Partial<Course>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('courses' as any)
+        .insert([courseData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newCourse = data as any;
+      // Refresh list
+      setCourses(prev => [
+        { ...newCourse, modules: [], lessons_count: 0, createdAt: new Date(newCourse.created_at), updatedAt: new Date(newCourse.updated_at) } as Course,
+        ...prev
+      ]);
+      return data;
+    } catch (error) {
+      console.error('Error creating course:', error);
+      throw error;
+    }
+  };
+
+  const updateCourse = async (id: string, courseData: Partial<Course>) => {
+    try {
+      const { data, error } = await supabase
+        .from('courses' as any)
+        .update(courseData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedCourse = data as any;
+      setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updatedCourse, description: updatedCourse.description || c.description } : c));
+      return data;
+    } catch (error) {
+      console.error('Error updating course:', error);
+      throw error;
+    }
+  };
+
+  const deleteCourse = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('courses' as any)
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setCourses(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      throw error;
+    }
+  };
+
+  // Modules
+  const createModule = async (courseId: string, title: string, order: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('modules' as any)
+        .insert([{ course_id: courseId, title, order }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Refresh entire course
+      await fetchCourses();
+      return data;
+    } catch (error) {
+      console.error('Error creating module:', error);
+      throw error;
+    }
+  };
+
+  const deleteModule = async (moduleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('modules' as any)
+        .delete()
+        .eq('id', moduleId);
+
+      if (error) throw error;
+      await fetchCourses();
+    } catch (error) {
+      console.error('Error deleting module:', error);
+      throw error;
+    }
+  };
+
+  // Lessons
+  const createLesson = async (lessonData: Partial<Lesson>) => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons' as any)
+        .insert([lessonData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      await fetchCourses();
+      return data;
+    } catch (error) {
+      console.error('Error creating lesson:', error);
+      throw error;
+    }
+  };
+
+  const updateLesson = async (id: string, lessonData: Partial<Lesson>) => {
+    try {
+      const { data, error } = await supabase
+        .from('lessons' as any)
+        .update(lessonData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      await fetchCourses();
+      return data;
+    } catch (error) {
+      console.error('Error updating lesson:', error);
+      throw error;
+    }
+  };
+
+  const deleteLesson = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('lessons' as any)
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchCourses();
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      throw error;
+    }
+  };
+
   return {
     courses,
     loading,
     refresh: fetchCourses,
     getCourseById,
     toggleLessonComplete,
-    getProgressStats
+    getProgressStats,
+    // Admin ops
+    createCourse,
+    updateCourse,
+    deleteCourse,
+    createModule,
+    deleteModule,
+    createLesson,
+    updateLesson,
+    deleteLesson
   }
 }

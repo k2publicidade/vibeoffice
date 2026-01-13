@@ -11,6 +11,7 @@ import { z } from 'zod'
 // TASK SCHEMAS
 // ============================================================================
 
+
 export const CreateTaskSchema = z.object({
   title: z.string()
     .min(1, 'Título é obrigatório')
@@ -34,12 +35,13 @@ export const CreateTaskSchema = z.object({
     'Atendimento ao Artista'
   ]),
 
-  assignedTo: z.string().uuid('ID de usuário inválido').optional(),
+  assignees: z.array(z.string().uuid('ID de usuário inválido')).optional(),
 
   dueDate: z.date().optional(),
 
   tags: z.array(z.string().max(50)).max(10, 'Máximo 10 tags').optional(),
 })
+
 
 export const UpdateTaskSchema = CreateTaskSchema.partial()
 
