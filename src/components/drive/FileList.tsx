@@ -84,7 +84,7 @@ export function FileList({
         delayChildren: 0.1
       }
     }
-  }
+  } as const
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20, scale: 0.95 },
@@ -93,12 +93,12 @@ export function FileList({
       y: 0,
       scale: 1,
       transition: {
-        type: 'spring',
+        type: 'spring' as const,
         stiffness: 300,
         damping: 25
       }
     }
-  }
+  } as const
 
   return (
     <motion.div
