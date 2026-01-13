@@ -153,24 +153,42 @@ export function FilePreviewModal({
   const isAudio = file?.mimeType?.startsWith('audio/')
   const isPdf = file?.mimeType?.includes('pdf')
 
-  // Carregar URL da imagem quando abrir o modal
+  // Carregar URL do arquivo (Signed URL)
   useEffect(() => {
-    if (open && file && isImage && file.url) {
-      setIsLoadingImage(true)
-      setImageError(false)
+    if (open && file && file.url) {
+      const fetchUrl = async () => {
+        setIsLoadingImage(true)
+        setImageError(false)
+        setImageUrl(null)
 
-      const url = getPublicUrl(file.url)
-      if (url) {
-        setImageUrl(url)
-      } else {
-        setImageError(true)
+        try {
+          // Gerar URL assinada válida por 1 hora
+          const { data, error } = await supabase.storage
+            .from('drive-files')
+            .createSignedUrl(file.url!, 3600)
+
+          if (error) throw error
+
+          if (data?.signedUrl) {
+            setImageUrl(data.signedUrl)
+          } else {
+            console.error('No signed URL returned')
+            setImageError(true)
+          }
+        } catch (error) {
+          console.error('Error fetching signed URL:', error)
+          setImageError(true)
+        } finally {
+          setIsLoadingImage(false)
+        }
       }
-      setIsLoadingImage(false)
+
+      fetchUrl()
     } else {
       setImageUrl(null)
       setZoom(1)
     }
-  }, [open, file, isImage])
+  }, [open, file])
 
   // Handler de download
   const handleDownload = async () => {
@@ -194,9 +212,9 @@ export function FilePreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] bg-black border-[#262626] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[800px] h-[90vh] bg-black border-[#262626] p-0 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#262626]">
+        <div className="flex items-center justify-between p-4 border-b border-[#262626] shrink-0">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className={cn('p-2 rounded-lg shrink-0', fileInfo.bgColor)}>
               <FileIcon className={cn('h-5 w-5', fileInfo.color)} />
@@ -253,27 +271,27 @@ export function FilePreviewModal({
         </div>
 
         {/* Preview Area */}
-        <div className="relative min-h-[350px] max-h-[500px] bg-[#0a0a0a] flex items-center justify-center overflow-auto">
+        <div className="flex-1 bg-[#0a0a0a] flex items-center justify-center overflow-hidden relative">
           <AnimatePresence mode="wait">
-            {isImage ? (
-              isLoadingImage ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center p-8"
-                >
-                  <Loader2 className="h-10 w-10 text-purple-400 animate-spin mb-4" />
-                  <p className="text-gray-400">Carregando preview...</p>
-                </motion.div>
-              ) : imageUrl && !imageError ? (
+            {isLoadingImage ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center p-8 absolute inset-0"
+              >
+                <Loader2 className="h-10 w-10 text-purple-400 animate-spin mb-4" />
+                <p className="text-gray-400">Carregando preview...</p>
+              </motion.div>
+            ) : isImage ? (
+              imageUrl && !imageError ? (
                 <motion.div
                   key="image"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-4 overflow-auto w-full h-full flex items-center justify-center"
+                  className="w-full h-full flex items-center justify-center overflow-auto p-4"
                   style={{ cursor: zoom > 1 ? 'move' : 'default' }}
                 >
                   <img
@@ -308,6 +326,28 @@ export function FilePreviewModal({
                     <Download className="h-4 w-4 mr-2" />
                     Baixar para visualizar
                   </Button>
+                </motion.div>
+              )
+            ) : isPdf ? (
+              imageUrl && !imageError ? (
+                <motion.div
+                  key="pdf"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="w-full h-full"
+                >
+                  <iframe
+                    src={`${imageUrl}#toolbar=0`}
+                    className="w-full h-full border-0 bg-white/5"
+                    title={file.name}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="pdf-error"
+                  className="flex flex-col items-center justify-center p-8"
+                >
+                  <p className="text-gray-400">Erro ao carregar PDF.</p>
                 </motion.div>
               )
             ) : isVideo ? (
