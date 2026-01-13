@@ -82,4 +82,3 @@ CREATE POLICY "Admins can insert/update/delete modules" ON modules
 
 CREATE POLICY "Admins can insert/update/delete lessons" ON lessons
     FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) = 'Admin');
-
