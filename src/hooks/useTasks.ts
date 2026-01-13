@@ -460,28 +460,60 @@ export function useTasks(): UseTasksReturn {
     if (updates.status && oldTask && updates.status !== oldTask.status) {
       const ticketStatus = mapTaskStatusToTicketStatus(updates.status)
 
+      console.log(`[useTasks] Syncing Ticket. Task: ${id}, Status: ${updates.status} -> ${ticketStatus}`)
+
       try {
-        // Tenta atualizar pelo ID do ticket vinculado OU pelo ID da task
-        let query = supabase.from('tickets').update({ status: ticketStatus })
+        // PRIORIDADE 1: Atualizar pelo FK na tabela de tickets (mais confiável)
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .update({
+            status: ticketStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('linked_task_id', id)
+          .select('id')
 
-        if (updatedTask.linkedTicketId) {
-          query = query.eq('id', updatedTask.linkedTicketId)
-        } else {
-          query = query.eq('linked_task_id', id)
-        }
-
-        const { error: ticketError } = await query
+        let synced = false
 
         if (ticketError) {
-          console.error('[useTasks] Failed to sync ticket status:', ticketError)
-          toast.error('Tarefa atualizada, mas falha ao sincronizar Ticket.')
-        } else {
-          console.log('[useTasks] Ticket status synced to:', ticketStatus)
-          toast.success(`Ticket vinculado atualizado para: ${ticketStatus === 'completed' ? 'Concluído' : ticketStatus === 'in_progress' ? 'Em Progresso' : 'A Fazer'}`)
+          console.error('[useTasks] Failed to sync ticket by linked_task_id:', ticketError)
+        } else if (ticketData && ticketData.length > 0) {
+          console.log('[useTasks] Synced via linked_task_id:', ticketData)
+          synced = true
         }
+
+        // PRIORIDADE 2: Se falhar (ex: ticket não tem o link), tentar pelo cache da task
+        if (!synced && updatedTask.linkedTicketId) {
+          console.log(`[useTasks] linked_task_id matched 0 rows. Trying linkedTicketId: ${updatedTask.linkedTicketId}`)
+
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('tickets')
+            .update({
+              status: ticketStatus,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', updatedTask.linkedTicketId)
+            .select('id')
+
+          if (fallbackError) {
+            console.error('[useTasks] Failed to sync ticket by ID:', fallbackError)
+            toast.error('Erro ao sincronizar Ticket.')
+          } else if (fallbackData && fallbackData.length > 0) {
+            console.log('[useTasks] Synced via ticket ID:', fallbackData)
+            synced = true
+          }
+        }
+
+        if (synced) {
+          toast.success(`Ticket vinculado atualizado para: ${ticketStatus === 'completed' ? 'Concluído' : ticketStatus === 'in_progress' ? 'Em Progresso' : 'A Fazer'}`)
+        } else {
+          console.warn('[useTasks] No ticket found to sync (neither by linked_task_id nor linkedTicketId)')
+        }
+
       } catch (err) {
         console.error('[useTasks] Exception syncing ticket:', err)
       }
+
     }
 
     // NOVO: Emitir evento se status mudou
@@ -494,7 +526,7 @@ export function useTasks(): UseTasksReturn {
           updatedTask.createdBy,
           updatedTask.assignedTo,
         ].filter((id): id is string => id !== null && id !== undefined)
-
+  
         if (recipientIds.length > 0) {
           EventBus.emit({
             type: 'task_status_changed',
