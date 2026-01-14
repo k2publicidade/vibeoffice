@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import type { Course, Module, Lesson, CourseProgress } from '@/types/courses'
+import { toast } from 'sonner'
 
 export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([])
@@ -166,7 +167,6 @@ export function useCourses() {
 
     try {
       // Sanitize payload to ensure only valid columns are sent
-      // This prevents 400 Bad Request errors from extra fields or undefined values
       const payload = {
         title: courseData.title,
         description: courseData.description,
@@ -192,6 +192,9 @@ export function useCourses() {
           hint: error.hint,
           code: error.code
         });
+        toast.error(`Erro ao criar curso: ${error.message || 'Erro desconhecido'}`, {
+          description: error.details || error.hint || `Código: ${error.code} - Verifique o console (F12)`
+        });
         throw error;
       }
 
@@ -206,8 +209,12 @@ export function useCourses() {
 
       setCourses(prev => [courseResult, ...prev]);
       return courseResult;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating course:', error);
+      // Ensure we don't swallow the error without notifying if it wasn't handled above
+      if (!error.message?.includes('Erro ao criar curso')) {
+        toast.error("Falha ao criar curso", { description: error.message });
+      }
       throw error;
     }
   };
