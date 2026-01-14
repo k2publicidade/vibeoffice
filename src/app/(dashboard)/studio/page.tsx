@@ -15,47 +15,37 @@ export default function StudioPage() {
     const [editingBooking, setEditingBooking] = useState<StudioBooking | undefined>(undefined);
 
     // Filters
-    const [filterTitle, setFilterTitle] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [filterStartDate, setFilterStartDate] = useState('');
     const [filterEndDate, setFilterEndDate] = useState('');
-    const [filterProducer, setFilterProducer] = useState('');
-    const [filterArtist, setFilterArtist] = useState('');
     const [isFiltersOpen, setIsFiltersOpen] = useState(true);
 
     // Derived filtered sessions
     const filteredBookings = useMemo(() => {
         return bookings.filter(booking => {
-            // Title Filter
-            if (filterTitle && !booking.track_title.toLowerCase().includes(filterTitle.toLowerCase())) return false;
+            // Unifield Search (Title, Studio, People)
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const matchesTitle = booking.track_title.toLowerCase().includes(query);
+                const matchesStudio = booking.studio_name.toLowerCase().includes(query);
+                const matchesProducer = booking.producers?.some(p => p.name.toLowerCase().includes(query));
+                const matchesArtist = booking.artists?.some(a => a.name.toLowerCase().includes(query));
+
+                if (!matchesTitle && !matchesStudio && !matchesProducer && !matchesArtist) return false;
+            }
 
             // Date Filters
             if (filterStartDate && booking.booking_date < filterStartDate) return false;
             if (filterEndDate && booking.booking_date > filterEndDate) return false;
 
-            // Producer Filter
-            if (filterProducer) {
-                const search = filterProducer.toLowerCase();
-                const hasProducer = booking.producers?.some(p => p.name.toLowerCase().includes(search));
-                if (!hasProducer) return false;
-            }
-
-            // Artist Filter
-            if (filterArtist) {
-                const search = filterArtist.toLowerCase();
-                const hasArtist = booking.artists?.some(a => a.name.toLowerCase().includes(search));
-                if (!hasArtist) return false;
-            }
-
             return true;
         });
-    }, [bookings, filterTitle, filterStartDate, filterEndDate, filterProducer, filterArtist]);
+    }, [bookings, searchQuery, filterStartDate, filterEndDate]);
 
     const clearFilters = () => {
-        setFilterTitle('');
+        setSearchQuery('');
         setFilterStartDate('');
         setFilterEndDate('');
-        setFilterProducer('');
-        setFilterArtist('');
     };
 
     const handleEdit = (booking: StudioBooking) => {
@@ -113,7 +103,7 @@ export default function StudioPage() {
         document.body.removeChild(link);
     };
 
-    const hasActiveFilters = filterTitle || filterStartDate || filterEndDate || filterProducer || filterArtist;
+    const hasActiveFilters = searchQuery || filterStartDate || filterEndDate;
 
     return (
         <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-black to-black text-white">
@@ -161,15 +151,15 @@ export default function StudioPage() {
                 <div className="bg-neutral-950/40 backdrop-blur-xl border border-white/5 rounded-2xl p-1 mb-10 overflow-hidden shadow-2xl">
                     <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-white/5">
 
-                        {/* Search */}
-                        <div className="flex-1 p-3 flex items-center gap-3">
-                            <Search size={18} className="text-zinc-600 pl-1" />
+                        {/* Unified Search */}
+                        <div className="flex-[3] p-3 flex items-center gap-3">
+                            <Search size={20} className="text-zinc-500 pl-1" />
                             <input
                                 type="text"
-                                value={filterTitle}
-                                onChange={(e) => setFilterTitle(e.target.value)}
-                                placeholder="Buscar por Título do Projeto..."
-                                className="w-full bg-transparent border-none focus:ring-0 text-sm placeholder-zinc-600 text-white font-medium"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Pesquisar por Título, Estúdio, Artista ou Produtor..."
+                                className="w-full bg-transparent border-none focus:ring-0 text-base placeholder-zinc-600 text-white font-medium"
                             />
                         </div>
 
@@ -196,40 +186,15 @@ export default function StudioPage() {
                             </div>
                         </div>
 
-                        {/* People Filters */}
-                        <div className="flex-1 p-3 flex items-center gap-4">
-                            <div className="flex-1 flex items-center gap-2">
-                                <User size={16} className="text-zinc-600" />
-                                <input
-                                    type="text"
-                                    value={filterProducer}
-                                    onChange={(e) => setFilterProducer(e.target.value)}
-                                    placeholder="Produtor..."
-                                    className="w-full bg-transparent border-none focus:ring-0 text-xs placeholder-zinc-600 text-white"
-                                />
-                            </div>
-                            <div className="w-px h-4 bg-white/10"></div>
-                            <div className="flex-1 flex items-center gap-2">
-                                <Mic2 size={16} className="text-zinc-600" />
-                                <input
-                                    type="text"
-                                    value={filterArtist}
-                                    onChange={(e) => setFilterArtist(e.target.value)}
-                                    placeholder="Artista..."
-                                    className="w-full bg-transparent border-none focus:ring-0 text-xs placeholder-zinc-600 text-white"
-                                />
-                            </div>
-                        </div>
-
                         {/* Action */}
                         {hasActiveFilters && (
                             <div className="p-2 flex items-center justify-center bg-red-500/10">
                                 <button
                                     onClick={clearFilters}
-                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                    className="w-10 h-full flex items-center justify-center rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white transition-all"
                                     title="Limpar Filtros"
                                 >
-                                    <XCircle size={16} />
+                                    <XCircle size={18} />
                                 </button>
                             </div>
                         )}
@@ -263,7 +228,7 @@ export default function StudioPage() {
 
                 {/* Form Modal */}
                 <Dialog open={showForm} onOpenChange={setShowForm}>
-                    <DialogContent className="w-full max-w-6xl bg-transparent border-0 p-0 shadow-none">
+                    <DialogContent className="w-full sm:max-w-6xl bg-transparent border-0 p-0 shadow-none">
                         <StudioBookingForm
                             onSuccess={handleFormSuccess}
                             onCancel={() => setShowForm(false)}
