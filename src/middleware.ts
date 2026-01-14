@@ -62,7 +62,12 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
-  const isProtectedRoute = !isAuthRoute
+  const isPublicRoute =
+    request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.startsWith('/auth') ||
+    request.nextUrl.pathname.startsWith('/update-password')
+
+  const isProtectedRoute = !isPublicRoute
 
   if (isProtectedRoute && !session) {
     return NextResponse.redirect(new URL('/login', request.url))
