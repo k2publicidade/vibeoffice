@@ -11,6 +11,7 @@ import { AgendaView } from '@/components/calendar/AgendaView'
 import { CreateEventModal } from '@/components/calendar/CreateEventModal'
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal'
 import { useUsers } from '@/hooks/useUsers'
+import { useTasks } from '@/hooks/useTasks'
 import { toast } from 'sonner'
 
 export default function CalendarPage() {
@@ -23,6 +24,15 @@ export default function CalendarPage() {
     getUpcomingEvents
   } = useCalendar()
   const { users } = useUsers()
+
+  // Fetch tasks for the agenda sidebar
+  const { tasks } = useTasks()
+
+  // Filter only active tasks for the current user
+  const activeTasks = useMemo(() => {
+    return tasks
+      .filter(t => t.status !== 'done')
+  }, [tasks])
 
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [view, setView] = useState<'month' | 'week' | 'day' | 'agenda'>('week')
@@ -43,33 +53,6 @@ export default function CalendarPage() {
     { id: '2', name: 'Tarefas de Marketing', hours: 12.5, color: 'hsl(22, 94%, 48%)' },
     { id: '3', name: 'Reuniões', hours: 3, color: 'hsl(0, 0%, 0%)' },
   ]
-
-  // Get next upcoming event
-  const nextEvent = useMemo(() => {
-    const upcoming = getUpcomingEvents(14) // Look ahead 14 days
-    if (upcoming.length === 0) return undefined
-
-    const event = upcoming[0]
-    const start = new Date(event.startTime)
-    const end = new Date(event.endTime)
-
-    // Format duration
-    const diffMins = Math.round((end.getTime() - start.getTime()) / 60000)
-    let duration = `${diffMins} min`
-    if (diffMins >= 60) {
-      const hours = Math.floor(diffMins / 60)
-      const mins = diffMins % 60
-      duration = mins > 0 ? `${hours}h ${mins}min` : `${hours}h`
-    }
-
-    return {
-      id: event.id,
-      title: event.title,
-      time: `${start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
-      duration,
-      location: event.location || undefined,
-    }
-  }, [getUpcomingEvents, events]) // Recalculate when events change
 
   // Transform events for WeekView
   const weekEvents: ViewCalendarEvent[] = useMemo(() => {
@@ -218,7 +201,7 @@ export default function CalendarPage() {
             filters={filters}
             onFilterChange={handleFilterChange}
             projects={projects}
-            upcomingEvent={nextEvent}
+            tasks={activeTasks}
           />
         </div>
 
@@ -300,4 +283,3 @@ export default function CalendarPage() {
     </div>
   )
 }
-

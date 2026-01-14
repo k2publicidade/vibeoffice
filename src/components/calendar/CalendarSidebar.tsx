@@ -18,6 +18,8 @@ import {
   subMonths,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { Task } from '@/types/tasks'
+import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal'
 
 interface CalendarFilter {
   id: string
@@ -34,21 +36,13 @@ interface Project {
   color: string
 }
 
-interface UpcomingEvent {
-  id: string
-  title: string
-  time: string
-  duration: string
-  location?: string
-}
-
 interface CalendarSidebarProps {
   selectedDate: Date
   onDateSelect: (date: Date) => void
   filters: CalendarFilter[]
   onFilterChange: (id: string, checked: boolean) => void
   projects?: Project[]
-  upcomingEvent?: UpcomingEvent
+  tasks?: Task[]
 }
 
 export function CalendarSidebar({
@@ -57,9 +51,18 @@ export function CalendarSidebar({
   filters,
   onFilterChange,
   projects = [],
-  upcomingEvent,
+  tasks = [],
 }: CalendarSidebarProps) {
   const [currentMonth, setCurrentMonth] = useState(selectedDate)
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+
+  const activeTask = tasks.length > 0 ? tasks[currentTaskIndex % tasks.length] : null
+
+  const handleNextTask = () => {
+    if (tasks.length === 0) return
+    setCurrentTaskIndex((prev) => (prev + 1) % tasks.length)
+  }
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -128,8 +131,8 @@ export function CalendarSidebar({
                   isSelected && 'bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/30',
                   !isSelected && isToday && 'ring-2 ring-orange-500',
                   !isSelected &&
-                    isCurrentMonth &&
-                    'hover:bg-zinc-700 hover:text-orange-400'
+                  isCurrentMonth &&
+                  'hover:bg-zinc-700 hover:text-orange-400'
                 )}
               >
                 {format(day, 'd')}
@@ -139,7 +142,7 @@ export function CalendarSidebar({
         </div>
       </div>
 
-      {/* My Calendars */}
+      {/* Meus Calendários */}
       <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700/50 p-4">
         <h3 className="mb-3 font-semibold text-foreground">Meus Calendários</h3>
         <div className="space-y-3">
@@ -192,39 +195,55 @@ export function CalendarSidebar({
         </div>
       )}
 
-      {/* Upcoming Event Card */}
-      {upcomingEvent && (
-        <div className="rounded-2xl bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] p-4 text-white shadow-lg shadow-[#ff0300]/30">
-          <div className="mb-2 flex items-center justify-between text-sm text-white/80">
-            <span>{upcomingEvent.time}</span>
-            <div className="flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
-              <Clock className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium">{upcomingEvent.duration}</span>
+      {/* Active Task Card */}
+      {activeTask && (
+        <>
+          <div className="rounded-2xl bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] p-4 text-white shadow-lg shadow-[#ff0300]/30 transition-all duration-300">
+            <div className="mb-2 flex items-center justify-between text-sm text-white/80">
+              {activeTask.dueDate ? (
+                <span>{format(new Date(activeTask.dueDate), "dd 'de' MMMM", { locale: ptBR })}</span>
+              ) : (
+                <span>Sem data</span>
+              )}
+              <div className="flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">
+                  {tasks.length > 1 ? `${(currentTaskIndex % tasks.length) + 1}/${tasks.length}` : '1/1'}
+                </span>
+              </div>
+            </div>
+
+            <h4 className="font-semibold text-white line-clamp-2 min-h-[3rem]">
+              {activeTask.title}
+            </h4>
+
+            <div className="mt-4 flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="rounded-full bg-white/20 text-white border-0 hover:bg-white/30 transition-colors"
+                onClick={handleNextTask}
+                disabled={tasks.length <= 1}
+              >
+                Depois
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="rounded-full bg-white text-orange-600 border-0 hover:bg-white/90 font-medium transition-colors"
+                onClick={() => setDetailsOpen(true)}
+              >
+                Detalhes
+              </Button>
             </div>
           </div>
-          <h4 className="font-semibold text-white">{upcomingEvent.title}</h4>
-          {upcomingEvent.location && (
-            <p className="mt-1 text-sm text-white/80">
-              📍 {upcomingEvent.location}
-            </p>
-          )}
-          <div className="mt-4 flex gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              className="rounded-full bg-white/20 text-white border-0 hover:bg-white/30 transition-colors"
-            >
-              Depois
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="rounded-full bg-white text-orange-600 border-0 hover:bg-white/90 font-medium transition-colors"
-            >
-              Detalhes
-            </Button>
-          </div>
-        </div>
+
+          <TaskDetailsModal
+            open={detailsOpen}
+            onClose={() => setDetailsOpen(false)}
+            task={activeTask}
+          />
+        </>
       )}
     </div>
   )

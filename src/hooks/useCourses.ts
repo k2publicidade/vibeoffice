@@ -165,13 +165,35 @@ export function useCourses() {
     if (!user) return undefined;
 
     try {
+      // Sanitize payload to ensure only valid columns are sent
+      // This prevents 400 Bad Request errors from extra fields or undefined values
+      const payload = {
+        title: courseData.title,
+        description: courseData.description,
+        difficulty: courseData.difficulty || 'beginner',
+        tags: Array.isArray(courseData.tags) ? courseData.tags : [],
+        thumbnail: courseData.thumbnail || null,
+        instructor: courseData.instructor || null,
+        duration: courseData.duration || 0,
+      };
+
+      console.log('Creating course with payload:', payload);
+
       const { data, error } = await supabase
         .from('courses' as any)
-        .insert([courseData])
+        .insert([payload])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
 
       const newCourse = data as any;
       const courseResult: Course = {
