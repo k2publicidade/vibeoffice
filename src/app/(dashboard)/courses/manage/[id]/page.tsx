@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import type { Lesson } from '@/types/courses'
 import { ModuleList } from '@/components/courses/ModuleList'
 import { LessonEditorModal } from '@/components/courses/LessonEditorModal'
+import { CreateModuleModal } from '@/components/courses/CreateModuleModal'
 
 export default function CourseEditorPage() {
     const { id } = useParams() as { id: string }
@@ -37,6 +38,7 @@ export default function CourseEditorPage() {
     // Lesson Edit State
     const [editingLesson, setEditingLesson] = useState<Partial<Lesson> | null>(null)
     const [isLessonModalOpen, setIsLessonModalOpen] = useState(false)
+    const [isModuleModalOpen, setIsModuleModalOpen] = useState(false) // New state for Module Modal
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null)
 
     // Load Initial Data
@@ -64,10 +66,7 @@ export default function CourseEditorPage() {
         }
     }
 
-    const handleAddModule = async () => {
-        const title = prompt("Nome do Módulo:")
-        if (!title) return
-
+    const handleCreateModule = async (title: string) => {
         try {
             const order = (course.modules?.length || 0)
             await createModule(id, title, order)
@@ -226,7 +225,7 @@ export default function CourseEditorPage() {
                     <TabsContent value="content" className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-semibold text-white">Módulos e Aulas</h3>
-                            <Button onClick={handleAddModule} variant="outline" className="border-dashed border-white/20 hover:bg-white/5 text-white">
+                            <Button onClick={() => setIsModuleModalOpen(true)} variant="outline" className="border-dashed border-white/20 hover:bg-white/5 text-white">
                                 <Plus className="mr-2 h-4 w-4" /> Novo Módulo
                             </Button>
                         </div>
@@ -247,6 +246,12 @@ export default function CourseEditorPage() {
                     moduleName={activeModuleName}
                     lesson={editingLesson}
                     onSave={handleSaveLesson}
+                />
+
+                <CreateModuleModal
+                    open={isModuleModalOpen}
+                    onClose={() => setIsModuleModalOpen(false)}
+                    onSave={handleCreateModule}
                 />
 
             </div>

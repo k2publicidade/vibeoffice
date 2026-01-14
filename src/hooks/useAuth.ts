@@ -16,6 +16,7 @@ export interface UseAuthReturn {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<void>
 }
 
 export function useAuth(): UseAuthReturn {
@@ -150,11 +151,27 @@ export function useAuth(): UseAuthReturn {
     }
   }
 
+  async function resetPassword(email: string) {
+    setIsLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      })
+      if (error) throw error
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido'
+      throw new Error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return {
     user,
     isLoading,
     signIn,
     signUp,
     signOut,
+    resetPassword,
   }
 }
