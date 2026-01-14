@@ -22,13 +22,14 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
+import { CreateCourseModal } from '@/components/courses/CreateCourseModal'
 
 export default function CoursesManagePage() {
     const router = useRouter()
     const { courses, loading, createCourse, deleteCourse } = useCourses()
     const { user } = useAuth()
     const [searchTerm, setSearchTerm] = useState('')
-    const [isCreating, setIsCreating] = useState(false)
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
     // Redirect if not admin
     if (!loading && user?.role !== 'Admin') {
@@ -40,22 +41,14 @@ export default function CoursesManagePage() {
         c.title.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const handleCreateCourse = async () => {
-        setIsCreating(true)
+    const handleCreateCourse = async (courseData: any) => {
         try {
-            const newCourse = await createCourse({
-                title: 'Novo Curso Sem Título',
-                description: 'Descrição do novo curso...',
-                difficulty: 'beginner',
-                tags: []
-            })
+            const newCourse = await createCourse(courseData)
             if (newCourse) {
                 router.push(`/courses/manage/${newCourse.id}`)
             }
         } catch (error) {
             console.error("Failed to create course", error)
-        } finally {
-            setIsCreating(false)
         }
     }
 
@@ -82,11 +75,10 @@ export default function CoursesManagePage() {
                     </div>
 
                     <Button
-                        onClick={handleCreateCourse}
+                        onClick={() => setIsCreateModalOpen(true)}
                         className="bg-red-600 hover:bg-red-700 text-white gap-2"
-                        disabled={isCreating}
                     >
-                        {isCreating ? 'Criando...' : <><Plus size={18} /> Novo Curso</>}
+                        <Plus size={18} /> Novo Curso
                     </Button>
                 </div>
 
@@ -174,6 +166,12 @@ export default function CoursesManagePage() {
                     </Table>
                 </div>
             </div>
+
+            <CreateCourseModal
+                open={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onCreate={handleCreateCourse}
+            />
         </div>
     )
 }
