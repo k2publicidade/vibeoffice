@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
-  Calendar,
-  Ticket,
   MessageSquare,
-  CheckSquare,
   HardDrive,
+  CheckSquare,
+  Ticket,
   BookOpen,
+  Calendar,
   X,
+  Mic2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -22,12 +23,13 @@ interface MobileDrawerProps {
 
 const navItems = [
   { href: '/', label: 'Início', icon: LayoutDashboard },
-  { href: '/calendar', label: 'Agenda', icon: Calendar },
-  { href: '/tickets', label: 'Solicitações', icon: Ticket },
   { href: '/chat', label: 'Chat', icon: MessageSquare },
-  { href: '/tasks', label: 'Tarefas', icon: CheckSquare },
   { href: '/drive', label: 'Arquivos', icon: HardDrive },
+  { href: '/tasks', label: 'Tarefas', icon: CheckSquare },
+  { href: '/tickets', label: 'Solicitações', icon: Ticket },
   { href: '/courses', label: 'Cursos', icon: BookOpen },
+  { href: '/calendar', label: 'Agenda', icon: Calendar },
+  { href: '/studio', label: 'Estúdio', icon: Mic2 },
 ]
 
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
