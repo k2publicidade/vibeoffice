@@ -181,22 +181,22 @@ export function useAnnouncements(): UseAnnouncementsReturn {
       }
 
       try {
-        // Validar permissões no client (RLS também valida no servidor)
-        if (user.role !== 'Admin' && user.role !== 'Gerente') {
-          toast.error('Apenas Admin ou Gerente podem criar avisos')
-          return null
-        }
+        // REMOVIDO: Agora todos os cargos podem criar avisos
+        // if (user.role !== 'Admin' && user.role !== 'Gerente') {
+        //   toast.error('Apenas Admin ou Gerente podem criar avisos')
+        //   return null
+        // }
 
-        // Se Gerente, garantir que está criando para seu setor
-        if (user.role === 'Gerente') {
-          const isGeneral = data.target_sectors.length === 0
-          const includesOwnSector = data.target_sectors.includes(user.sector)
-
-          if (!isGeneral && !includesOwnSector) {
-            toast.error('Gerentes só podem criar avisos para seu setor')
-            return null
-          }
-        }
+        // REMOVIDO: Restrição de setor para Gerentes
+        // if (user.role === 'Gerente') {
+        //   const isGeneral = data.target_sectors.length === 0
+        //   const includesOwnSector = data.target_sectors.includes(user.sector)
+        //
+        //   if (!isGeneral && !includesOwnSector) {
+        //     toast.error('Gerentes só podem criar avisos para seu setor')
+        //     return null
+        //   }
+        // }
 
         // Preparar dados para insert
         const insertData = {

@@ -31,11 +31,11 @@ export default function CoursesManagePage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
-    // Redirect if not admin
-    if (!loading && user?.role !== 'Admin') {
-        router.push('/courses');
-        return null;
-    }
+    // REMOVIDO: Agora todos os cargos podem gerenciar cursos
+    // if (!loading && user?.role !== 'Admin') {
+    //     router.push('/courses');
+    //     return null;
+    // }
 
     const filteredCourses = courses.filter(c =>
         c.title.toLowerCase().includes(searchTerm.toLowerCase())

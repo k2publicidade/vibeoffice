@@ -39,11 +39,11 @@ export default function AnnouncementsAdminPage() {
     'all'
   )
 
-  // Redirect se não for Admin ou Gerente
-  if (!authLoading && user && user.role !== 'Admin' && user.role !== 'Gerente') {
-    router.push('/')
-    return null
-  }
+  // REMOVIDO: Agora todos os cargos podem acessar o gerenciamento de avisos
+  // if (!authLoading && user && user.role !== 'Admin' && user.role !== 'Gerente') {
+  //   router.push('/')
+  //   return null
+  // }
 
   // Filtrar avisos
   const filteredAnnouncements = useMemo(() => {
