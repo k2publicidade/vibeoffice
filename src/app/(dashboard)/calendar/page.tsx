@@ -21,6 +21,7 @@ export default function CalendarPage() {
     createEvent,
     updateEvent,
     deleteEvent,
+    duplicateEvent,
     getUpcomingEvents
   } = useCalendar()
   const { users } = useUsers()
@@ -177,6 +178,17 @@ export default function CalendarPage() {
     }
   }
 
+  const handleDuplicateEvent = async (id: string) => {
+    try {
+      await duplicateEvent(id)
+      toast.success('Evento duplicado com sucesso!')
+      setDetailsModalOpen(false)
+    } catch (error) {
+      console.error("Error duplicate", error)
+      toast.error("Erro ao duplicar evento")
+    }
+  }
+
   const handleEventDrop = async (eventId: string, newStartTime: Date, newEndTime: Date) => {
     try {
       await updateEvent(eventId, {
@@ -278,6 +290,7 @@ export default function CalendarPage() {
         event={selectedEvent}
         onUpdate={handleUpdateEvent}
         onDelete={handleDeleteEvent}
+        onDuplicate={handleDuplicateEvent}
         availableAttendees={availableAttendees}
       />
     </div>

@@ -11,7 +11,7 @@ import {
     Trash2,
     Edit2,
     X,
-
+    Copy,
     FileText,
     Ticket,
     ClipboardList,
@@ -62,6 +62,7 @@ interface EventDetailsModalProps {
     event: CalendarEvent | null
     onUpdate: (id: string, updates: Partial<CalendarEvent>) => void
     onDelete: (id: string) => void
+    onDuplicate?: (id: string) => void
     availableAttendees?: Attendee[]
     availableTags?: Tag[]
 }
@@ -79,6 +80,7 @@ export function EventDetailsModal({
     event,
     onUpdate,
     onDelete,
+    onDuplicate,
     availableAttendees = [],
     availableTags = defaultTags,
 }: EventDetailsModalProps) {
@@ -122,6 +124,13 @@ export function EventDetailsModal({
         }
     }
 
+    const handleDuplicate = () => {
+        if (event.id && onDuplicate) {
+            onDuplicate(event.id)
+            onClose()
+        }
+    }
+
     // Get color based on type
     const getTypeColor = (type?: string) => {
         switch (type) {
@@ -153,14 +162,27 @@ export function EventDetailsModal({
                                         size="icon"
                                         onClick={() => setIsEditing(true)}
                                         className="h-8 w-8 text-zinc-400 hover:text-white"
+                                        title="Editar evento"
                                     >
                                         <Edit2 className="h-4 w-4" />
                                     </Button>
+                                    {onDuplicate && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleDuplicate}
+                                            className="h-8 w-8 text-zinc-400 hover:text-blue-400"
+                                            title="Duplicar evento"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={handleDelete}
                                         className="h-8 w-8 text-zinc-400 hover:text-red-400"
+                                        title="Excluir evento"
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -169,6 +191,7 @@ export function EventDetailsModal({
                                         size="icon"
                                         onClick={onClose}
                                         className="h-8 w-8 text-zinc-400 hover:text-white"
+                                        title="Fechar"
                                     >
                                         <X className="h-4 w-4" />
                                     </Button>

@@ -28,6 +28,7 @@ export interface UseCalendarReturn {
   createEvent: (event: CreateEventInput) => Promise<void>
   updateEvent: (id: string, event: Partial<CalendarEvent>) => void
   deleteEvent: (id: string) => void
+  duplicateEvent: (id: string) => Promise<void>
   getEventsByType: (type: CalendarEvent['type']) => CalendarEvent[]
   getMonthDays: (date: Date) => Date[]
 }
@@ -222,6 +223,55 @@ export function useCalendar(): UseCalendarReturn {
     setEvents((prev) => prev.filter((event) => event.id !== id))
   }, [])
 
+  const duplicateEvent = useCallback(
+    async (id: string) => {
+      if (!user) throw new Error('User not authenticated')
+
+      // Buscar o evento original
+      const originalEvent = events.find((event) => event.id === id)
+      if (!originalEvent) throw new Error('Event not found')
+
+      // Criar cópia do evento com novo título
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert({
+          title: `${originalEvent.title} (Cópia)`,
+          description: originalEvent.description,
+          start_time: originalEvent.startTime.toISOString(),
+          end_time: originalEvent.endTime.toISOString(),
+          type: originalEvent.type,
+          location: originalEvent.location,
+          attendees: originalEvent.attendees || [],
+          created_by: user.id,
+          linked_task_id: originalEvent.linkedTaskId || null,
+          linked_ticket_id: originalEvent.linkedTicketId || null,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newEvent: CalendarEvent = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        startTime: new Date(data.start_time),
+        endTime: new Date(data.end_time),
+        type: data.type as 'personal' | 'sector' | 'company',
+        location: data.location,
+        attendees: data.attendees || [],
+        createdBy: data.created_by,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.created_at),
+        linkedTaskId: (data as any).linked_task_id || undefined,
+        linkedTicketId: (data as any).linked_ticket_id || undefined,
+      }
+
+      setEvents((prev) => [...prev, newEvent])
+    },
+    [user, events]
+  )
+
   const getEventsByType = useCallback(
     (type: CalendarEvent['type']) => {
       return events.filter((event) => event.type === type)
@@ -245,6 +295,7 @@ export function useCalendar(): UseCalendarReturn {
     createEvent,
     updateEvent,
     deleteEvent,
+    duplicateEvent,
     getEventsByType,
     getMonthDays,
   }
