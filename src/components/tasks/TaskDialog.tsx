@@ -11,7 +11,6 @@ import {
   PremiumModalDescription,
   PremiumModalBody,
   PremiumModalFooter,
-  PremiumModalTrigger,
 } from '@/components/ui/premium-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -112,29 +111,31 @@ export function TaskDialog({
   }
 
   return (
-    <PremiumModal open={open} onOpenChange={handleOpenChange} size="lg">
-      <PremiumModalTrigger asChild>
-        <Button className={cn(
+    <>
+      <Button
+        onClick={() => handleOpenChange(true)}
+        className={cn(
           "gap-2 h-11 min-w-[140px]",
           task
             ? "bg-zinc-800 hover:bg-zinc-700"
             : "bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:from-[#ff0300] hover:to-[#fc7a67]"
-        )}>
-          {task ? (
-            <>
-              <Edit2 className="h-4 w-4" />
-              Editar Tarefa
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              Nova Tarefa
-            </>
-          )}
-        </Button>
-      </PremiumModalTrigger>
+        )}
+      >
+        {task ? (
+          <>
+            <Edit2 className="h-4 w-4" />
+            Editar Tarefa
+          </>
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4" />
+            Nova Tarefa
+          </>
+        )}
+      </Button>
 
-      <PremiumModalHeader>
+      <PremiumModal open={open} onClose={() => handleOpenChange(false)} size="lg">
+        <PremiumModalHeader>
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#fc7a67]/20 to-[#ff0300]/20 flex items-center justify-center border border-[#fc7a67]/20">
             {task ? (
@@ -385,6 +386,7 @@ export function TaskDialog({
           </div>
         </PremiumModalFooter>
       </form>
-    </PremiumModal>
+      </PremiumModal>
+    </>
   )
 }
