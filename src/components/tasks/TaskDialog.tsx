@@ -5,16 +5,18 @@ import { format } from 'date-fns'
 import { Task, TaskStatus, TaskPriority } from '@/types/tasks'
 import { Sector } from '@/types/auth'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+  PremiumModal,
+  PremiumModalHeader,
+  PremiumModalTitle,
+  PremiumModalDescription,
+  PremiumModalBody,
+  PremiumModalFooter,
+  PremiumModalTrigger,
+} from '@/components/ui/premium-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -22,7 +24,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Edit2, Calendar as CalendarIcon } from 'lucide-react'
+import {
+  Plus,
+  Edit2,
+  Calendar as CalendarIcon,
+  FileText,
+  Users,
+  Briefcase,
+  Flag,
+  CheckSquare,
+  Clock,
+  Sparkles
+} from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
 import {
   MultiSelect,
@@ -31,6 +44,7 @@ import {
 } from '@/components/ui/multi-select'
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
 import { PremiumTimePicker } from '@/components/ui/premium-time-picker'
+import { cn } from '@/lib/utils'
 
 interface TaskDialogProps {
   task?: Task
@@ -85,10 +99,27 @@ export function TaskDialog({
     onOpenChange?.(newOpen)
   }
 
+  // Helper para obter cor da prioridade
+  const getPriorityColor = (priority: TaskPriority) => {
+    switch (priority) {
+      case 'high':
+        return 'text-red-400 bg-red-500/10 border-red-500/20'
+      case 'medium':
+        return 'text-orange-400 bg-orange-500/10 border-orange-500/20'
+      case 'low':
+        return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
+    <PremiumModal open={open} onOpenChange={handleOpenChange} size="lg">
+      <PremiumModalTrigger asChild>
+        <Button className={cn(
+          "gap-2 h-11 min-w-[140px]",
+          task
+            ? "bg-zinc-800 hover:bg-zinc-700"
+            : "bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:from-[#ff0300] hover:to-[#fc7a67]"
+        )}>
           {task ? (
             <>
               <Edit2 className="h-4 w-4" />
@@ -96,153 +127,264 @@ export function TaskDialog({
             </>
           ) : (
             <>
-              <Plus className="h-4 w-4" />
+              <Sparkles className="h-4 w-4" />
               Nova Tarefa
             </>
           )}
         </Button>
-      </DialogTrigger>
+      </PremiumModalTrigger>
 
-      <DialogContent className="max-w-md sm:max-w-lg w-[95vw] max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{task ? 'Editar Tarefa' : 'Criar Nova Tarefa'}</DialogTitle>
-          <DialogDescription>
-            {task ? 'Atualize os detalhes da tarefa' : 'Preencha os campos para criar uma nova tarefa'}
-          </DialogDescription>
-        </DialogHeader>
+      <PremiumModalHeader>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#fc7a67]/20 to-[#ff0300]/20 flex items-center justify-center border border-[#fc7a67]/20">
+            {task ? (
+              <Edit2 className="h-5 w-5 text-[#fc7a67]" />
+            ) : (
+              <Plus className="h-5 w-5 text-[#fc7a67]" />
+            )}
+          </div>
+          <div>
+            <PremiumModalTitle>
+              {task ? 'Editar Tarefa' : 'Criar Nova Tarefa'}
+            </PremiumModalTitle>
+            <PremiumModalDescription>
+              {task ? 'Atualize os detalhes da tarefa' : 'Preencha os campos para criar uma nova tarefa'}
+            </PremiumModalDescription>
+          </div>
+        </div>
+      </PremiumModalHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-          {/* Título */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Título *</Label>
-            <Input
-              id="title"
-              placeholder="Nome da tarefa"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-            />
+      <form onSubmit={handleSubmit}>
+        <PremiumModalBody className="space-y-6">
+          {/* Informações Básicas */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+              <FileText className="h-4 w-4" />
+              Informações Básicas
+            </div>
+
+            {/* Título */}
+            <div className="space-y-2">
+              <Label htmlFor="title" className="flex items-center gap-2">
+                Título
+                <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="title"
+                placeholder="Ex: Desenvolver nova funcionalidade"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+                className="bg-zinc-800/50 border-zinc-700 focus:border-[#fc7a67] transition-colors h-11"
+              />
+            </div>
+
+            {/* Descrição */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                placeholder="Descreva os detalhes da tarefa..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="bg-zinc-800/50 border-zinc-700 focus:border-[#fc7a67] transition-colors min-h-[100px] resize-none"
+              />
+            </div>
           </div>
 
-          {/* Descrição */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Input
-              id="description"
-              placeholder="Descrição da tarefa"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
+          {/* Organização */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+              <Briefcase className="h-4 w-4" />
+              Organização
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Setor */}
+              <div className="space-y-2">
+                <Label htmlFor="sector" className="flex items-center gap-2">
+                  <Briefcase className="h-3.5 w-3.5 text-zinc-500" />
+                  Setor
+                </Label>
+                <Select value={formData.sector} onValueChange={(value) => setFormData({ ...formData, sector: value as Sector })}>
+                  <SelectTrigger id="sector" className="bg-zinc-800/50 border-zinc-700 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sectors.map((sector) => (
+                      <SelectItem key={sector} value={sector}>
+                        {sector}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label htmlFor="status" className="flex items-center gap-2">
+                  <CheckSquare className="h-3.5 w-3.5 text-zinc-500" />
+                  Status
+                </Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value as TaskStatus })}>
+                  <SelectTrigger id="status" className="bg-zinc-800/50 border-zinc-700 h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-zinc-400"></span>
+                        A Fazer
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="in_progress">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-orange-400"></span>
+                        Em Progresso
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="done">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-green-400"></span>
+                        Concluído
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Responsáveis */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-zinc-500" />
+                Responsáveis
+              </Label>
+              <MultiSelect
+                value={formData.assignees || []}
+                onValueChange={(value) => setFormData({ ...formData, assignees: value })}
+                placeholder="Selecione os responsáveis"
+                maxDisplayItems={3}
+                className="bg-zinc-800/50 border-zinc-700"
+              >
+                <MultiSelectContent>
+                  {(users || []).map((user) => (
+                    <MultiSelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </MultiSelectItem>
+                  ))}
+                </MultiSelectContent>
+              </MultiSelect>
+            </div>
           </div>
 
-          {/* Setor */}
-          <div className="space-y-2">
-            <Label htmlFor="sector">Setor</Label>
-            <Select value={formData.sector} onValueChange={(value) => setFormData({ ...formData, sector: value as Sector })}>
-              <SelectTrigger id="sector">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {sectors.map((sector) => (
-                  <SelectItem key={sector} value={sector}>
-                    {sector}
+          {/* Prioridade e Prazo */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+              <Flag className="h-4 w-4" />
+              Prioridade e Prazo
+            </div>
+
+            {/* Prioridade */}
+            <div className="space-y-2">
+              <Label htmlFor="priority" className="flex items-center gap-2">
+                <Flag className="h-3.5 w-3.5 text-zinc-500" />
+                Prioridade
+              </Label>
+              <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value as TaskPriority })}>
+                <SelectTrigger id="priority" className="bg-zinc-800/50 border-zinc-700 h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-blue-400"></div>
+                      Baixa
+                    </div>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <SelectItem value="medium">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-orange-400"></div>
+                      Média
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="high">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-red-400"></div>
+                      Alta
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Indicador de Prioridade Selecionada */}
+            <div className={cn(
+              "flex items-center gap-2 p-3 rounded-lg border text-sm",
+              getPriorityColor(formData.priority)
+            )}>
+              <Flag className="h-4 w-4" />
+              <span className="font-medium">
+                Prioridade {formData.priority === 'high' ? 'Alta' : formData.priority === 'medium' ? 'Média' : 'Baixa'}
+              </span>
+            </div>
+
+            {/* Data e Hora de Vencimento */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <CalendarIcon className="h-3.5 w-3.5 text-zinc-500" />
+                  Data de Vencimento
+                </Label>
+                <PremiumDatePicker
+                  date={formData.dueDate}
+                  onDateChange={(date) => {
+                    if (!date) return
+                    const newDate = new Date(date)
+                    // Manter a hora atual se já existir
+                    if (formData.dueDate) {
+                      newDate.setHours(formData.dueDate.getHours())
+                      newDate.setMinutes(formData.dueDate.getMinutes())
+                    }
+                    setFormData({ ...formData, dueDate: newDate })
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                  Hora
+                </Label>
+                <PremiumTimePicker
+                  date={formData.dueDate}
+                  onTimeChange={(newDate) => {
+                    setFormData({ ...formData, dueDate: newDate })
+                  }}
+                />
+              </div>
+            </div>
           </div>
+        </PremiumModalBody>
 
-
-          {/* Responsável */}
-          <div className="space-y-2">
-            <Label>Responsáveis</Label>
-            <MultiSelect
-              value={formData.assignees || []}
-              onValueChange={(value) => setFormData({ ...formData, assignees: value })}
-              placeholder="Selecione os responsáveis"
-              maxDisplayItems={3}
+        <PremiumModalFooter>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              className="w-full sm:w-auto min-w-[120px] h-11 rounded-full border-zinc-700 hover:bg-zinc-800"
             >
-              <MultiSelectContent>
-                {(users || []).map((user) => (
-                  <MultiSelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </MultiSelectItem>
-                ))}
-              </MultiSelectContent>
-            </MultiSelect>
-          </div>
-
-          {/* Prioridade */}
-          <div className="space-y-2">
-            <Label htmlFor="priority">Prioridade</Label>
-            <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value as TaskPriority })}>
-              <SelectTrigger id="priority">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Baixa</SelectItem>
-                <SelectItem value="medium">Média</SelectItem>
-                <SelectItem value="high">Alta</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Status */}
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value as TaskStatus })}>
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todo">A Fazer</SelectItem>
-                <SelectItem value="in_progress">Em Progresso</SelectItem>
-                <SelectItem value="done">Concluído</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Data de Vencimento */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <PremiumDatePicker
-                label="Data de Vencimento"
-                date={formData.dueDate}
-                onDateChange={(date) => {
-                  if (!date) return
-                  const newDate = new Date(date)
-                  // Manter a hora atual se já existir
-                  if (formData.dueDate) {
-                    newDate.setHours(formData.dueDate.getHours())
-                    newDate.setMinutes(formData.dueDate.getMinutes())
-                  }
-                  setFormData({ ...formData, dueDate: newDate })
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <PremiumTimePicker
-                label="Hora"
-                date={formData.dueDate}
-                onTimeChange={(newDate) => {
-                  // Ensure we keep the date part if it wasn't already set, defaults to today inside picker logic but let's be safe
-                  setFormData({ ...formData, dueDate: newDate })
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-2 justify-end pt-4">
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">
-              {task ? 'Atualizar' : 'Criar'}
+            <Button
+              type="submit"
+              className="w-full sm:w-auto min-w-[120px] h-11 rounded-full bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:from-[#ff0300] hover:to-[#fc7a67] text-white font-medium"
+            >
+              {task ? 'Atualizar Tarefa' : 'Criar Tarefa'}
             </Button>
           </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </PremiumModalFooter>
+      </form>
+    </PremiumModal>
   )
 }
