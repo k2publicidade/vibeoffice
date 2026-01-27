@@ -159,8 +159,8 @@ export function useCalendar(): UseCalendarReturn {
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.created_at), // DB não tem updated_at
-        linkedTaskId: (data as any).linked_task_id || undefined,
-        linkedTicketId: (data as any).linked_ticket_id || undefined,
+        linkedTaskId: data.linked_task_id || undefined,
+        linkedTicketId: data.linked_ticket_id || undefined,
       }
 
       setEvents((prev) => [...prev, newEvent])
@@ -202,8 +202,8 @@ export function useCalendar(): UseCalendarReturn {
                 location: data.location,
                 attendees: data.attendees || [],
                 updatedAt: new Date(), // DB não tem updated_at, usando data atual
-                linkedTaskId: (data as any).linked_task_id || undefined,
-                linkedTicketId: (data as any).linked_ticket_id || undefined,
+                linkedTaskId: data.linked_task_id || undefined,
+                linkedTicketId: data.linked_ticket_id || undefined,
               }
             : event
         )
@@ -263,8 +263,8 @@ export function useCalendar(): UseCalendarReturn {
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.created_at),
-        linkedTaskId: (data as any).linked_task_id || undefined,
-        linkedTicketId: (data as any).linked_ticket_id || undefined,
+        linkedTaskId: data.linked_task_id || undefined,
+        linkedTicketId: data.linked_ticket_id || undefined,
       }
 
       setEvents((prev) => [...prev, newEvent])

@@ -22,6 +22,8 @@ export type Database = {
           attendees: string[]
           created_by: string
           created_at: string
+          linked_task_id: string | null
+          linked_ticket_id: string | null
         }
         Insert: {
           id?: string
@@ -35,6 +37,8 @@ export type Database = {
           attendees?: string[]
           created_by: string
           created_at?: string
+          linked_task_id?: string | null
+          linked_ticket_id?: string | null
         }
         Update: {
           id?: string
@@ -48,6 +52,8 @@ export type Database = {
           attendees?: string[]
           created_by?: string
           created_at?: string
+          linked_task_id?: string | null
+          linked_ticket_id?: string | null
         }
         Relationships: [
           {
@@ -55,6 +61,20 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_linked_task_id_fkey"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_linked_ticket_id_fkey"
+            columns: ["linked_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
             referencedColumns: ["id"]
           }
         ]

@@ -77,6 +77,8 @@ export default function CalendarPage() {
           .map(id => users?.find(u => u.id === id))
           .filter(Boolean)
           .map(u => ({ id: u!.id, name: u!.name, avatar: u!.avatar ?? undefined })),
+        linkedTaskId: event.linkedTaskId,
+        linkedTicketId: event.linkedTicketId,
       }))
   }, [events, filters, users])
 
@@ -100,6 +102,8 @@ export default function CalendarPage() {
     location?: string
     tags: string[]
     attendees: string[]
+    linkedTaskId?: string
+    linkedTicketId?: string
   }) => {
     try {
       // Combinar data + hora em Date objects
@@ -120,6 +124,8 @@ export default function CalendarPage() {
         type: 'personal',
         location: eventData.location,
         attendees: eventData.attendees,
+        linkedTaskId: eventData.linkedTaskId,
+        linkedTicketId: eventData.linkedTicketId,
       })
 
       setCreateModalOpen(false)

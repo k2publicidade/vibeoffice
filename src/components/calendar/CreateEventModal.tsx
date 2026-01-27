@@ -28,6 +28,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useTasks } from '@/hooks/useTasks'
 import { useTickets } from '@/hooks/useTickets'
+import { toast } from 'sonner'
 
 interface Attendee {
   id: string
@@ -124,6 +125,23 @@ export function CreateEventModal({
   }
 
   const handleSave = () => {
+    // Validar que título foi preenchido
+    if (!title.trim()) {
+      toast.error('O título do evento é obrigatório')
+      return
+    }
+
+    // Validar que hora de fim é após hora de início
+    const [startHour, startMin] = startTime.split(':').map(Number)
+    const [endHour, endMin] = endTime.split(':').map(Number)
+    const startMinutes = startHour * 60 + startMin
+    const endMinutes = endHour * 60 + endMin
+
+    if (endMinutes <= startMinutes) {
+      toast.error('A hora de término deve ser após a hora de início')
+      return
+    }
+
     onSave({
       title,
       date,

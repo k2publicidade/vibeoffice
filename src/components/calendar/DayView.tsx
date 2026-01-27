@@ -36,6 +36,8 @@ export interface CalendarEvent {
   endTime: Date
   color?: string
   attendees?: { id: string; name: string; avatar?: string }[]
+  linkedTaskId?: string
+  linkedTicketId?: string
 }
 
 interface DayViewProps {

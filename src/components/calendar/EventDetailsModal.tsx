@@ -36,6 +36,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -91,6 +92,11 @@ export function EventDetailsModal({
     const { tasks } = useTasks()
     const { tickets } = useTickets()
 
+    // Estados para vinculação no modo edição
+    const [linkType, setLinkType] = useState<'none' | 'task' | 'ticket'>('none')
+    const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>()
+    const [selectedTicketId, setSelectedTicketId] = useState<string | undefined>()
+
     useEffect(() => {
         if (event) {
             setEditedEvent({
@@ -99,11 +105,25 @@ export function EventDetailsModal({
                 startTime: event.startTime,
                 endTime: event.endTime,
                 location: event.location,
-                type: event.type, // Map tag ID to type roughly or add tags to CalendarEvent
-                // Note: The current CalendarEvent type uses 'type' as strict enum (personal, etc)
-                // But UI uses tags. For now we will map the main type.
+                type: event.type,
                 attendees: event.attendees,
+                linkedTaskId: event.linkedTaskId,
+                linkedTicketId: event.linkedTicketId,
             })
+            // Inicializar linkType baseado no evento existente
+            if (event.linkedTaskId) {
+                setLinkType('task')
+                setSelectedTaskId(event.linkedTaskId)
+                setSelectedTicketId(undefined)
+            } else if (event.linkedTicketId) {
+                setLinkType('ticket')
+                setSelectedTicketId(event.linkedTicketId)
+                setSelectedTaskId(undefined)
+            } else {
+                setLinkType('none')
+                setSelectedTaskId(undefined)
+                setSelectedTicketId(undefined)
+            }
             setIsEditing(false)
         }
     }, [event, open])
@@ -112,7 +132,13 @@ export function EventDetailsModal({
 
     const handleSave = () => {
         if (event.id) {
-            onUpdate(event.id, editedEvent)
+            // Incluir linked items baseado no linkType
+            const updatedEvent = {
+                ...editedEvent,
+                linkedTaskId: linkType === 'task' ? selectedTaskId : undefined,
+                linkedTicketId: linkType === 'ticket' ? selectedTicketId : undefined,
+            }
+            onUpdate(event.id, updatedEvent)
             setIsEditing(false)
         }
     }
@@ -378,6 +404,48 @@ export function EventDetailsModal({
                                     <SelectItem value="company">Empresa</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        {/* Vinculação a Task/Ticket */}
+                        <div className="space-y-2">
+                            <Label>Vincular a (opcional)</Label>
+                            <Tabs value={linkType} onValueChange={(v) => setLinkType(v as 'none' | 'task' | 'ticket')}>
+                                <TabsList className="grid w-full grid-cols-3 bg-zinc-800 border-zinc-700">
+                                    <TabsTrigger value="none">Nenhum</TabsTrigger>
+                                    <TabsTrigger value="task">Tarefa</TabsTrigger>
+                                    <TabsTrigger value="ticket">Ticket</TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+
+                            {linkType === 'task' && (
+                                <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+                                    <SelectTrigger className="mt-2 bg-zinc-800/50 border-zinc-700">
+                                        <SelectValue placeholder="Selecione uma tarefa" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-900 border-zinc-700">
+                                        {tasks.filter(t => t.status !== 'done').map(task => (
+                                            <SelectItem key={task.id} value={task.id}>
+                                                📋 {task.title}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+
+                            {linkType === 'ticket' && (
+                                <Select value={selectedTicketId} onValueChange={setSelectedTicketId}>
+                                    <SelectTrigger className="mt-2 bg-zinc-800/50 border-zinc-700">
+                                        <SelectValue placeholder="Selecione um ticket" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-900 border-zinc-700">
+                                        {tickets.filter(t => t.status !== 'completed').map(ticket => (
+                                            <SelectItem key={ticket.id} value={ticket.id}>
+                                                🎫 {ticket.title}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                     </PremiumModalBody>
                     <PremiumModalFooter className="flex justify-between">

@@ -27,6 +27,8 @@ export interface CalendarEvent {
   color?: string
   attendees?: { id: string; name: string; avatar?: string }[]
   location?: string
+  linkedTaskId?: string
+  linkedTicketId?: string
 }
 
 interface AgendaViewProps {
