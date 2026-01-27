@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar as CalendarIcon, Clock, MapPin, Plus, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -93,9 +93,14 @@ export function CreateEventModal({
   availableTags = defaultTags,
 }: CreateEventModalProps) {
   const [title, setTitle] = useState('')
-  const [date] = useState(selectedDate)
+  const [date, setDate] = useState(selectedDate)
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
+
+  // Sincronizar date quando selectedDate muda (ex: ao clicar em outro slot)
+  useEffect(() => {
+    setDate(selectedDate)
+  }, [selectedDate])
   const [location, setLocation] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([])
@@ -137,8 +142,26 @@ export function CreateEventModal({
     const startMinutes = startHour * 60 + startMin
     const endMinutes = endHour * 60 + endMin
 
+    // Debug logging
+    console.log('[CreateEventModal] Criando evento:', {
+      title,
+      date: date.toISOString(),
+      startTime,
+      endTime,
+      startMinutes,
+      endMinutes,
+    })
+
     if (endMinutes <= startMinutes) {
       toast.error('A hora de término deve ser após a hora de início')
+      console.error('[CreateEventModal] Validação falhou: endMinutes <= startMinutes', { startMinutes, endMinutes })
+      return
+    }
+
+    // Garantir que a data é válida
+    if (!date || isNaN(date.getTime())) {
+      toast.error('Data inválida selecionada')
+      console.error('[CreateEventModal] Data inválida:', date)
       return
     }
 

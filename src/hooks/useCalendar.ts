@@ -128,24 +128,34 @@ export function useCalendar(): UseCalendarReturn {
     async (event: CreateEventInput) => {
       if (!user) throw new Error('User not authenticated')
 
+      const insertData = {
+        title: event.title,
+        description: event.description,
+        start_time: event.startTime.toISOString(),
+        end_time: event.endTime.toISOString(),
+        type: event.type,
+        location: event.location,
+        attendees: event.attendees || [],
+        created_by: user.id,
+        linked_task_id: event.linkedTaskId || null,
+        linked_ticket_id: event.linkedTicketId || null,
+      }
+
+      // Debug logging
+      console.log('[useCalendar] createEvent - dados a inserir:', insertData)
+      console.log('[useCalendar] Validação: end_time > start_time?',
+        new Date(insertData.end_time) > new Date(insertData.start_time))
+
       const { data, error } = await supabase
         .from('calendar_events')
-        .insert({
-          title: event.title,
-          description: event.description,
-          start_time: event.startTime.toISOString(),
-          end_time: event.endTime.toISOString(),
-          type: event.type,
-          location: event.location,
-          attendees: event.attendees || [],
-          created_by: user.id,
-          linked_task_id: event.linkedTaskId || null,
-          linked_ticket_id: event.linkedTicketId || null,
-        })
+        .insert(insertData)
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('[useCalendar] Erro do Supabase:', error)
+        throw error
+      }
 
       const newEvent: CalendarEvent = {
         id: data.id,

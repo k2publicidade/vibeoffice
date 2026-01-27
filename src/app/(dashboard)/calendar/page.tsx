@@ -111,10 +111,25 @@ export default function CalendarPage() {
       const [endHour, endMin] = eventData.endTime.split(':')
 
       const startTime = new Date(eventData.date)
-      startTime.setHours(parseInt(startHour), parseInt(startMin), 0)
+      startTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0) // Incluir milissegundos = 0
 
       const endTime = new Date(eventData.date)
-      endTime.setHours(parseInt(endHour), parseInt(endMin), 0)
+      endTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0) // Incluir milissegundos = 0
+
+      // Debug logging
+      console.log('[CalendarPage] handleCreateEvent:', {
+        eventData,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        isEndAfterStart: endTime > startTime,
+      })
+
+      // Validação extra antes de enviar
+      if (endTime <= startTime) {
+        toast.error('Erro: Hora de término deve ser após hora de início')
+        console.error('[CalendarPage] Validação falhou: endTime <= startTime')
+        return
+      }
 
       await createEvent({
         title: eventData.title,
@@ -132,8 +147,8 @@ export default function CalendarPage() {
       setSelectedSlot(null)
       toast.success('Evento criado com sucesso!')
     } catch (error) {
-      console.error('Erro ao criar evento:', error)
-      toast.error('Erro ao criar evento')
+      console.error('[CalendarPage] Erro ao criar evento:', error)
+      toast.error('Erro ao criar evento. Verifique o console para detalhes.')
     }
   }
 
