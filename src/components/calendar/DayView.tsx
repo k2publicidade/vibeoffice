@@ -14,7 +14,7 @@ import {
   differenceInMinutes,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import {
   DndContext,
   DragEndEvent,
@@ -27,7 +27,7 @@ import {
   useDroppable,
   DragStartEvent,
 } from '@dnd-kit/core'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 export interface CalendarEvent {
   id: string
@@ -49,6 +49,7 @@ interface DayViewProps {
   view?: 'month' | 'week' | 'day' | 'agenda'
   onViewChange?: (view: 'month' | 'week' | 'day' | 'agenda') => void
   onEventDrop?: (eventId: string, newStartTime: Date, newEndTime: Date) => void
+  isMobile?: boolean
 }
 
 const HOURS = Array.from({ length: 9 }, (_, i) => i + 10) // 10am to 6pm
@@ -62,6 +63,7 @@ export function DayView({
   onEventDrop,
   view = 'day',
   onViewChange,
+  isMobile = false,
 }: DayViewProps) {
   const handlePrevDay = () => onDateChange(subDays(selectedDate, 1))
   const handleNextDay = () => onDateChange(addDays(selectedDate, 1))
@@ -71,6 +73,8 @@ export function DayView({
   const isTodayDate = isToday(selectedDate)
 
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const controls = useAnimation()
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -116,6 +120,18 @@ export function DayView({
     onEventDrop?.(active.id as string, newStartTime, newEndTime)
   }
 
+  // Swipe gesture handler for mobile
+  const handleSwipe = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = 100
+    if (info.offset.x > threshold) {
+      // Swipe right - go to previous day
+      handlePrevDay()
+    } else if (info.offset.x < -threshold) {
+      // Swipe left - go to next day
+      handleNextDay()
+    }
+  }
+
   const getEventStyle = (event: CalendarEvent) => {
     const startHour = getHours(new Date(event.startTime))
     const startMinute = getMinutes(new Date(event.startTime))
@@ -136,6 +152,127 @@ export function DayView({
     return { top: `${topPercentage}%`, height: `${heightPercentage}%` }
   }
 
+  // Mobile-optimized layout
+  if (isMobile) {
+    return (
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <motion.div
+          ref={containerRef}
+          className="flex flex-col h-full bg-black overflow-hidden"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragEnd={handleSwipe}
+        >
+          {/* Day Summary - Mobile Compact */}
+          <div className="px-4 py-3 border-b border-[#262626] bg-[#0a0a0a]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    'flex items-center justify-center w-12 h-12 rounded-xl text-xl font-bold',
+                    isTodayDate
+                      ? 'bg-[#fc7a67] text-black'
+                      : 'bg-[#1a1a1a] text-white'
+                  )}
+                >
+                  {format(selectedDate, 'd')}
+                </div>
+                <div>
+                  <p className="font-medium text-white text-sm">
+                    {dayEvents.length}{' '}
+                    {dayEvents.length === 1 ? 'evento' : 'eventos'}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {dayEvents.length === 0
+                      ? 'Dia livre'
+                      : `Primeiro às ${format(
+                          new Date(dayEvents[0]?.startTime),
+                          'HH:mm'
+                        )}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Time Grid - Mobile Optimized */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="relative min-h-full">
+              {/* Hour Lines - Droppable Slots */}
+              {HOURS.map((hour) => (
+                <DroppableSlot
+                  key={hour}
+                  day={selectedDate}
+                  hour={hour}
+                  maxHours={HOURS.length}
+                  onClick={() => onSlotClick?.(selectedDate, hour)}
+                  isMobile={true}
+                >
+                  <div className="w-14 flex-shrink-0 pr-2 py-3 text-right">
+                    <span className="text-xs text-gray-500 font-medium">
+                      {hour.toString().padStart(2, '0')}:00
+                    </span>
+                  </div>
+                </DroppableSlot>
+              ))}
+
+              {/* Current Time Indicator */}
+              {isTodayDate && <CurrentTimeIndicator />}
+
+              {/* Events - Draggable */}
+              <div className="absolute left-14 right-4 top-0 bottom-0 pointer-events-none">
+                <AnimatePresence>
+                  {dayEvents.map((event) => {
+                    const style = getEventStyle(event)
+                    return (
+                      <DraggableEvent
+                        key={event.id}
+                        event={event}
+                        style={{
+                          ...style,
+                          backgroundColor: event.color || '#fc7a67',
+                        }}
+                        onClick={() => onEventClick?.(event)}
+                        isMobile={true}
+                      />
+                    )
+                  })}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <DragOverlay>
+          {activeEvent ? (
+            <div
+              className="p-3 rounded-xl text-left shadow-xl"
+              style={{
+                backgroundColor: activeEvent.color || '#fc7a67',
+                height: '70px',
+                width: '280px',
+              }}
+            >
+              <div className="font-medium text-white text-sm truncate">
+                {activeEvent.title}
+              </div>
+              <div className="text-xs text-white/80 mt-1">
+                {format(new Date(activeEvent.startTime), 'HH:mm')} -{' '}
+                {format(new Date(activeEvent.endTime), 'HH:mm')}
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    )
+  }
+
+  // Desktop layout (original)
   return (
     <DndContext
       sensors={sensors}
@@ -255,36 +392,10 @@ export function DayView({
             ))}
 
             {/* Current Time Indicator */}
-            {isTodayDate && (() => {
-              const now = new Date()
-              const currentHour = now.getHours()
-              const currentMinute = now.getMinutes()
-              const hourPercentage = 100 / HOURS.length
-              const hoursFromStart = currentHour - 10
-              const minuteFraction = currentMinute / 60
-              const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
-
-              return (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="absolute left-16 right-0 flex items-center pointer-events-none z-10"
-                  style={{
-                    top: `${topPercentage}%`,
-                  }}
-                >
-                  <div className="w-3 h-3 rounded-full bg-[#ff0300] -ml-1.5" />
-                  <div className="flex-1 h-0.5 bg-[#ff0300]" />
-                </motion.div>
-              )
-            })()}
+            {isTodayDate && <CurrentTimeIndicator />}
 
             {/* Events - Draggable */}
             <div className="absolute left-16 right-4 top-0 bottom-0 pointer-events-none">
-              {/* Pointer events none wrapper so clicks fall through to slots, but we need events to be clickable/draggable. 
-                    Actually, DraggableEvent will handle its own pointer events. 
-                    The DroppableSlot takes up the full width, so we need to be careful about z-index.
-                */}
               {dayEvents.map((event, index) => {
                 const style = getEventStyle(event)
                 return (
@@ -324,35 +435,77 @@ export function DayView({
   )
 }
 
-function DraggableEvent({ event, onClick, style }: { event: CalendarEvent, onClick?: () => void, style: React.CSSProperties }) {
+function CurrentTimeIndicator() {
+  const now = new Date()
+  const currentHour = now.getHours()
+  const currentMinute = now.getMinutes()
+  const hourPercentage = 100 / HOURS.length
+  const hoursFromStart = currentHour - 10
+  const minuteFraction = currentMinute / 60
+  const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="absolute left-14 md:left-16 right-0 flex items-center pointer-events-none z-10"
+      style={{
+        top: `${topPercentage}%`,
+      }}
+    >
+      <div className="w-3 h-3 rounded-full bg-[#ff0300] -ml-1.5" />
+      <div className="flex-1 h-0.5 bg-[#ff0300]" />
+    </motion.div>
+  )
+}
+
+function DraggableEvent({
+  event,
+  onClick,
+  style,
+  isMobile = false,
+}: {
+  event: CalendarEvent
+  onClick?: () => void
+  style: React.CSSProperties
+  isMobile?: boolean
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
-    data: event
+    data: event,
   })
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
       onClick={(e) => {
-        // Prevent click when dragging, but dnd-kit usually handles this.
-        // We might want to stop propagation strictly for the click handler?
         onClick?.()
       }}
       className={cn(
-        "absolute left-0 right-0 p-3 rounded-lg text-left transition-transform hover:scale-[1.02] overflow-hidden cursor-grab active:cursor-grabbing pointer-events-auto",
-        isDragging ? "opacity-30 z-50" : "z-10"
+        'absolute left-0 right-0 rounded-xl text-left transition-transform overflow-hidden cursor-grab active:cursor-grabbing pointer-events-auto',
+        isMobile ? 'p-3 min-h-[60px]' : 'p-3 hover:scale-[1.02]',
+        isDragging ? 'opacity-30 z-50' : 'z-10'
       )}
       style={style}
     >
-      <div className="font-medium text-white text-sm truncate">
+      <div
+        className={cn(
+          'font-medium text-white truncate',
+          isMobile ? 'text-sm' : 'text-sm'
+        )}
+      >
         {event.title}
       </div>
       <div className="text-xs text-white/80 mt-1">
-        {format(new Date(event.startTime), 'HH:mm')} - {format(new Date(event.endTime), 'HH:mm')}
+        {format(new Date(event.startTime), 'HH:mm')} -{' '}
+        {format(new Date(event.endTime), 'HH:mm')}
       </div>
-      {event.attendees && event.attendees.length > 0 && (
+      {event.attendees && event.attendees.length > 0 && !isMobile && (
         <div className="flex -space-x-2 mt-2">
           {event.attendees.slice(0, 3).map((attendee) => (
             <div
@@ -369,27 +522,57 @@ function DraggableEvent({ event, onClick, style }: { event: CalendarEvent, onCli
           )}
         </div>
       )}
-    </div>
+      {/* Linked entity badges */}
+      {(event.linkedTaskId || event.linkedTicketId) && (
+        <div className="flex gap-1 mt-2">
+          {event.linkedTaskId && (
+            <span className="text-xs bg-white/20 rounded px-1.5 py-0.5">📋</span>
+          )}
+          {event.linkedTicketId && (
+            <span className="text-xs bg-white/20 rounded px-1.5 py-0.5">🎫</span>
+          )}
+        </div>
+      )}
+    </motion.div>
   )
 }
 
-function DroppableSlot({ day, hour, children, onClick, maxHours }: { day: Date, hour: number, children: React.ReactNode, onClick?: () => void, maxHours: number }) {
+function DroppableSlot({
+  day,
+  hour,
+  children,
+  onClick,
+  maxHours,
+  isMobile = false,
+}: {
+  day: Date
+  hour: number
+  children: React.ReactNode
+  onClick?: () => void
+  maxHours: number
+  isMobile?: boolean
+}) {
   const { isOver, setNodeRef } = useDroppable({
     id: `${day.toISOString()}|${hour}`,
   })
 
-  // We need to render the slot exactly as before but attach the ref
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-1 flex border-b border-[#1a1a1a] relative transition-colors",
-        isOver && "bg-[#fc7a67]/20"
+        'flex border-b border-[#1a1a1a] relative transition-colors',
+        isMobile ? 'min-h-[64px]' : 'flex-1',
+        isOver && 'bg-[#fc7a67]/20'
       )}
     >
       {children}
       <div
-        className="flex-1 cursor-pointer hover:bg-[#1a1a1a]/50"
+        className={cn(
+          'flex-1 cursor-pointer',
+          isMobile
+            ? 'active:bg-[#1a1a1a]/70 min-h-[48px]'
+            : 'hover:bg-[#1a1a1a]/50'
+        )}
         onClick={onClick}
       />
     </div>

@@ -38,6 +38,7 @@ interface AgendaViewProps {
   onEventClick?: (event: CalendarEvent) => void
   view?: 'month' | 'week' | 'day' | 'agenda'
   onViewChange?: (view: 'month' | 'week' | 'day' | 'agenda') => void
+  isMobile?: boolean
 }
 
 export function AgendaView({
@@ -47,6 +48,7 @@ export function AgendaView({
   onEventClick,
   view = 'agenda',
   onViewChange,
+  isMobile = false,
 }: AgendaViewProps) {
   const handlePrevWeek = () => onDateChange(subDays(selectedDate, 7))
   const handleNextWeek = () => onDateChange(addDays(selectedDate, 7))
@@ -86,66 +88,71 @@ export function AgendaView({
   }
 
   return (
-    <div className="flex flex-col h-full bg-black rounded-2xl border border-[#262626] overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[#262626]">
-        <div className="flex items-center gap-4">
-          <div>
-            <h2 className="text-xl font-bold">Agenda</h2>
-            <p className="text-sm text-gray-400">
-              Próximos 30 dias a partir de {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
-            </p>
+    <div className={cn(
+      "flex flex-col h-full bg-black overflow-hidden",
+      !isMobile && "rounded-2xl border border-[#262626]"
+    )}>
+      {/* Header - Desktop Only */}
+      {!isMobile && (
+        <div className="flex items-center justify-between p-4 border-b border-[#262626]">
+          <div className="flex items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold">Agenda</h2>
+              <p className="text-sm text-gray-400">
+                Próximos 30 dias a partir de {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrevWeek}
+                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToday}
+                className="h-8 px-3 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                Hoje
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNextWeek}
+                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevWeek}
-              className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleToday}
-              className="h-8 px-3 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-            >
-              Hoje
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNextWeek}
-              className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg p-1">
-          {(['month', 'week', 'day', 'agenda'] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => onViewChange?.(v)}
-              className={cn(
-                'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
-                view === v
-                  ? 'bg-[#fc7a67] text-black'
-                  : 'text-gray-400 hover:text-white'
-              )}
-            >
-              {v === 'month' ? 'Mês' : v === 'week' ? 'Semana' : v === 'day' ? 'Dia' : 'Agenda'}
-            </button>
-          ))}
+          {/* View Toggle */}
+          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg p-1">
+            {(['month', 'week', 'day', 'agenda'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => onViewChange?.(v)}
+                className={cn(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
+                  view === v
+                    ? 'bg-[#fc7a67] text-black'
+                    : 'text-gray-400 hover:text-white'
+                )}
+              >
+                {v === 'month' ? 'Mês' : v === 'week' ? 'Semana' : v === 'day' ? 'Dia' : 'Agenda'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Events List */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+        <div className={cn("space-y-6", isMobile ? "p-3" : "p-4")}>
           <AnimatePresence>
             {groupedEvents.length > 0 ? (
               groupedEvents.map((group, groupIndex) => (

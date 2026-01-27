@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { Plus } from 'lucide-react'
 import { useCalendar } from '@/hooks/useCalendar'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import type { CalendarEvent } from '@/types/calendar'
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar'
 import { WeekView, CalendarEvent as ViewCalendarEvent } from '@/components/calendar/WeekView'
@@ -10,9 +12,13 @@ import { DayView } from '@/components/calendar/DayView'
 import { AgendaView } from '@/components/calendar/AgendaView'
 import { CreateEventModal } from '@/components/calendar/CreateEventModal'
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal'
+import { MobileCalendarHeader } from '@/components/calendar/MobileCalendarHeader'
+import { CalendarBottomSheet } from '@/components/calendar/CalendarBottomSheet'
+import { Button } from '@/components/ui/button'
 import { useUsers } from '@/hooks/useUsers'
 import { useTasks } from '@/hooks/useTasks'
 import { toast } from 'sonner'
+import { addDays, subDays, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns'
 
 export default function CalendarPage() {
   const {
@@ -25,6 +31,7 @@ export default function CalendarPage() {
     getUpcomingEvents
   } = useCalendar()
   const { users } = useUsers()
+  const isMobile = useIsMobile()
 
   // Fetch tasks for the agenda sidebar
   const { tasks } = useTasks()
@@ -36,9 +43,18 @@ export default function CalendarPage() {
   }, [tasks])
 
   const [selectedDate, setSelectedDate] = useState(new Date())
+  // Default para 'day' em mobile, 'week' em desktop
   const [view, setView] = useState<'month' | 'week' | 'day' | 'agenda'>('week')
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number } | null>(null)
+  const [bottomSheetOpen, setBottomSheetOpen] = useState(false)
+
+  // Ajustar view padrão baseado no dispositivo
+  useEffect(() => {
+    if (isMobile && view === 'week') {
+      setView('day')
+    }
+  }, [isMobile])
 
   // Calendar filters
   const [filters, setFilters] = useState([
@@ -91,6 +107,45 @@ export default function CalendarPage() {
   const handleSlotClick = (date: Date, hour: number) => {
     setSelectedSlot({ date, hour })
     setCreateModalOpen(true)
+  }
+
+  // Navegação de data baseada na view
+  const handlePrevious = () => {
+    switch (view) {
+      case 'day':
+        setSelectedDate(subDays(selectedDate, 1))
+        break
+      case 'week':
+        setSelectedDate(subWeeks(selectedDate, 1))
+        break
+      case 'month':
+        setSelectedDate(subMonths(selectedDate, 1))
+        break
+      case 'agenda':
+        setSelectedDate(subDays(selectedDate, 7))
+        break
+    }
+  }
+
+  const handleNext = () => {
+    switch (view) {
+      case 'day':
+        setSelectedDate(addDays(selectedDate, 1))
+        break
+      case 'week':
+        setSelectedDate(addWeeks(selectedDate, 1))
+        break
+      case 'month':
+        setSelectedDate(addMonths(selectedDate, 1))
+        break
+      case 'agenda':
+        setSelectedDate(addDays(selectedDate, 7))
+        break
+    }
+  }
+
+  const handleToday = () => {
+    setSelectedDate(new Date())
   }
 
   // Merged Create Event Handler
@@ -225,8 +280,22 @@ export default function CalendarPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+      {/* Mobile Header */}
+      {isMobile && (
+        <MobileCalendarHeader
+          selectedDate={selectedDate}
+          view={view}
+          onDateChange={setSelectedDate}
+          onViewChange={setView}
+          onMenuClick={() => setBottomSheetOpen(true)}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onToday={handleToday}
+        />
+      )}
+
       <div className="flex-1 overflow-auto flex gap-4 md:gap-6 px-4 sm:px-6 lg:px-8 py-4 md:py-6">
-        {/* Sidebar */}
+        {/* Sidebar - Desktop Only */}
         <div className="hidden lg:flex lg:flex-col lg:w-64 xl:w-80 lg:flex-shrink-0">
           <CalendarSidebar
             selectedDate={selectedDate}
@@ -277,6 +346,7 @@ export default function CalendarPage() {
               view={view}
               onViewChange={setView}
               onEventDrop={handleEventDrop}
+              isMobile={isMobile}
             />
           )}
           {view === 'agenda' && (
@@ -287,10 +357,38 @@ export default function CalendarPage() {
               onEventClick={handleEventClick}
               view={view}
               onViewChange={setView}
+              isMobile={isMobile}
             />
           )}
         </div>
       </div>
+
+      {/* Mobile FAB - Floating Action Button para criar evento */}
+      {isMobile && (
+        <Button
+          onClick={() => {
+            setSelectedSlot({ date: selectedDate, hour: 9 })
+            setCreateModalOpen(true)
+          }}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/40 hover:shadow-xl hover:shadow-[#ff0300]/50 z-40"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      )}
+
+      {/* Mobile Bottom Sheet */}
+      <CalendarBottomSheet
+        open={bottomSheetOpen}
+        onClose={() => setBottomSheetOpen(false)}
+        selectedDate={selectedDate}
+        onDateSelect={(date) => {
+          setSelectedDate(date)
+          setBottomSheetOpen(false)
+        }}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        tasks={activeTasks}
+      />
 
       {/* Create Event Modal */}
       <CreateEventModal
