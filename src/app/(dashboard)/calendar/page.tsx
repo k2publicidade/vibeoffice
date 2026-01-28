@@ -165,15 +165,20 @@ export default function CalendarPage() {
       const [startHour, startMin] = eventData.startTime.split(':')
       const [endHour, endMin] = eventData.endTime.split(':')
 
-      const startTime = new Date(eventData.date)
-      startTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0) // Incluir milissegundos = 0
+      // Normalizar a data base para meia-noite local (evita problemas de timezone)
+      const baseDate = new Date(eventData.date)
+      baseDate.setHours(0, 0, 0, 0)
 
-      const endTime = new Date(eventData.date)
-      endTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0) // Incluir milissegundos = 0
+      const startTime = new Date(baseDate)
+      startTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0)
+
+      const endTime = new Date(baseDate)
+      endTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0)
 
       // Debug logging
       console.log('[CalendarPage] handleCreateEvent:', {
         eventData,
+        baseDate: baseDate.toISOString(),
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         isEndAfterStart: endTime > startTime,
@@ -399,6 +404,7 @@ export default function CalendarPage() {
         }}
         onSave={handleCreateEvent}
         selectedDate={selectedSlot?.date || selectedDate}
+        selectedHour={selectedSlot?.hour}
         availableAttendees={availableAttendees}
       />
 

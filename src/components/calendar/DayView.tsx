@@ -27,7 +27,7 @@ import {
   useDroppable,
   DragStartEvent,
 } from '@dnd-kit/core'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 export interface CalendarEvent {
   id: string
@@ -52,7 +52,7 @@ interface DayViewProps {
   isMobile?: boolean
 }
 
-const HOURS = Array.from({ length: 9 }, (_, i) => i + 10) // 10am to 6pm
+const HOURS = Array.from({ length: 24 }, (_, i) => i) // 0am to 11pm (full day)
 
 export function DayView({
   selectedDate,
@@ -74,7 +74,29 @@ export function DayView({
 
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
+  const desktopScrollRef = useRef<HTMLDivElement>(null)
   const controls = useAnimation()
+
+  // Auto-scroll to current hour or 8am on mount/date change
+  useEffect(() => {
+    const scrollToHour = () => {
+      const now = new Date()
+      const targetHour = isTodayDate ? Math.max(now.getHours() - 1, 0) : 8
+      const scrollPercentage = targetHour / 24
+
+      if (mobileScrollRef.current) {
+        const scrollHeight = mobileScrollRef.current.scrollHeight
+        mobileScrollRef.current.scrollTop = scrollHeight * scrollPercentage
+      }
+      if (desktopScrollRef.current) {
+        const scrollHeight = desktopScrollRef.current.scrollHeight
+        desktopScrollRef.current.scrollTop = scrollHeight * scrollPercentage
+      }
+    }
+    const timer = setTimeout(scrollToHour, 100)
+    return () => clearTimeout(timer)
+  }, [selectedDate, isTodayDate])
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -137,17 +159,16 @@ export function DayView({
     const startMinute = getMinutes(new Date(event.startTime))
     const duration = differenceInMinutes(new Date(event.endTime), new Date(event.startTime))
 
-    // Cada hora ocupa 100/9 = 11.111% da altura total
     const hourPercentage = 100 / HOURS.length
 
-    // Posição: (hora - hora_inicial) + fração de minutos
-    const hoursFromStart = startHour - 10
+    // Posição: hora + fração de minutos (full day starts at 0)
+    const hoursFromStart = startHour
     const minuteFraction = startMinute / 60
     const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
 
-    // Altura: duração em horas * porcentagem por hora (mínimo 3%)
+    // Altura: duração em horas * porcentagem por hora (mínimo 1.5%)
     const durationHours = duration / 60
-    const heightPercentage = Math.max(durationHours * hourPercentage, 3)
+    const heightPercentage = Math.max(durationHours * hourPercentage, 1.5)
 
     return { top: `${topPercentage}%`, height: `${heightPercentage}%` }
   }
@@ -201,8 +222,8 @@ export function DayView({
           </div>
 
           {/* Time Grid - Mobile Optimized */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="relative min-h-full">
+          <div ref={mobileScrollRef} className="flex-1 overflow-y-auto">
+            <div className="relative min-h-[1600px]">
               {/* Hour Lines - Droppable Slots */}
               {HOURS.map((hour) => (
                 <DroppableSlot
@@ -372,8 +393,8 @@ export function DayView({
         </div>
 
         {/* Time Grid */}
-        <div className="flex-1 overflow-hidden">
-          <div className="relative h-full flex flex-col">
+        <div ref={desktopScrollRef} className="flex-1 overflow-y-auto">
+          <div className="relative min-h-[1600px] flex flex-col">
             {/* Hour Lines - Droppable Slots */}
             {HOURS.map((hour) => (
               <DroppableSlot
@@ -440,7 +461,7 @@ function CurrentTimeIndicator() {
   const currentHour = now.getHours()
   const currentMinute = now.getMinutes()
   const hourPercentage = 100 / HOURS.length
-  const hoursFromStart = currentHour - 10
+  const hoursFromStart = currentHour // Full day starts at 0
   const minuteFraction = currentMinute / 60
   const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
 
