@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from './button'
 
@@ -11,8 +11,10 @@ interface PremiumModalProps {
   onClose: () => void
   children: React.ReactNode
   className?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
   showCloseButton?: boolean
+  mobileFullScreen?: boolean
+  title?: string
 }
 
 const sizeClasses = {
@@ -20,6 +22,7 @@ const sizeClasses = {
   md: 'max-w-md',
   lg: 'max-w-lg',
   xl: 'max-w-xl',
+  full: 'max-w-full',
 }
 
 // Premium spring animation config
@@ -36,6 +39,8 @@ export function PremiumModal({
   className,
   size = 'md',
   showCloseButton = true,
+  mobileFullScreen = false,
+  title,
 }: PremiumModalProps) {
   // Close on escape key
   React.useEffect(() => {
@@ -62,7 +67,10 @@ export function PremiumModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className={cn(
+              'absolute inset-0 bg-black/60 backdrop-blur-sm',
+              mobileFullScreen && 'md:block hidden'
+            )}
             onClick={onClose}
           />
 
@@ -73,22 +81,56 @@ export function PremiumModal({
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={springConfig}
             className={cn(
-              'relative z-10 w-full mx-4',
-              sizeClasses[size],
+              'relative z-10 w-full',
+              // Mobile full screen
+              mobileFullScreen
+                ? 'fixed inset-0 md:relative md:inset-auto md:mx-4'
+                : 'mx-4',
+              !mobileFullScreen && sizeClasses[size],
+              mobileFullScreen && `md:${sizeClasses[size]}`,
               // Dark mode only
               'bg-zinc-900',
               'text-foreground',
               // Premium styling
-              'rounded-3xl shadow-2xl',
-              'border border-zinc-800',
-              'p-6',
+              mobileFullScreen
+                ? 'rounded-none md:rounded-3xl'
+                : 'rounded-3xl',
+              'shadow-2xl',
+              'border-0 md:border md:border-zinc-800',
+              mobileFullScreen ? 'p-0 md:p-6' : 'p-6',
+              // Mobile full height
+              mobileFullScreen &&
+                'flex flex-col h-full md:h-auto md:max-h-[90vh]',
               className
             )}
           >
-            {/* Subtle gradient accent at top */}
-            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl bg-gradient-to-r from-primary via-secondary to-primary opacity-80" />
+            {/* Subtle gradient accent at top - desktop only when mobile fullscreen */}
+            <div
+              className={cn(
+                'absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary opacity-80',
+                mobileFullScreen
+                  ? 'hidden md:block md:rounded-t-3xl'
+                  : 'rounded-t-3xl'
+              )}
+            />
 
-            {/* Close button */}
+            {/* Mobile Header - only when mobileFullScreen is true */}
+            {mobileFullScreen && (
+              <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-800 flex-shrink-0">
+                <button
+                  onClick={onClose}
+                  className="h-11 w-11 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors -ml-2"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                {title && (
+                  <h2 className="text-lg font-semibold text-white">{title}</h2>
+                )}
+                <div className="w-11" /> {/* Spacer for centering */}
+              </div>
+            )}
+
+            {/* Close button - desktop */}
             {showCloseButton && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -103,7 +145,8 @@ export function PremiumModal({
                   'text-muted-foreground hover:text-foreground',
                   'transition-all duration-200',
                   'hover:scale-110 active:scale-95',
-                  'focus:outline-none focus:ring-2 focus:ring-primary'
+                  'focus:outline-none focus:ring-2 focus:ring-primary',
+                  mobileFullScreen && 'hidden md:flex'
                 )}
               >
                 <X className="h-4 w-4" />
@@ -115,6 +158,10 @@ export function PremiumModal({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.2 }}
+              className={cn(
+                mobileFullScreen &&
+                  'flex-1 overflow-y-auto px-4 py-4 md:px-0 md:py-0'
+              )}
             >
               {children}
             </motion.div>
@@ -129,16 +176,22 @@ export function PremiumModal({
 export function PremiumModalHeader({
   className,
   children,
+  hiddenOnMobileFullScreen = false,
 }: {
   className?: string
   children: React.ReactNode
+  hiddenOnMobileFullScreen?: boolean
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.15 }}
-      className={cn('mb-6', className)}
+      className={cn(
+        'mb-6',
+        hiddenOnMobileFullScreen && 'hidden md:block',
+        className
+      )}
     >
       {children}
     </motion.div>
@@ -195,16 +248,23 @@ export function PremiumModalBody({
 export function PremiumModalFooter({
   className,
   children,
+  stickyOnMobile = false,
 }: {
   className?: string
   children: React.ReactNode
+  stickyOnMobile?: boolean
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.25 }}
-      className={cn('mt-6 flex justify-end gap-3', className)}
+      className={cn(
+        'mt-6 flex justify-end gap-3',
+        stickyOnMobile &&
+          'sticky bottom-0 bg-zinc-900 py-4 -mx-4 px-4 md:relative md:bottom-auto md:bg-transparent md:py-0 md:mx-0 md:px-0 border-t border-zinc-800 md:border-0',
+        className
+      )}
     >
       {children}
     </motion.div>
