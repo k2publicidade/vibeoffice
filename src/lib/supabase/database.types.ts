@@ -833,6 +833,86 @@ export type Database = {
           }
         ]
       }
+      releases: {
+        Row: {
+          id: string
+          title: string
+          artist: string
+          release_type: string
+          genre: string | null
+          release_date: string | null
+          status: string
+          cover_url: string | null
+          spotify_url: string | null
+          apple_music_url: string | null
+          youtube_url: string | null
+          isrc: string | null
+          upc: string | null
+          label: string | null
+          distributor: string | null
+          notes: string | null
+          sector: Database["public"]["Enums"]["sector_type"] | null
+          created_by: string
+          created_at: string
+          updated_at: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          title: string
+          artist: string
+          release_type?: string
+          genre?: string | null
+          release_date?: string | null
+          status?: string
+          cover_url?: string | null
+          spotify_url?: string | null
+          apple_music_url?: string | null
+          youtube_url?: string | null
+          isrc?: string | null
+          upc?: string | null
+          label?: string | null
+          distributor?: string | null
+          notes?: string | null
+          sector?: Database["public"]["Enums"]["sector_type"] | null
+          created_by: string
+          created_at?: string
+          updated_at?: string
+          position?: number
+        }
+        Update: {
+          id?: string
+          title?: string
+          artist?: string
+          release_type?: string
+          genre?: string | null
+          release_date?: string | null
+          status?: string
+          cover_url?: string | null
+          spotify_url?: string | null
+          apple_music_url?: string | null
+          youtube_url?: string | null
+          isrc?: string | null
+          upc?: string | null
+          label?: string | null
+          distributor?: string | null
+          notes?: string | null
+          sector?: Database["public"]["Enums"]["sector_type"] | null
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "releases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

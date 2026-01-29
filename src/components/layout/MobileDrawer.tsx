@@ -12,6 +12,7 @@ import {
   Calendar,
   X,
   Mic2,
+  Disc3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/courses', label: 'Cursos', icon: BookOpen },
   { href: '/calendar', label: 'Agenda', icon: Calendar },
   { href: '/studio', label: 'Estúdio', icon: Mic2 },
+  { href: '/lancamentos', label: 'Lançamentos', icon: Disc3 },
 ]
 
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
