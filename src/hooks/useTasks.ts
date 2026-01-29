@@ -680,5 +680,6 @@ export function useTasks(): UseTasksReturn {
     getTasksDueThisWeek,
     isLoading,
   }
+}
 
 // [C07] Removida função duplicada mapTaskStatusToTicketStatus — mantida apenas a versão interna ao hook

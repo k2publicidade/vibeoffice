@@ -3,7 +3,7 @@
  * Funções para gerenciar uploads/downloads de arquivos
  */
 
-import { supabase } from './client'
+import { createClient } from './client'
 
 export interface UploadFileOptions {
   file: File
@@ -28,6 +28,8 @@ export async function uploadFile({
   path,
   onProgress,
 }: UploadFileOptions): Promise<UploadResult> {
+  const supabase = createClient()
+
   // Upload do arquivo
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -65,6 +67,7 @@ export async function getSignedUrl(
   path: string,
   expiresIn: number = 3600
 ): Promise<string> {
+  const supabase = createClient()
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, expiresIn)
@@ -80,6 +83,7 @@ export async function getSignedUrl(
  * Deletar arquivo
  */
 export async function deleteFile(bucket: string, path: string): Promise<void> {
+  const supabase = createClient()
   const { error } = await supabase.storage.from(bucket).remove([path])
 
   if (error) {
@@ -91,6 +95,7 @@ export async function deleteFile(bucket: string, path: string): Promise<void> {
  * Listar arquivos em um diretório
  */
 export async function listFiles(bucket: string, path: string = '') {
+  const supabase = createClient()
   const { data, error } = await supabase.storage.from(bucket).list(path)
 
   if (error) {
