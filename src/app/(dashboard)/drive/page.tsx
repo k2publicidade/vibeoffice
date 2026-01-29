@@ -51,6 +51,7 @@ export default function DrivePage() {
     uploadFiles,
     createFolder,
     deleteItem,
+    moveItem,
     shareItem,
     unshareItem,
     updateShare,
@@ -105,6 +106,23 @@ export default function DrivePage() {
 
   // Se tiver busca, mostramos todos os resultados flat. Se não, usamos a lógica de pastas do componente Grid/List
   const displayItems = searchQuery ? filteredItems : items
+
+  const handleMoveItem = async (itemId: string, targetFolderId: string) => {
+    const item = getItemById(itemId)
+    const targetFolder = getItemById(targetFolderId)
+    if (!item || !targetFolder) return
+
+    try {
+      await moveItem(itemId, targetFolderId)
+      toast.success(`"${item.name}" movido para "${targetFolder.name}"`)
+    } catch (error: any) {
+      if (error?.message?.includes('itself')) {
+        toast.error('Não é possível mover uma pasta para dentro de si mesma')
+      } else {
+        toast.error('Erro ao mover arquivo')
+      }
+    }
+  }
 
   const handleFolderOpen = (folderId: string) => {
     navigateToFolder(folderId)
@@ -401,6 +419,7 @@ export default function DrivePage() {
               onFileDelete={handleDelete}
               onFileDownload={handleDownload}
               onFileShare={handleShare}
+              onMoveItem={handleMoveItem}
               onUpload={() => setShowUploadModal(true)}
             />
           ) : (
@@ -412,6 +431,7 @@ export default function DrivePage() {
               onFileDelete={handleDelete}
               onFileDownload={handleDownload}
               onFileShare={handleShare}
+              onMoveItem={handleMoveItem}
             />
           )}
         </div>

@@ -15,6 +15,7 @@ interface DriveGridProps {
     onFileDelete?: (fileId: string) => void
     onFileDownload?: (fileId: string) => void
     onFileShare?: (fileId: string) => void
+    onMoveItem?: (itemId: string, targetFolderId: string) => void
     onUpload?: () => void
     disableFiltering?: boolean
 }
@@ -27,6 +28,7 @@ export function DriveGrid({
     onFileDelete,
     onFileDownload,
     onFileShare,
+    onMoveItem,
     onUpload,
     disableFiltering = false
 }: DriveGridProps) {
@@ -136,6 +138,7 @@ export function DriveGrid({
                             onDelete={() => onFileDelete?.(item.id)}
                             onDownload={() => onFileDownload?.(item.id)}
                             onShare={() => onFileShare?.(item.id)}
+                            onMoveItem={onMoveItem}
                         />
                     </motion.div>
                 ))}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, DragEvent } from 'react'
 import { DriveItem } from '@/types/drive'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -34,6 +35,8 @@ interface FileCardProps {
   onDelete?: () => void
   onDownload?: () => void
   onShare?: () => void
+  onMoveItem?: (itemId: string, targetFolderId: string) => void
+  isDraggedOver?: boolean
 }
 
 // Função para obter informações visuais do arquivo
@@ -86,14 +89,46 @@ export function FileCard({
   onDelete,
   onDownload,
   onShare,
+  onMoveItem,
 }: FileCardProps) {
   const isFolder = item.type === 'folder'
   const updatedAt = new Date(item.updatedAt)
   const timeAgo = formatDistanceToNow(updatedAt, { addSuffix: true, locale: ptBR })
   const fileInfo = getFileInfo(item.mimeType, isFolder)
   const FileIcon = fileInfo.icon
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const isShared = (item.sharedWith && item.sharedWith.length > 0) || item.isPublic
+
+  // --- Drag & Drop ---
+  const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.setData('application/vibeoffice-item-id', item.id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!isFolder) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    // Só reseta se saiu do card de verdade (não de um filho)
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false)
+    }
+  }
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    if (!isFolder || !onMoveItem) return
+    const draggedId = e.dataTransfer.getData('application/vibeoffice-item-id')
+    if (draggedId && draggedId !== item.id) {
+      onMoveItem(draggedId, item.id)
+    }
+  }
 
   const getFileSize = () => {
     if (!item.size) return null
@@ -111,8 +146,14 @@ export function FileCard({
         "cursor-pointer group relative overflow-hidden border-0 bg-zinc-900/40 backdrop-blur-sm",
         "transition-all duration-300 ease-out",
         "hover:bg-zinc-800/60 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1",
-        "ring-1 ring-white/5 hover:ring-white/10"
+        "ring-1 ring-white/5 hover:ring-white/10",
+        isDragOver && isFolder && "ring-2 ring-amber-400/60 bg-amber-400/10 scale-[1.03]"
       )}
+      draggable
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       onDoubleClick={onDoubleClick}
     >
       <div className={cn(

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, DragEvent } from 'react'
 import { DriveItem } from '@/types/drive'
 import {
     Table,
@@ -43,6 +44,7 @@ interface DriveListProps {
     onFileDelete?: (fileId: string) => void
     onFileDownload?: (fileId: string) => void
     onFileShare?: (fileId: string) => void
+    onMoveItem?: (itemId: string, targetFolderId: string) => void
     disableFiltering?: boolean
 }
 
@@ -64,8 +66,10 @@ export function DriveList({
     onFileDelete,
     onFileDownload,
     onFileShare,
+    onMoveItem,
     disableFiltering
 }: DriveListProps) {
+    const [dragOverId, setDragOverId] = useState<string | null>(null)
     // Filter items
     const currentItems = disableFiltering ? items : items.filter((item) => {
         if (currentFolderId === null) {
@@ -120,7 +124,35 @@ export function DriveList({
                         return (
                             <TableRow
                                 key={item.id}
-                                className="border-zinc-800 hover:bg-zinc-800/30 transition-colors group cursor-pointer"
+                                className={cn(
+                                    "border-zinc-800 hover:bg-zinc-800/30 transition-colors group cursor-pointer",
+                                    dragOverId === item.id && item.type === 'folder' && "bg-amber-400/10 ring-1 ring-amber-400/40"
+                                )}
+                                draggable
+                                onDragStart={(e: DragEvent<HTMLTableRowElement>) => {
+                                    e.dataTransfer.setData('application/vibeoffice-item-id', item.id)
+                                    e.dataTransfer.effectAllowed = 'move'
+                                }}
+                                onDragOver={(e: DragEvent<HTMLTableRowElement>) => {
+                                    if (item.type !== 'folder') return
+                                    e.preventDefault()
+                                    e.dataTransfer.dropEffect = 'move'
+                                    setDragOverId(item.id)
+                                }}
+                                onDragLeave={(e: DragEvent<HTMLTableRowElement>) => {
+                                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                                        setDragOverId(null)
+                                    }
+                                }}
+                                onDrop={(e: DragEvent<HTMLTableRowElement>) => {
+                                    e.preventDefault()
+                                    setDragOverId(null)
+                                    if (item.type !== 'folder' || !onMoveItem) return
+                                    const draggedId = e.dataTransfer.getData('application/vibeoffice-item-id')
+                                    if (draggedId && draggedId !== item.id) {
+                                        onMoveItem(draggedId, item.id)
+                                    }
+                                }}
                                 onDoubleClick={() => {
                                     if (item.type === 'folder') onFolderOpen(item.id)
                                     else onFileClick?.(item.id)

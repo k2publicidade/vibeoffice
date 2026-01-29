@@ -36,6 +36,7 @@ export interface UseDriveReturn {
   uploadFiles: (files: File[], parentId?: string | null) => Promise<DriveItem[]>
   createFolder: (input: CreateFolderInput) => Promise<DriveItem>
   deleteItem: (itemId: string) => Promise<void>
+  moveItem: (itemId: string, targetFolderId: string | null) => Promise<void>
   renameItem: (itemId: string, newName: string) => Promise<void>
   // Funções de compartilhamento
   shareItem: (input: ShareItemInput) => Promise<void>
@@ -408,6 +409,42 @@ export function useDrive(): UseDriveReturn {
     )
   }, [])
 
+  // Mover item para outra pasta (ou raiz se targetFolderId === null)
+  const moveItem = useCallback(async (itemId: string, targetFolderId: string | null) => {
+    const item = items.find(i => i.id === itemId)
+    if (!item) throw new Error('Item not found')
+
+    // Não mover pasta para dentro de si mesma ou de seus filhos
+    if (item.type === 'folder' && targetFolderId) {
+      let checkId: string | null = targetFolderId
+      while (checkId) {
+        if (checkId === itemId) throw new Error('Cannot move folder into itself')
+        const parent = items.find(i => i.id === checkId)
+        checkId = parent?.parentId || null
+      }
+    }
+
+    // Não mover se já está no destino
+    const currentParent = item.parentId || null
+    if (currentParent === targetFolderId) return
+
+    const { error } = await supabase
+      .from('drive_items')
+      .update({ parent_id: targetFolderId })
+      .eq('id', itemId)
+
+    if (error) throw error
+
+    // Atualizar estado local
+    setItems(prev =>
+      prev.map(i =>
+        i.id === itemId
+          ? { ...i, parentId: targetFolderId || undefined, updatedAt: new Date() }
+          : i
+      )
+    )
+  }, [items])
+
   // Compartilhar item com usuário
   const shareItem = useCallback(async (input: ShareItemInput) => {
     if (!user) throw new Error('User not authenticated')
@@ -553,6 +590,7 @@ export function useDrive(): UseDriveReturn {
     uploadFiles,
     createFolder,
     deleteItem,
+    moveItem,
     renameItem,
     shareItem,
     unshareItem,
