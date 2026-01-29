@@ -304,7 +304,11 @@ export default function CalendarPage() {
         <div className="hidden lg:flex lg:flex-col lg:w-64 xl:w-80 lg:flex-shrink-0">
           <CalendarSidebar
             selectedDate={selectedDate}
-            onDateSelect={setSelectedDate}
+            onDateSelect={(date) => {
+              setSelectedDate(date)
+              setSelectedSlot({ date, hour: 9 })
+              setCreateModalOpen(true)
+            }}
             filters={filters}
             onFilterChange={handleFilterChange}
             projects={projects}
@@ -334,7 +338,8 @@ export default function CalendarPage() {
               onEventClick={handleEventClick}
               onDayClick={(date) => {
                 setSelectedDate(date)
-                setView('day')
+                setSelectedSlot({ date, hour: 9 })
+                setCreateModalOpen(true)
               }}
               view={view}
               onViewChange={setView}
@@ -388,6 +393,8 @@ export default function CalendarPage() {
         selectedDate={selectedDate}
         onDateSelect={(date) => {
           setSelectedDate(date)
+          setSelectedSlot({ date, hour: 9 })
+          setCreateModalOpen(true)
           setBottomSheetOpen(false)
         }}
         filters={filters}
