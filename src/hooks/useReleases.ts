@@ -23,12 +23,15 @@ function mapDbToRelease(row: any): Release {
     id: row.id,
     title: row.title,
     artist: row.artist,
+    artists: parseJsonb(row.artists, []),
     releaseType: row.release_type,
     genre: row.genre || undefined,
     releaseDate: row.release_date ? new Date(row.release_date) : undefined,
     status: row.status as ReleaseStatus,
     coverUrl: row.cover_url || undefined,
+    wavUrl: row.wav_url || undefined,
     composers: parseJsonb(row.composers, []),
+    tracks: parseJsonb(row.tracks, []),
     platformLinks: parseJsonb(row.platform_links, []),
     isrc: row.isrc || undefined,
     upc: row.upc || undefined,
@@ -126,12 +129,15 @@ export function useReleases(options?: UseReleasesOptions) {
       .insert({
         title: input.title,
         artist: input.artist,
+        artists: input.artists && input.artists.length > 0 ? JSON.stringify(input.artists) : '[]',
         release_type: input.releaseType,
         genre: input.genre || null,
         release_date: input.releaseDate?.toISOString().split('T')[0] || null,
         status: input.status || 'scheduled',
         cover_url: input.coverUrl || null,
+        wav_url: input.wavUrl || null,
         composers: input.composers && input.composers.length > 0 ? JSON.stringify(input.composers) : '[]',
+        tracks: input.tracks && input.tracks.length > 0 ? JSON.stringify(input.tracks) : '[]',
         platform_links: input.platformLinks && input.platformLinks.length > 0 ? JSON.stringify(input.platformLinks) : '[]',
         isrc: input.isrc || null,
         upc: input.upc || null,
@@ -182,12 +188,15 @@ export function useReleases(options?: UseReleasesOptions) {
     const updateData: Record<string, any> = {}
     if (updates.title !== undefined) updateData.title = updates.title
     if (updates.artist !== undefined) updateData.artist = updates.artist
+    if (updates.artists !== undefined) updateData.artists = JSON.stringify(updates.artists || [])
     if (updates.releaseType !== undefined) updateData.release_type = updates.releaseType
     if (updates.genre !== undefined) updateData.genre = updates.genre || null
     if (updates.releaseDate !== undefined) updateData.release_date = updates.releaseDate?.toISOString().split('T')[0] || null
     if (updates.status !== undefined) updateData.status = updates.status
     if (updates.coverUrl !== undefined) updateData.cover_url = updates.coverUrl || null
+    if (updates.wavUrl !== undefined) updateData.wav_url = updates.wavUrl || null
     if (updates.composers !== undefined) updateData.composers = JSON.stringify(updates.composers || [])
+    if (updates.tracks !== undefined) updateData.tracks = JSON.stringify(updates.tracks || [])
     if (updates.platformLinks !== undefined) updateData.platform_links = JSON.stringify(updates.platformLinks || [])
     if (updates.isrc !== undefined) updateData.isrc = updates.isrc || null
     if (updates.upc !== undefined) updateData.upc = updates.upc || null
