@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { useCalendar } from '@/hooks/useCalendar'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import type { CalendarEvent } from '@/types/calendar'
+import type { Sector } from '@/types/auth'
 import { CalendarSidebar } from '@/components/calendar/CalendarSidebar'
 import { WeekView, CalendarEvent as ViewCalendarEvent } from '@/components/calendar/WeekView'
 import { MonthView } from '@/components/calendar/MonthView'
@@ -154,8 +155,9 @@ export default function CalendarPage() {
     date: Date
     startTime: string
     endTime: string
+    type: 'personal' | 'sector' | 'company'
+    sector?: Sector
     location?: string
-    tags: string[]
     attendees: string[]
     linkedTaskId?: string
     linkedTicketId?: string
@@ -196,7 +198,8 @@ export default function CalendarPage() {
         description: '',
         startTime,
         endTime,
-        type: 'personal',
+        type: eventData.type,
+        sector: eventData.sector,
         location: eventData.location,
         attendees: eventData.attendees,
         linkedTaskId: eventData.linkedTaskId,

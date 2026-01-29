@@ -29,17 +29,13 @@ import { ptBR } from 'date-fns/locale'
 import { useTasks } from '@/hooks/useTasks'
 import { useTickets } from '@/hooks/useTickets'
 import { toast } from 'sonner'
+import type { EventType } from '@/types/calendar'
+import type { Sector } from '@/types/auth'
 
 interface Attendee {
   id: string
   name: string
   avatar?: string
-}
-
-interface Tag {
-  id: string
-  name: string
-  color: string
 }
 
 interface CreateEventModalProps {
@@ -50,8 +46,9 @@ interface CreateEventModalProps {
     date: Date
     startTime: string
     endTime: string
+    type: EventType
+    sector?: Sector
     location?: string
-    tags: string[]
     attendees: string[]
     linkedTaskId?: string
     linkedTicketId?: string
@@ -59,14 +56,22 @@ interface CreateEventModalProps {
   selectedDate?: Date
   selectedHour?: number
   availableAttendees?: Attendee[]
-  availableTags?: Tag[]
 }
 
-const defaultTags: Tag[] = [
-  { id: 'design', name: 'Design', color: 'hsl(218, 100%, 52%)' },
-  { id: 'personal', name: 'Pessoal', color: 'hsl(22, 94%, 48%)' },
-  { id: 'developer', name: 'Dev', color: 'hsl(0, 0%, 15%)' },
-  { id: 'meeting', name: 'Reunião', color: 'hsl(142, 76%, 36%)' },
+const EVENT_TYPES: { id: EventType; name: string; color: string }[] = [
+  { id: 'personal', name: 'Pessoal', color: 'hsl(218, 100%, 52%)' },
+  { id: 'sector', name: 'Setor', color: 'hsl(22, 94%, 48%)' },
+  { id: 'company', name: 'Empresa', color: 'hsl(142, 76%, 36%)' },
+]
+
+const SECTORS: Sector[] = [
+  'A&R',
+  'Marketing',
+  'Financeiro',
+  'Jurídico',
+  'Administrativo',
+  'TI/Suporte',
+  'Atendimento ao Artista',
 ]
 
 // Animation variants for staggered children
@@ -99,7 +104,6 @@ export function CreateEventModal({
   selectedDate = new Date(),
   selectedHour,
   availableAttendees = [],
-  availableTags = defaultTags,
 }: CreateEventModalProps) {
   // Todos os estados do formulário
   const [title, setTitle] = useState('')
@@ -108,7 +112,8 @@ export function CreateEventModal({
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
   const [location, setLocation] = useState('')
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [eventType, setEventType] = useState<EventType>('personal')
+  const [eventSector, setEventSector] = useState<Sector | undefined>(undefined)
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([])
   const [linkType, setLinkType] = useState<'none' | 'task' | 'ticket'>('none')
   const [selectedTaskId, setSelectedTaskId] = useState<string>()
@@ -120,7 +125,8 @@ export function CreateEventModal({
       // Reset completo do formulário
       setTitle('')
       setLocation('')
-      setSelectedTags([])
+      setEventType('personal')
+      setEventSector(undefined)
       setSelectedAttendees([])
       setLinkType('none')
       setSelectedTaskId(undefined)
@@ -162,14 +168,6 @@ export function CreateEventModal({
 
   const { tasks } = useTasks()
   const { tickets } = useTickets()
-
-  const handleTagToggle = (tagId: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
-    )
-  }
 
   const handleAttendeeToggle = (attendeeId: string) => {
     setSelectedAttendees((prev) =>
@@ -220,8 +218,9 @@ export function CreateEventModal({
       date,
       startTime,
       endTime,
+      type: eventType,
+      sector: eventType === 'sector' ? eventSector : undefined,
       location: location || undefined,
-      tags: selectedTags,
       attendees: selectedAttendees,
       linkedTaskId: linkType === 'task' ? selectedTaskId : undefined,
       linkedTicketId: linkType === 'ticket' ? selectedTicketId : undefined,
@@ -332,35 +331,57 @@ export function CreateEventModal({
             />
           </motion.div>
 
-          {/* Tags */}
+          {/* Tipo do Evento */}
           <motion.div variants={itemVariants}>
-            <Label className="text-sm font-medium mb-2 block">Categorias</Label>
+            <Label className="text-sm font-medium mb-2 block">Categoria</Label>
             <div className="flex flex-wrap gap-2">
-              {availableTags.map((tag, index) => (
+              {EVENT_TYPES.map((et, index) => (
                 <motion.button
-                  key={tag.id}
+                  key={et.id}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => handleTagToggle(tag.id)}
+                  onClick={() => {
+                    setEventType(et.id)
+                    if (et.id !== 'sector') setEventSector(undefined)
+                  }}
                   className={cn(
                     'rounded-full px-4 py-2.5 md:py-2 text-sm font-medium transition-all duration-200 min-h-[44px] md:min-h-0',
-                    selectedTags.includes(tag.id)
+                    eventType === et.id
                       ? 'text-white shadow-md'
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   )}
                   style={
-                    selectedTags.includes(tag.id)
-                      ? { backgroundColor: tag.color }
+                    eventType === et.id
+                      ? { backgroundColor: et.color }
                       : undefined
                   }
                 >
-                  {tag.name}
+                  {et.name}
                 </motion.button>
               ))}
             </div>
           </motion.div>
+
+          {/* Seletor de Setor (quando tipo = Setor) */}
+          {eventType === 'sector' && (
+            <motion.div variants={itemVariants}>
+              <Label className="text-sm font-medium mb-2 block">Setor</Label>
+              <Select value={eventSector || ''} onValueChange={(v) => setEventSector(v as Sector)}>
+                <SelectTrigger className="h-12 md:h-11 rounded-xl border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-base md:text-sm">
+                  <SelectValue placeholder="Selecione o setor" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  {SECTORS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </motion.div>
+          )}
 
           {/* Vincular a Task/Ticket */}
           <motion.div variants={itemVariants}>

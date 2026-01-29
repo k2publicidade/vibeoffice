@@ -28,11 +28,14 @@ export interface CalendarEvent {
 export interface CreateEventInput {
   title: string
   description?: string
-  startTime: string
-  endTime: string
+  startTime: Date
+  endTime: Date
   type: EventType
   sector?: Sector
+  location?: string
   attendees?: string[]
+  linkedTaskId?: string
+  linkedTicketId?: string
 }
 
 export interface UpdateEventInput {

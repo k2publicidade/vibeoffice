@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import type { CalendarEvent } from '@/types/calendar'
+import type { Sector } from '@/types/auth'
 import { isSameDay, isToday, isBefore, isAfter, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
 export interface CreateEventInput {
@@ -12,6 +13,7 @@ export interface CreateEventInput {
   startTime: Date
   endTime: Date
   type: CalendarEvent['type']
+  sector?: Sector
   location?: string | null
   attendees?: string[]
   linkedTaskId?: string
@@ -63,11 +65,12 @@ export function useCalendar(): UseCalendarReturn {
           startTime: new Date(event.start_time),
           endTime: new Date(event.end_time),
           type: event.type as 'personal' | 'sector' | 'company',
+          sector: event.sector || undefined,
           location: event.location,
           attendees: event.attendees || [],
           createdBy: event.created_by,
           createdAt: new Date(event.created_at),
-          updatedAt: new Date(event.created_at), // DB não tem updated_at, usando created_at
+          updatedAt: new Date(event.created_at),
           linkedTaskId: event.linked_task_id || undefined,
           linkedTicketId: event.linked_ticket_id || undefined,
         }))
@@ -134,6 +137,7 @@ export function useCalendar(): UseCalendarReturn {
         start_time: event.startTime.toISOString(),
         end_time: event.endTime.toISOString(),
         type: event.type,
+        sector: (event.sector as Sector) || null,
         location: event.location,
         attendees: event.attendees || [],
         created_by: user.id,
@@ -164,11 +168,12 @@ export function useCalendar(): UseCalendarReturn {
         startTime: new Date(data.start_time),
         endTime: new Date(data.end_time),
         type: data.type as 'personal' | 'sector' | 'company',
+        sector: data.sector || undefined,
         location: data.location,
         attendees: data.attendees || [],
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.created_at), // DB não tem updated_at
+        updatedAt: new Date(data.created_at),
         linkedTaskId: data.linked_task_id || undefined,
         linkedTicketId: data.linked_ticket_id || undefined,
       }
