@@ -8,6 +8,17 @@ import { Sector } from './auth'
 export type ReleaseStatus = 'scheduled' | 'in_progress' | 'released'
 export type ReleaseType = 'single' | 'ep' | 'album'
 
+export interface Composer {
+  name: string
+  artistName?: string
+}
+
+export interface PlatformLink {
+  platform: string
+  url: string
+  artistName?: string
+}
+
 export interface Release {
   id: string
   title: string
@@ -17,9 +28,8 @@ export interface Release {
   releaseDate?: Date
   status: ReleaseStatus
   coverUrl?: string
-  spotifyUrl?: string
-  appleMusicUrl?: string
-  youtubeUrl?: string
+  composers: Composer[]
+  platformLinks: PlatformLink[]
   isrc?: string
   upc?: string
   label?: string
@@ -41,9 +51,8 @@ export interface CreateReleaseInput {
   releaseTime?: string // HH:mm format for calendar event
   status?: ReleaseStatus
   coverUrl?: string
-  spotifyUrl?: string
-  appleMusicUrl?: string
-  youtubeUrl?: string
+  composers?: Composer[]
+  platformLinks?: PlatformLink[]
   isrc?: string
   upc?: string
   label?: string

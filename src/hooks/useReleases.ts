@@ -7,6 +7,17 @@ import { toast } from 'sonner'
 import type { Release, ReleaseStatus, CreateReleaseInput, ReleaseFilters } from '@/types/releases'
 import type { CreateEventInput } from './useCalendar'
 
+function parseJsonb<T>(value: any, fallback: T[]): T[] {
+  if (!value) return fallback
+  if (Array.isArray(value)) return value
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value
+    return Array.isArray(parsed) ? parsed : fallback
+  } catch {
+    return fallback
+  }
+}
+
 function mapDbToRelease(row: any): Release {
   return {
     id: row.id,
@@ -17,9 +28,8 @@ function mapDbToRelease(row: any): Release {
     releaseDate: row.release_date ? new Date(row.release_date) : undefined,
     status: row.status as ReleaseStatus,
     coverUrl: row.cover_url || undefined,
-    spotifyUrl: row.spotify_url || undefined,
-    appleMusicUrl: row.apple_music_url || undefined,
-    youtubeUrl: row.youtube_url || undefined,
+    composers: parseJsonb(row.composers, []),
+    platformLinks: parseJsonb(row.platform_links, []),
     isrc: row.isrc || undefined,
     upc: row.upc || undefined,
     label: row.label || undefined,
@@ -121,9 +131,8 @@ export function useReleases(options?: UseReleasesOptions) {
         release_date: input.releaseDate?.toISOString().split('T')[0] || null,
         status: input.status || 'scheduled',
         cover_url: input.coverUrl || null,
-        spotify_url: input.spotifyUrl || null,
-        apple_music_url: input.appleMusicUrl || null,
-        youtube_url: input.youtubeUrl || null,
+        composers: input.composers && input.composers.length > 0 ? JSON.stringify(input.composers) : '[]',
+        platform_links: input.platformLinks && input.platformLinks.length > 0 ? JSON.stringify(input.platformLinks) : '[]',
         isrc: input.isrc || null,
         upc: input.upc || null,
         label: input.label || null,
@@ -178,9 +187,8 @@ export function useReleases(options?: UseReleasesOptions) {
     if (updates.releaseDate !== undefined) updateData.release_date = updates.releaseDate?.toISOString().split('T')[0] || null
     if (updates.status !== undefined) updateData.status = updates.status
     if (updates.coverUrl !== undefined) updateData.cover_url = updates.coverUrl || null
-    if (updates.spotifyUrl !== undefined) updateData.spotify_url = updates.spotifyUrl || null
-    if (updates.appleMusicUrl !== undefined) updateData.apple_music_url = updates.appleMusicUrl || null
-    if (updates.youtubeUrl !== undefined) updateData.youtube_url = updates.youtubeUrl || null
+    if (updates.composers !== undefined) updateData.composers = JSON.stringify(updates.composers || [])
+    if (updates.platformLinks !== undefined) updateData.platform_links = JSON.stringify(updates.platformLinks || [])
     if (updates.isrc !== undefined) updateData.isrc = updates.isrc || null
     if (updates.upc !== undefined) updateData.upc = updates.upc || null
     if (updates.label !== undefined) updateData.label = updates.label || null

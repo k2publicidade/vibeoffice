@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
   Disc3, Music, Calendar, ExternalLink, Copy, Trash2, Pencil,
-  Tag, Building2, Truck, Hash, Globe,
+  Tag, Building2, Truck, Hash, Globe, Users,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -49,11 +49,7 @@ export function ReleaseDetailsModal({
 }: ReleaseDetailsModalProps) {
   if (!release) return null
 
-  const linkItems = [
-    { label: 'Spotify', url: release.spotifyUrl },
-    { label: 'Apple Music', url: release.appleMusicUrl },
-    { label: 'YouTube', url: release.youtubeUrl },
-  ].filter(l => l.url)
+  const linkItems = (release.platformLinks || []).filter(l => l.url || l.platform)
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -156,23 +152,51 @@ export function ReleaseDetailsModal({
             )}
           </div>
 
+          {/* Composers */}
+          {release.composers && release.composers.length > 0 && (
+            <>
+              <Separator className="bg-[#2a2a2a]" />
+              <div className="space-y-2">
+                <span className="text-gray-600 text-xs flex items-center gap-1">
+                  <Users className="w-3 h-3" /> Compositores
+                </span>
+                {release.composers.map((composer, i) => (
+                  <div key={i} className="text-sm text-gray-300">
+                    <span className="text-white">{composer.name}</span>
+                    {composer.artistName && (
+                      <span className="text-gray-500 ml-1.5">({composer.artistName})</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           {/* Links */}
           {linkItems.length > 0 && (
             <>
               <Separator className="bg-[#2a2a2a]" />
               <div className="space-y-2">
                 <span className="text-gray-600 text-xs">Plataformas</span>
-                {linkItems.map(link => (
-                  <a
-                    key={link.label}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    {link.label}
-                  </a>
+                {linkItems.map((link, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    {link.url ? (
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {link.platform || 'Link'}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">{link.platform}</span>
+                    )}
+                    {link.artistName && (
+                      <span className="text-gray-500 text-xs">- {link.artistName}</span>
+                    )}
+                  </div>
                 ))}
               </div>
             </>

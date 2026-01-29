@@ -856,6 +856,8 @@ export type Database = {
           spotify_url: string | null
           apple_music_url: string | null
           youtube_url: string | null
+          composers: any | null
+          platform_links: any | null
           isrc: string | null
           upc: string | null
           label: string | null
@@ -879,6 +881,8 @@ export type Database = {
           spotify_url?: string | null
           apple_music_url?: string | null
           youtube_url?: string | null
+          composers?: any | null
+          platform_links?: any | null
           isrc?: string | null
           upc?: string | null
           label?: string | null
@@ -902,6 +906,8 @@ export type Database = {
           spotify_url?: string | null
           apple_music_url?: string | null
           youtube_url?: string | null
+          composers?: any | null
+          platform_links?: any | null
           isrc?: string | null
           upc?: string | null
           label?: string | null

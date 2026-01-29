@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,8 +20,11 @@ import {
   Fingerprint,
   Image,
   FileText,
+  Users,
+  Plus,
+  X,
 } from 'lucide-react'
-import type { Release, ReleaseStatus, ReleaseType, CreateReleaseInput } from '@/types/releases'
+import type { Release, ReleaseStatus, ReleaseType, CreateReleaseInput, Composer, PlatformLink } from '@/types/releases'
 import type { Sector } from '@/types/auth'
 
 const RELEASE_TYPES: { value: ReleaseType; label: string }[] = [
@@ -64,9 +67,6 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
   const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined)
   const [status, setStatus] = useState<ReleaseStatus>('scheduled')
   const [coverUrl, setCoverUrl] = useState('')
-  const [spotifyUrl, setSpotifyUrl] = useState('')
-  const [appleMusicUrl, setAppleMusicUrl] = useState('')
-  const [youtubeUrl, setYoutubeUrl] = useState('')
   const [isrc, setIsrc] = useState('')
   const [upc, setUpc] = useState('')
   const [label, setLabel] = useState('')
@@ -74,6 +74,10 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
   const [notes, setNotes] = useState('')
   const [sector, setSector] = useState<Sector | ''>('')
   const [saving, setSaving] = useState(false)
+
+  // Dynamic lists
+  const [composers, setComposers] = useState<Composer[]>([])
+  const [platformLinks, setPlatformLinks] = useState<PlatformLink[]>([])
 
   const isEditing = !!release
 
@@ -87,15 +91,14 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         setReleaseDate(release.releaseDate ? new Date(release.releaseDate) : undefined)
         setStatus(release.status)
         setCoverUrl(release.coverUrl || '')
-        setSpotifyUrl(release.spotifyUrl || '')
-        setAppleMusicUrl(release.appleMusicUrl || '')
-        setYoutubeUrl(release.youtubeUrl || '')
         setIsrc(release.isrc || '')
         setUpc(release.upc || '')
         setLabel(release.label || '')
         setDistributor(release.distributor || '')
         setNotes(release.notes || '')
         setSector((release.sector as Sector) || '')
+        setComposers(release.composers?.length ? [...release.composers] : [])
+        setPlatformLinks(release.platformLinks?.length ? [...release.platformLinks] : [])
       } else {
         setTitle('')
         setArtist('')
@@ -104,18 +107,43 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         setReleaseDate(undefined)
         setStatus(initialStatus || 'scheduled')
         setCoverUrl('')
-        setSpotifyUrl('')
-        setAppleMusicUrl('')
-        setYoutubeUrl('')
         setIsrc('')
         setUpc('')
         setLabel('')
         setDistributor('')
         setNotes('')
         setSector('')
+        setComposers([])
+        setPlatformLinks([])
       }
     }
   }, [open, release, initialStatus])
+
+  // Composers handlers
+  const addComposer = () => {
+    setComposers(prev => [...prev, { name: '', artistName: '' }])
+  }
+
+  const updateComposer = (index: number, field: keyof Composer, value: string) => {
+    setComposers(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c))
+  }
+
+  const removeComposer = (index: number) => {
+    setComposers(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Platform links handlers
+  const addPlatformLink = () => {
+    setPlatformLinks(prev => [...prev, { platform: '', url: '', artistName: '' }])
+  }
+
+  const updatePlatformLink = (index: number, field: keyof PlatformLink, value: string) => {
+    setPlatformLinks(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l))
+  }
+
+  const removePlatformLink = (index: number) => {
+    setPlatformLinks(prev => prev.filter((_, i) => i !== index))
+  }
 
   const handleSave = async () => {
     if (!title.trim() || !artist.trim()) return
@@ -126,6 +154,10 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
       const minutes = releaseDate ? releaseDate.getMinutes() : 0
       const releaseTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
 
+      // Filter out empty entries
+      const validComposers = composers.filter(c => c.name.trim())
+      const validLinks = platformLinks.filter(l => l.platform.trim() || l.url.trim())
+
       await onSave({
         title: title.trim(),
         artist: artist.trim(),
@@ -135,9 +167,8 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         releaseTime,
         status,
         coverUrl: coverUrl.trim() || undefined,
-        spotifyUrl: spotifyUrl.trim() || undefined,
-        appleMusicUrl: appleMusicUrl.trim() || undefined,
-        youtubeUrl: youtubeUrl.trim() || undefined,
+        composers: validComposers.length > 0 ? validComposers : undefined,
+        platformLinks: validLinks.length > 0 ? validLinks : undefined,
         isrc: isrc.trim() || undefined,
         upc: upc.trim() || undefined,
         label: label.trim() || undefined,
@@ -155,7 +186,6 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   const handleDateChange = (date: Date | undefined) => {
     if (date && releaseDate) {
-      // Preserve time from existing date
       date.setHours(releaseDate.getHours(), releaseDate.getMinutes())
     } else if (date) {
       date.setHours(12, 0)
@@ -169,7 +199,6 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
       updated.setHours(date.getHours(), date.getMinutes())
       setReleaseDate(updated)
     } else {
-      // If no date selected yet, set with today's date
       setReleaseDate(date)
     }
   }
@@ -255,7 +284,49 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             />
           </div>
 
-          {/* Section 3: Details */}
+          {/* Section 3: Composers */}
+          <SectionHeader icon={Users} title="Compositores" />
+          <div className="space-y-2">
+            {composers.map((composer, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Input
+                    value={composer.name}
+                    onChange={(e) => updateComposer(index, 'name', e.target.value)}
+                    placeholder="Nome completo"
+                    className="bg-[#111] border-[#2a2a2a] text-white text-sm"
+                  />
+                  <Input
+                    value={composer.artistName || ''}
+                    onChange={(e) => updateComposer(index, 'artistName', e.target.value)}
+                    placeholder="Nome artistico"
+                    className="bg-[#111] border-[#2a2a2a] text-white text-sm"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeComposer(index)}
+                  className="h-9 w-9 text-gray-500 hover:text-red-400 flex-shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={addComposer}
+              className="text-[#fc7a67] hover:text-[#ff0300] hover:bg-[#fc7a67]/10 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Adicionar Compositor
+            </Button>
+          </div>
+
+          {/* Section 4: Details */}
           <SectionHeader icon={Tag} title="Detalhes" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -309,7 +380,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             </div>
           </div>
 
-          {/* Section 4: Identifiers */}
+          {/* Section 5: Identifiers */}
           <SectionHeader icon={Fingerprint} title="Identificadores" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -332,30 +403,55 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             </div>
           </div>
 
-          {/* Section 5: Platform Links */}
+          {/* Section 6: Platform Links */}
           <SectionHeader icon={Link} title="Links de Plataformas" />
-          <div className="space-y-2.5">
-            <Input
-              value={spotifyUrl}
-              onChange={(e) => setSpotifyUrl(e.target.value)}
-              placeholder="URL do Spotify"
-              className="bg-[#111] border-[#2a2a2a] text-white text-sm"
-            />
-            <Input
-              value={appleMusicUrl}
-              onChange={(e) => setAppleMusicUrl(e.target.value)}
-              placeholder="URL do Apple Music"
-              className="bg-[#111] border-[#2a2a2a] text-white text-sm"
-            />
-            <Input
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="URL do YouTube"
-              className="bg-[#111] border-[#2a2a2a] text-white text-sm"
-            />
+          <div className="space-y-2">
+            {platformLinks.map((link, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Input
+                    value={link.platform}
+                    onChange={(e) => updatePlatformLink(index, 'platform', e.target.value)}
+                    placeholder="Plataforma"
+                    className="bg-[#111] border-[#2a2a2a] text-white text-sm"
+                  />
+                  <Input
+                    value={link.url}
+                    onChange={(e) => updatePlatformLink(index, 'url', e.target.value)}
+                    placeholder="URL"
+                    className="bg-[#111] border-[#2a2a2a] text-white text-sm"
+                  />
+                  <Input
+                    value={link.artistName || ''}
+                    onChange={(e) => updatePlatformLink(index, 'artistName', e.target.value)}
+                    placeholder="Nome artistico"
+                    className="bg-[#111] border-[#2a2a2a] text-white text-sm"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removePlatformLink(index)}
+                  className="h-9 w-9 text-gray-500 hover:text-red-400 flex-shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={addPlatformLink}
+              className="text-[#fc7a67] hover:text-[#ff0300] hover:bg-[#fc7a67]/10 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Adicionar Plataforma
+            </Button>
           </div>
 
-          {/* Section 6: Cover & Notes */}
+          {/* Section 7: Cover & Notes */}
           <SectionHeader icon={Image} title="Capa e Observacoes" />
           <div className="space-y-3">
             <div>
