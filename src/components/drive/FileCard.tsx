@@ -36,7 +36,10 @@ interface FileCardProps {
   onDownload?: () => void
   onShare?: () => void
   onMoveItem?: (itemId: string, targetFolderId: string) => void
-  isDraggedOver?: boolean
+  // dnd-kit props
+  isDragging?: boolean
+  isOver?: boolean
+  dragOverlay?: boolean
 }
 
 // Função para obter informações visuais do arquivo
@@ -90,58 +93,16 @@ export function FileCard({
   onDownload,
   onShare,
   onMoveItem,
+  isDragging,
+  isOver,
+  dragOverlay,
 }: FileCardProps) {
   const isFolder = item.type === 'folder'
   const updatedAt = new Date(item.updatedAt)
   const timeAgo = formatDistanceToNow(updatedAt, { addSuffix: true, locale: ptBR })
   const fileInfo = getFileInfo(item.mimeType, isFolder)
   const FileIcon = fileInfo.icon
-  const [isDragOver, setIsDragOver] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-
-  const isShared = (item.sharedWith && item.sharedWith.length > 0) || item.isPublic
-
-  // --- Drag & Drop ---
-  const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
-    e.dataTransfer.setData('application/vibeoffice-item-id', item.id)
-    e.dataTransfer.effectAllowed = 'move'
-    setIsDragging(true)
-    // Adicionar classe visual ao elemento arrastado
-    if (e.currentTarget) {
-      e.currentTarget.style.opacity = '0.4'
-    }
-  }
-
-  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
-    setIsDragging(false)
-    if (e.currentTarget) {
-      e.currentTarget.style.opacity = '1'
-    }
-  }
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    if (!isFolder) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setIsDragOver(true)
-  }
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    // Só reseta se saiu do card de verdade (não de um filho)
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false)
-    }
-  }
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragOver(false)
-    if (!isFolder || !onMoveItem) return
-    const draggedId = e.dataTransfer.getData('application/vibeoffice-item-id')
-    if (draggedId && draggedId !== item.id) {
-      onMoveItem(draggedId, item.id)
-    }
-  }
+  // --- Drag & Drop removido em favor do dnd-kit implementado no DriveGrid ---
 
   const getFileSize = () => {
     if (!item.size) return null
@@ -156,19 +117,14 @@ export function FileCard({
   return (
     <Card
       className={cn(
-        "cursor-grab active:cursor-grabbing group relative overflow-hidden border-0 bg-zinc-900/40 backdrop-blur-sm",
+        "cursor-pointer group relative overflow-hidden border-0 bg-zinc-900/40 backdrop-blur-sm",
         "transition-all duration-300 ease-out",
         "hover:bg-zinc-800/60 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1",
         "ring-1 ring-white/5 hover:ring-white/10",
         isDragging && "opacity-40 scale-95 ring-2 ring-blue-400/40",
-        isDragOver && isFolder && "ring-2 ring-amber-400/60 bg-amber-400/10 scale-[1.05] shadow-lg shadow-amber-400/20"
+        isOver && isFolder && "ring-2 ring-amber-400/60 bg-amber-400/10 scale-[1.05] shadow-lg shadow-amber-400/20",
+        dragOverlay && "cursor-grabbing shadow-2xl scale-105 rotate-3 z-50 bg-zinc-800"
       )}
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
       onDoubleClick={onDoubleClick}
     >
       <div className={cn(
@@ -177,7 +133,7 @@ export function FileCard({
       )} />
 
       {/* Drop zone indicator */}
-      {isDragOver && isFolder && (
+      {isOver && isFolder && !dragOverlay && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-amber-400/15 backdrop-blur-[2px] rounded-lg border-2 border-dashed border-amber-400/60">
           <span className="text-amber-300 text-xs font-semibold px-3 py-1.5 bg-black/60 rounded-full">
             Solte aqui
@@ -229,7 +185,7 @@ export function FileCard({
 
           <div className="flex items-center justify-between text-xs text-zinc-500">
             <span>{isFolder ? 'Pasta' : getFileSize()}</span>
-            {isShared && (
+            {(item.isPublic || (item.sharedWith && item.sharedWith.length > 0)) && (
               <div className="flex items-center gap-1.5" title={item.isPublic ? "Público" : "Compartilhado"}>
                 {item.isPublic ? (
                   <Globe className="h-3 w-3 text-emerald-500" />

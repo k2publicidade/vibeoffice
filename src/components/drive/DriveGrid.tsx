@@ -2,10 +2,23 @@
 
 import { DriveItem } from '@/types/drive'
 import { FileCard } from './FileCard'
-import { Card } from '@/components/ui/card'
 import { FolderOpen, Upload } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import {
+    DndContext,
+    DragOverlay,
+    useDraggable,
+    useDroppable,
+    DragStartEvent,
+    DragEndEvent,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core'
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface DriveGridProps {
     items: DriveItem[]
@@ -20,6 +33,45 @@ interface DriveGridProps {
     disableFiltering?: boolean
 }
 
+// Wrapper for draggable items
+const DraggableDriveItem = ({ item, children }: { item: DriveItem, children: React.ReactNode }) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: item.id,
+        data: item
+    })
+
+    return (
+        <div ref={setNodeRef} {...listeners} {...attributes} className="outline-none touch-none">
+            <div style={{ opacity: isDragging ? 0.4 : 1 }}>
+                {children}
+            </div>
+        </div>
+    )
+}
+
+// Wrapper for droppable folders (allows dropping files into folders)
+const DroppableFolderItem = ({
+    item,
+    children,
+    onClick
+}: {
+    item: DriveItem,
+    children: (isOver: boolean) => React.ReactNode,
+    onClick: () => void
+}) => {
+    const { setNodeRef, isOver } = useDroppable({
+        id: item.id,
+        data: item,
+        disabled: item.type !== 'folder'
+    })
+
+    return (
+        <div ref={setNodeRef} onClick={onClick}>
+            {children(isOver)}
+        </div>
+    )
+}
+
 export function DriveGrid({
     items,
     currentFolderId,
@@ -32,6 +84,17 @@ export function DriveGrid({
     onUpload,
     disableFiltering = false
 }: DriveGridProps) {
+    const [activeId, setActiveId] = useState<string | null>(null)
+    const [activeItem, setActiveItem] = useState<DriveItem | null>(null)
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Require 8px movement to start drag, prevents accidental drags on click
+            },
+        })
+    )
+
     // Filter items for current folder if filtering is enabled
     const currentItems = disableFiltering ? items : items.filter((item) => {
         if (currentFolderId === null) {
@@ -50,6 +113,36 @@ export function DriveGrid({
         .sort((a, b) => a.name.localeCompare(b.name))
 
     const allItems = [...folders, ...files]
+
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event
+        setActiveId(active.id as string)
+        const item = allItems.find(i => i.id === active.id)
+        if (item) setActiveItem(item)
+    }
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+
+        setActiveId(null)
+        setActiveItem(null)
+
+        if (!over) return
+
+        const activeItemId = active.id as string
+        const overId = over.id as string
+
+        // If dropped on itself or nothing changed
+        if (activeItemId === overId) return
+
+        // Find the dropped-over item
+        const overItem = allItems.find(i => i.id === overId)
+
+        // Only move if dropped over a folder
+        if (overItem && overItem.type === 'folder' && onMoveItem) {
+            onMoveItem(activeItemId, overId)
+        }
+    }
 
     if (allItems.length === 0) {
         return (
@@ -110,38 +203,78 @@ export function DriveGrid({
     }
 
     return (
-        <motion.div
-            className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
         >
-            <AnimatePresence mode="popLayout">
-                {allItems.map((item) => (
-                    <motion.div
-                        key={item.id}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                    >
-                        <FileCard
-                            item={item}
-                            onDoubleClick={() => {
-                                if (item.type === 'folder') {
-                                    onFolderOpen(item.id)
-                                } else {
-                                    onFileClick?.(item.id)
-                                }
-                            }}
-                            onDelete={() => onFileDelete?.(item.id)}
-                            onDownload={() => onFileDownload?.(item.id)}
-                            onShare={() => onFileShare?.(item.id)}
-                            onMoveItem={onMoveItem}
-                        />
-                    </motion.div>
-                ))}
-            </AnimatePresence>
-        </motion.div>
+            <motion.div
+                className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 pb-20"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+            >
+                <AnimatePresence mode="popLayout">
+                    {allItems.map((item) => (
+                        <motion.div
+                            key={item.id}
+                            variants={itemVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                            layoutId={item.id}
+                        >
+                            {/* We wrap Draggable first */}
+                            <DraggableDriveItem item={item}>
+                                {item.type === 'folder' ? (
+                                    /* If folder, we also wrap/use droppable logic */
+                                    <DroppableFolderItem
+                                        item={item}
+                                        onClick={() => onFolderOpen(item.id)}
+                                    >
+                                        {(isOver) => (
+                                            <FileCard
+                                                item={item}
+                                                // Event bubble up is handled by wrapper, but we pass onClick for specific non-drag clicks via wrapper
+                                                onDelete={() => onFileDelete?.(item.id)}
+                                                onDownload={() => onFileDownload?.(item.id)}
+                                                onShare={() => onFileShare?.(item.id)}
+                                                // Dnd-kit specific props
+                                                isOver={isOver}
+                                            />
+                                        )}
+                                    </DroppableFolderItem>
+                                ) : (
+                                    /* Files are just draggable items */
+                                    <FileCard
+                                        item={item}
+                                        onDoubleClick={() => onFileClick?.(item.id)}
+                                        onDelete={() => onFileDelete?.(item.id)}
+                                        onDownload={() => onFileDownload?.(item.id)}
+                                        onShare={() => onFileShare?.(item.id)}
+                                    />
+                                )}
+                            </DraggableDriveItem>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
+            </motion.div>
+
+            {createPortal(
+                <DragOverlay>
+                    {activeItem ? (
+                        <div className="w-[200px] sm:w-auto">
+                            <FileCard
+                                item={activeItem}
+                                dragOverlay
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>,
+                document.body
+            )}
+        </DndContext>
     )
 }
+

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { toast } from 'sonner'
 import type { Release, ReleaseStatus, CreateReleaseInput, ReleaseFilters } from '@/types/releases'
@@ -37,6 +37,7 @@ export function useReleases() {
   const [filters, setFilters] = useState<ReleaseFilters>({})
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
+  const supabase = createClient()
 
   useEffect(() => {
     if (!user) return
