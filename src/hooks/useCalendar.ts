@@ -18,6 +18,7 @@ export interface CreateEventInput {
   attendees?: string[]
   linkedTaskId?: string
   linkedTicketId?: string
+  linkedReleaseId?: string
 }
 
 export interface UseCalendarReturn {
@@ -75,6 +76,7 @@ export function useCalendar(): UseCalendarReturn {
           updatedAt: new Date(event.created_at),
           linkedTaskId: event.linked_task_id || undefined,
           linkedTicketId: event.linked_ticket_id || undefined,
+          linkedReleaseId: event.linked_release_id || undefined,
         }))
       )
     } catch (error) {
@@ -145,6 +147,7 @@ export function useCalendar(): UseCalendarReturn {
         created_by: user.id,
         linked_task_id: event.linkedTaskId || null,
         linked_ticket_id: event.linkedTicketId || null,
+        linked_release_id: event.linkedReleaseId || null,
       }
 
       // [L03] Debug logging envolvido em dev check
@@ -180,6 +183,7 @@ export function useCalendar(): UseCalendarReturn {
         updatedAt: new Date(data.created_at),
         linkedTaskId: data.linked_task_id || undefined,
         linkedTicketId: data.linked_ticket_id || undefined,
+        linkedReleaseId: data.linked_release_id || undefined,
       }
 
       setEvents((prev) => [...prev, newEvent])
@@ -201,6 +205,7 @@ export function useCalendar(): UseCalendarReturn {
           attendees: updates.attendees,
           linked_task_id: updates.linkedTaskId || null,
           linked_ticket_id: updates.linkedTicketId || null,
+          linked_release_id: updates.linkedReleaseId || null,
         })
         .eq('id', id)
         .select()
@@ -223,6 +228,7 @@ export function useCalendar(): UseCalendarReturn {
                 updatedAt: new Date(), // DB não tem updated_at, usando data atual
                 linkedTaskId: data.linked_task_id || undefined,
                 linkedTicketId: data.linked_ticket_id || undefined,
+                linkedReleaseId: data.linked_release_id || undefined,
               }
             : event
         )
@@ -264,6 +270,7 @@ export function useCalendar(): UseCalendarReturn {
           created_by: user.id,
           linked_task_id: originalEvent.linkedTaskId || null,
           linked_ticket_id: originalEvent.linkedTicketId || null,
+          linked_release_id: originalEvent.linkedReleaseId || null,
         })
         .select()
         .single()
@@ -284,6 +291,7 @@ export function useCalendar(): UseCalendarReturn {
         updatedAt: new Date(data.created_at),
         linkedTaskId: data.linked_task_id || undefined,
         linkedTicketId: data.linked_ticket_id || undefined,
+        linkedReleaseId: data.linked_release_id || undefined,
       }
 
       setEvents((prev) => [...prev, newEvent])

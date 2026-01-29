@@ -24,6 +24,7 @@ export type Database = {
           created_at: string
           linked_task_id: string | null
           linked_ticket_id: string | null
+          linked_release_id: string | null
         }
         Insert: {
           id?: string
@@ -39,6 +40,7 @@ export type Database = {
           created_at?: string
           linked_task_id?: string | null
           linked_ticket_id?: string | null
+          linked_release_id?: string | null
         }
         Update: {
           id?: string
@@ -54,6 +56,7 @@ export type Database = {
           created_at?: string
           linked_task_id?: string | null
           linked_ticket_id?: string | null
+          linked_release_id?: string | null
         }
         Relationships: [
           {
@@ -75,6 +78,13 @@ export type Database = {
             columns: ["linked_ticket_id"]
             isOneToOne: false
             referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_linked_release_id_fkey"
+            columns: ["linked_release_id"]
+            isOneToOne: false
+            referencedRelation: "releases"
             referencedColumns: ["id"]
           }
         ]

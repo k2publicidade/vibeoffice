@@ -23,6 +23,7 @@ export interface CalendarEvent {
   // Linked items
   linkedTaskId?: string
   linkedTicketId?: string
+  linkedReleaseId?: string
 }
 
 export interface CreateEventInput {
@@ -36,6 +37,7 @@ export interface CreateEventInput {
   attendees?: string[]
   linkedTaskId?: string
   linkedTicketId?: string
+  linkedReleaseId?: string
 }
 
 export interface UpdateEventInput {
