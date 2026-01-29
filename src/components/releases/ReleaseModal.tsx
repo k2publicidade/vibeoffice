@@ -1,20 +1,33 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Disc3, Music, Calendar, Link, Tag, Building2, Truck } from 'lucide-react'
+import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
+import { PremiumTimePicker } from '@/components/ui/premium-time-picker'
+import {
+  Disc3,
+  Music,
+  CalendarClock,
+  Tag,
+  Building2,
+  Truck,
+  Link,
+  Fingerprint,
+  Image,
+  FileText,
+} from 'lucide-react'
 import type { Release, ReleaseStatus, ReleaseType, CreateReleaseInput } from '@/types/releases'
 import type { Sector } from '@/types/auth'
 
 const RELEASE_TYPES: { value: ReleaseType; label: string }[] = [
   { value: 'single', label: 'Single' },
   { value: 'ep', label: 'EP' },
-  { value: 'album', label: 'Álbum' },
+  { value: 'album', label: 'Album' },
 ]
 
 const SECTORS: Sector[] = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
@@ -22,7 +35,7 @@ const SECTORS: Sector[] = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Admin
 const STATUS_OPTIONS: { value: ReleaseStatus; label: string }[] = [
   { value: 'scheduled', label: 'Programado' },
   { value: 'in_progress', label: 'Em Andamento' },
-  { value: 'released', label: 'Lançado' },
+  { value: 'released', label: 'Lancado' },
 ]
 
 interface ReleaseModalProps {
@@ -33,12 +46,22 @@ interface ReleaseModalProps {
   initialStatus?: ReleaseStatus
 }
 
+function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
+  return (
+    <div className="flex items-center gap-2 pt-2 pb-1">
+      <Icon className="w-4 h-4 text-[#fc7a67]" />
+      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{title}</span>
+      <div className="flex-1 h-px bg-[#2a2a2a]" />
+    </div>
+  )
+}
+
 export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: ReleaseModalProps) {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
   const [releaseType, setReleaseType] = useState<ReleaseType>('single')
   const [genre, setGenre] = useState('')
-  const [releaseDate, setReleaseDate] = useState('')
+  const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined)
   const [status, setStatus] = useState<ReleaseStatus>('scheduled')
   const [coverUrl, setCoverUrl] = useState('')
   const [spotifyUrl, setSpotifyUrl] = useState('')
@@ -61,7 +84,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         setArtist(release.artist)
         setReleaseType(release.releaseType)
         setGenre(release.genre || '')
-        setReleaseDate(release.releaseDate ? release.releaseDate.toISOString().split('T')[0] : '')
+        setReleaseDate(release.releaseDate ? new Date(release.releaseDate) : undefined)
         setStatus(release.status)
         setCoverUrl(release.coverUrl || '')
         setSpotifyUrl(release.spotifyUrl || '')
@@ -78,7 +101,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         setArtist('')
         setReleaseType('single')
         setGenre('')
-        setReleaseDate('')
+        setReleaseDate(undefined)
         setStatus(initialStatus || 'scheduled')
         setCoverUrl('')
         setSpotifyUrl('')
@@ -99,12 +122,17 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
     setSaving(true)
     try {
+      const hours = releaseDate ? releaseDate.getHours() : 12
+      const minutes = releaseDate ? releaseDate.getMinutes() : 0
+      const releaseTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+
       await onSave({
         title: title.trim(),
         artist: artist.trim(),
         releaseType,
         genre: genre.trim() || undefined,
-        releaseDate: releaseDate ? new Date(releaseDate + 'T12:00:00') : undefined,
+        releaseDate: releaseDate || undefined,
+        releaseTime,
         status,
         coverUrl: coverUrl.trim() || undefined,
         spotifyUrl: spotifyUrl.trim() || undefined,
@@ -125,25 +153,49 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
     }
   }
 
+  const handleDateChange = (date: Date | undefined) => {
+    if (date && releaseDate) {
+      // Preserve time from existing date
+      date.setHours(releaseDate.getHours(), releaseDate.getMinutes())
+    } else if (date) {
+      date.setHours(12, 0)
+    }
+    setReleaseDate(date)
+  }
+
+  const handleTimeChange = (date: Date) => {
+    if (releaseDate) {
+      const updated = new Date(releaseDate)
+      updated.setHours(date.getHours(), date.getMinutes())
+      setReleaseDate(updated)
+    } else {
+      // If no date selected yet, set with today's date
+      setReleaseDate(date)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <Disc3 className="w-5 h-5 text-[#fc7a67]" />
-            {isEditing ? 'Editar Lançamento' : 'Novo Lançamento'}
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#fc7a67] to-[#ff0300] flex items-center justify-center">
+              <Disc3 className="w-4 h-4 text-white" />
+            </div>
+            {isEditing ? 'Editar Lancamento' : 'Novo Lancamento'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
-          {/* Title & Artist */}
-          <div className="grid grid-cols-1 gap-3">
+        <div className="space-y-3 mt-2">
+          {/* Section 1: Basic Info */}
+          <SectionHeader icon={Music} title="Informacoes Basicas" />
+          <div className="space-y-3">
             <div>
-              <Label className="text-gray-400 text-xs mb-1.5 block">Título *</Label>
+              <Label className="text-gray-400 text-xs mb-1.5 block">Titulo *</Label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Nome da faixa, EP ou álbum"
+                placeholder="Nome da faixa, EP ou album"
                 className="bg-[#111] border-[#2a2a2a] text-white"
               />
             </div>
@@ -159,54 +211,55 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                 />
               </div>
             </div>
-          </div>
-
-          {/* Type, Status, Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <Label className="text-gray-400 text-xs mb-1.5 block">Tipo</Label>
-              <Select value={releaseType} onValueChange={(v) => setReleaseType(v as ReleaseType)}>
-                <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#111] border-[#2a2a2a]">
-                  {RELEASE_TYPES.map(t => (
-                    <SelectItem key={t.value} value={t.value} className="text-white">{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-gray-400 text-xs mb-1.5 block">Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as ReleaseStatus)}>
-                <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#111] border-[#2a2a2a]">
-                  {STATUS_OPTIONS.map(s => (
-                    <SelectItem key={s.value} value={s.value} className="text-white">{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-gray-400 text-xs mb-1.5 block">Data de Lançamento</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                <Input
-                  type="date"
-                  value={releaseDate}
-                  onChange={(e) => setReleaseDate(e.target.value)}
-                  className="bg-[#111] border-[#2a2a2a] text-white pl-9"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-gray-400 text-xs mb-1.5 block">Tipo</Label>
+                <Select value={releaseType} onValueChange={(v) => setReleaseType(v as ReleaseType)}>
+                  <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111] border-[#2a2a2a]">
+                    {RELEASE_TYPES.map(t => (
+                      <SelectItem key={t.value} value={t.value} className="text-white">{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-gray-400 text-xs mb-1.5 block">Status</Label>
+                <Select value={status} onValueChange={(v) => setStatus(v as ReleaseStatus)}>
+                  <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111] border-[#2a2a2a]">
+                    {STATUS_OPTIONS.map(s => (
+                      <SelectItem key={s.value} value={s.value} className="text-white">{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
 
-          {/* Genre & Sector */}
+          {/* Section 2: Scheduling */}
+          <SectionHeader icon={CalendarClock} title="Agendamento" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <PremiumDatePicker
+              date={releaseDate}
+              onDateChange={handleDateChange}
+              placeholder="Data de lancamento"
+            />
+            <PremiumTimePicker
+              date={releaseDate}
+              onTimeChange={handleTimeChange}
+            />
+          </div>
+
+          {/* Section 3: Details */}
+          <SectionHeader icon={Tag} title="Detalhes" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-gray-400 text-xs mb-1.5 block">Gênero</Label>
+              <Label className="text-gray-400 text-xs mb-1.5 block">Genero</Label>
               <div className="relative">
                 <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
                 <Input
@@ -218,7 +271,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
               </div>
             </div>
             <div>
-              <Label className="text-gray-400 text-xs mb-1.5 block">Setor Responsável</Label>
+              <Label className="text-gray-400 text-xs mb-1.5 block">Setor Responsavel</Label>
               <Select value={sector} onValueChange={(v) => setSector(v as Sector)}>
                 <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white">
                   <SelectValue placeholder="Selecionar setor" />
@@ -230,10 +283,6 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Label & Distributor */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-gray-400 text-xs mb-1.5 block">Gravadora / Selo</Label>
               <div className="relative">
@@ -260,7 +309,8 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             </div>
           </div>
 
-          {/* ISRC & UPC */}
+          {/* Section 4: Identifiers */}
+          <SectionHeader icon={Fingerprint} title="Identificadores" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-gray-400 text-xs mb-1.5 block">ISRC</Label>
@@ -282,12 +332,9 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             </div>
           </div>
 
-          {/* Links */}
-          <div className="space-y-3">
-            <Label className="text-gray-400 text-xs flex items-center gap-1.5">
-              <Link className="w-3.5 h-3.5" />
-              Links de Plataformas
-            </Label>
+          {/* Section 5: Platform Links */}
+          <SectionHeader icon={Link} title="Links de Plataformas" />
+          <div className="space-y-2.5">
             <Input
               value={spotifyUrl}
               onChange={(e) => setSpotifyUrl(e.target.value)}
@@ -308,30 +355,31 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             />
           </div>
 
-          {/* Cover URL */}
-          <div>
-            <Label className="text-gray-400 text-xs mb-1.5 block">URL da Capa</Label>
-            <Input
-              value={coverUrl}
-              onChange={(e) => setCoverUrl(e.target.value)}
-              placeholder="https://..."
-              className="bg-[#111] border-[#2a2a2a] text-white text-sm"
-            />
-          </div>
-
-          {/* Notes */}
-          <div>
-            <Label className="text-gray-400 text-xs mb-1.5 block">Observações</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notas adicionais sobre o lançamento..."
-              className="bg-[#111] border-[#2a2a2a] text-white min-h-[80px] resize-none"
-            />
+          {/* Section 6: Cover & Notes */}
+          <SectionHeader icon={Image} title="Capa e Observacoes" />
+          <div className="space-y-3">
+            <div>
+              <Label className="text-gray-400 text-xs mb-1.5 block">URL da Capa</Label>
+              <Input
+                value={coverUrl}
+                onChange={(e) => setCoverUrl(e.target.value)}
+                placeholder="https://..."
+                className="bg-[#111] border-[#2a2a2a] text-white text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-gray-400 text-xs mb-1.5 block">Observacoes</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notas adicionais sobre o lancamento..."
+                className="bg-[#111] border-[#2a2a2a] text-white min-h-[80px] resize-none"
+              />
+            </div>
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#2a2a2a]">
             <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white">
               Cancelar
             </Button>
@@ -340,7 +388,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
               disabled={!title.trim() || !artist.trim() || saving}
               className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:opacity-90"
             >
-              {saving ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Lançamento'}
+              {saving ? 'Salvando...' : isEditing ? 'Salvar Alteracoes' : 'Criar Lancamento'}
             </Button>
           </div>
         </div>
