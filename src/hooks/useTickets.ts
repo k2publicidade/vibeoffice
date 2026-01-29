@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { Ticket, TicketComment } from '@/types/tickets'
 import { CreateTicketSchema, UpdateTicketSchema, CreateTicketCommentSchema, formatZodErrors } from '@/lib/validation-schemas'
@@ -59,6 +59,8 @@ export function useTickets(): UseTicketsReturn {
   const [filters, setFilters] = useState<TicketFilters>({})
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   // Fetch inicial de tickets
   useEffect(() => {
@@ -78,7 +80,7 @@ export function useTickets(): UseTicketsReturn {
           table: 'tickets',
         },
         (payload) => {
-          console.log('[useTickets] Realtime event:', payload)
+          if (process.env.NODE_ENV === 'development') console.log('[useTickets] Realtime event:', payload)
 
           if (payload.eventType === 'INSERT') {
             // New ticket created by another user
@@ -241,6 +243,7 @@ export function useTickets(): UseTicketsReturn {
         throw new Error(`Dados inválidos: ${errors.join(', ')}`)
       }
 
+      // [M08] Forçar created_by = user?.id para segurança (ignora input do client)
       const { data, error } = await supabase
         .from('tickets')
         .insert({
@@ -250,7 +253,7 @@ export function useTickets(): UseTicketsReturn {
           status: ticketData.status,
           priority: ticketData.priority,
           requester: user.id,
-          created_by: ticketData.createdBy,
+          created_by: user.id,
           assigned_to: ticketData.assignedTo,
         })
         .select()
@@ -440,7 +443,7 @@ export function useTickets(): UseTicketsReturn {
             if (taskError) {
               console.error('[useTickets] Failed to sync task:', taskError)
             } else {
-              console.log('[useTickets] Task synced successfully')
+              if (process.env.NODE_ENV === 'development') console.log('[useTickets] Task synced successfully')
             }
           }
         }

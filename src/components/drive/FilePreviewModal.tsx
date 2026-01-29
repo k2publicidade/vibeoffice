@@ -26,7 +26,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import {
   Dialog,
   DialogContent,
@@ -86,10 +86,11 @@ const getFileInfo = (mimeType?: string) => {
   return { icon: File, color: 'text-gray-400', bgColor: 'bg-gray-500/20', label: 'Arquivo' }
 }
 
-// Função para obter URL pública do Supabase Storage
+// [C05] Função para obter URL pública do Supabase Storage — cria client por chamada
 const getPublicUrl = (storagePath: string | undefined): string | null => {
   if (!storagePath) return null
 
+  const supabase = createClient()
   const { data } = supabase.storage
     .from('drive-files')
     .getPublicUrl(storagePath)
@@ -97,7 +98,7 @@ const getPublicUrl = (storagePath: string | undefined): string | null => {
   return data?.publicUrl || null
 }
 
-// Função para fazer download do arquivo
+// [C05] Função para fazer download do arquivo — cria client por chamada
 const downloadFile = async (file: DriveItem) => {
   if (!file.url) {
     toast.error('Arquivo não disponível para download')
@@ -105,6 +106,7 @@ const downloadFile = async (file: DriveItem) => {
   }
 
   try {
+    const supabase = createClient()
     const { data, error } = await supabase.storage
       .from('drive-files')
       .download(file.url)
@@ -162,7 +164,8 @@ export function FilePreviewModal({
         setImageUrl(null)
 
         try {
-          // Gerar URL assinada válida por 1 hora
+          // [C05] Gerar URL assinada válida por 1 hora
+          const supabase = createClient()
           const { data, error } = await supabase.storage
             .from('drive-files')
             .createSignedUrl(file.url!, 3600)

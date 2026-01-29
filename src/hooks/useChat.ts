@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { useArchiveChat } from './useArchiveChat'
 import { ChatRoom, Message } from '@/types/chat'
@@ -52,6 +52,8 @@ export function useChat(): UseChatReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [typingUsers, setTypingUsers] = useState<string[]>([])
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
   const { isRoomArchived, unarchiveRoom } = useArchiveChat(user?.id)
 
   // Fetch inicial de salas e usuários
@@ -73,12 +75,16 @@ export function useChat(): UseChatReturn {
 
       if (error) throw error
 
+      // [C08] Adicionados campos sector, description, createdBy ao map
       setRooms(
         data.map((r) => ({
           id: r.id,
           name: r.name,
           type: r.type as 'sector' | 'dm',
           participants: r.participants,
+          sector: r.sector || undefined,
+          description: r.description || undefined,
+          createdBy: r.created_by || undefined,
           createdAt: new Date(r.created_at),
           updatedAt: new Date(r.updated_at),
         }))
@@ -118,12 +124,12 @@ export function useChat(): UseChatReturn {
   const sectorRooms = useMemo(() => rooms.filter(r => r.type === 'sector'), [rooms])
   const dmRooms = useMemo(() => rooms.filter(r => r.type === 'dm'), [rooms])
 
-  // Obter IDs de usuários com DMs existentes
+  // [M03] Corrigido: usar user?.id ao invés de 'current-user' hardcoded
   const getExistingDMUserIds = useCallback(() => {
     return dmRooms.flatMap(room =>
-      room.participants.filter(p => p !== 'current-user')
+      room.participants.filter(p => p !== user?.id)
     )
-  }, [dmRooms])
+  }, [dmRooms, user])
 
   // Obter usuário por ID
   const getUserById = useCallback(async (userId: string): Promise<ChatUser | null> => {
@@ -240,13 +246,17 @@ export function useChat(): UseChatReturn {
               content: payload.new.content,
               timestamp: new Date(payload.new.timestamp),
             }
-            setMessages((prev) => [...prev, newMessage])
+            // [M12] Prevenir duplicatas de mensagens via race condition Realtime
+            setMessages((prev) => {
+              if (prev.some(m => m.id === newMessage.id)) return prev
+              return [...prev, newMessage]
+            })
 
             // Auto-unarchive: if message is from someone else and room is archived, unarchive it
             if (newMessage.userId !== user?.id && isRoomArchived(currentRoom!.id)) {
               try {
                 await unarchiveRoom(currentRoom!.id)
-                console.log('Auto-unarchived room:', currentRoom!.name)
+                if (process.env.NODE_ENV === 'development') console.log('Auto-unarchived room:', currentRoom!.name)
               } catch (error) {
                 console.error('Failed to auto-unarchive room:', error)
               }

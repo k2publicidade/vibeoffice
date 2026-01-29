@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { DriveItem, SharedAccess, SharePermission, SharedWithMe } from '@/types/drive'
 
@@ -61,6 +61,8 @@ export function useDrive(): UseDriveReturn {
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   // Fetch inicial de items e usuários
   useEffect(() => {

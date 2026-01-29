@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner'
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { Task } from '@/types/tasks'
 import { CreateTaskSchema, UpdateTaskSchema, formatZodErrors } from '@/lib/validation-schemas'
@@ -62,6 +62,8 @@ export function useTasks(): UseTasksReturn {
   const [filters, setFilters] = useState<TaskFilters>({})
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   // Fetch inicial de tarefas + Realtime subscription
   useEffect(() => {
@@ -80,7 +82,7 @@ export function useTasks(): UseTasksReturn {
           table: 'tasks',
         },
         (payload) => {
-          console.log('[useTasks] Realtime event:', payload)
+          if (process.env.NODE_ENV === 'development') console.log('[useTasks] Realtime event:', payload)
 
           if (payload.eventType === 'INSERT') {
             // New task created by another user
@@ -444,7 +446,7 @@ export function useTasks(): UseTasksReturn {
 
 
     // 1. Executar update (sem select para evitar erro 406)
-    console.log('[useTasks] updateTask Step 1: Updating DB...', { id, updates })
+    if (process.env.NODE_ENV === 'development') console.log('[useTasks] updateTask Step 1: Updating DB...', { id, updates })
     const { error: updateError } = await supabase
       .from('tasks')
       .update({
@@ -480,7 +482,7 @@ export function useTasks(): UseTasksReturn {
       }
     }
 
-    console.log('[useTasks] updateTask Step 2: DB Update Success. Fetching fresh data...')
+    if (process.env.NODE_ENV === 'development') console.log('[useTasks] updateTask Step 2: DB Update Success. Fetching fresh data...')
 
 
     // 2. Buscar dados atualizados
@@ -519,7 +521,7 @@ export function useTasks(): UseTasksReturn {
     if (updates.status && oldTask && updates.status !== oldTask.status) {
       const ticketStatus = mapTaskStatusToTicketStatus(updates.status)
 
-      console.log(`[useTasks] Syncing Ticket. Task: ${id}, Status: ${updates.status} -> ${ticketStatus}`)
+      if (process.env.NODE_ENV === 'development') console.log(`[useTasks] Syncing Ticket. Task: ${id}, Status: ${updates.status} -> ${ticketStatus}`)
 
       try {
         // PRIORIDADE 1: Atualizar pelo FK na tabela de tickets (mais confiável)
@@ -537,13 +539,13 @@ export function useTasks(): UseTasksReturn {
         if (ticketError) {
           console.error('[useTasks] Failed to sync ticket by linked_task_id:', ticketError)
         } else if (ticketData && ticketData.length > 0) {
-          console.log('[useTasks] Synced via linked_task_id:', ticketData)
+          if (process.env.NODE_ENV === 'development') console.log('[useTasks] Synced via linked_task_id:', ticketData)
           synced = true
         }
 
         // PRIORIDADE 2: Se falhar (ex: ticket não tem o link), tentar pelo cache da task
         if (!synced && updatedTask.linkedTicketId) {
-          console.log(`[useTasks] linked_task_id matched 0 rows. Trying linkedTicketId: ${updatedTask.linkedTicketId}`)
+          if (process.env.NODE_ENV === 'development') console.log(`[useTasks] linked_task_id matched 0 rows. Trying linkedTicketId: ${updatedTask.linkedTicketId}`)
 
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('tickets')
@@ -558,7 +560,7 @@ export function useTasks(): UseTasksReturn {
             console.error('[useTasks] Failed to sync ticket by ID:', fallbackError)
             toast.error('Erro ao sincronizar Ticket.')
           } else if (fallbackData && fallbackData.length > 0) {
-            console.log('[useTasks] Synced via ticket ID:', fallbackData)
+            if (process.env.NODE_ENV === 'development') console.log('[useTasks] Synced via ticket ID:', fallbackData)
             synced = true
           }
         }
@@ -678,17 +680,5 @@ export function useTasks(): UseTasksReturn {
     getTasksDueThisWeek,
     isLoading,
   }
-}
 
-function mapTaskStatusToTicketStatus(status: string): string {
-  switch (status) {
-    case 'todo':
-      return 'open'
-    case 'in_progress':
-      return 'in_progress'
-    case 'done':
-      return 'completed'
-    default:
-      return 'open'
-  }
-}
+// [C07] Removida função duplicada mapTaskStatusToTicketStatus — mantida apenas a versão interna ao hook

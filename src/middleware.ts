@@ -58,8 +58,8 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session
-  const { data: { session } } = await supabase.auth.getSession()
+  // [M14] Trocado getSession() (deprecated) por getUser() — valida JWT no servidor
+  const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
   const isPublicRoute =
@@ -69,11 +69,11 @@ export async function middleware(request: NextRequest) {
 
   const isProtectedRoute = !isPublicRoute
 
-  if (isProtectedRoute && !session) {
+  if (isProtectedRoute && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (isAuthRoute && session) {
+  if (isAuthRoute && user) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

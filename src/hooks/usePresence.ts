@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 
 export interface OnlineUser {
@@ -12,6 +12,8 @@ export interface OnlineUser {
 export function usePresence() {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   useEffect(() => {
     if (!user) return

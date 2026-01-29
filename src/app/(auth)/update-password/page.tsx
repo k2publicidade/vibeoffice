@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { Lock } from 'lucide-react'
@@ -11,6 +11,8 @@ export default function UpdatePasswordPage() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const router = useRouter()
+    // [C05] Client criado por componente para evitar sessão stale
+    const supabase = createClient()
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault()

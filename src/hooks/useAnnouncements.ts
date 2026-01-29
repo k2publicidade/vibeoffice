@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import type {
   Announcement,
@@ -37,6 +37,8 @@ export function useAnnouncements(): UseAnnouncementsReturn {
   const [allAnnouncements, setAllAnnouncements] = useState<AnnouncementWithAuthor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   // Fetch inicial de avisos + Realtime subscription
   useEffect(() => {
@@ -55,7 +57,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
           table: 'company_announcements',
         },
         (payload) => {
-          console.log('[useAnnouncements] Realtime event:', payload)
+          if (process.env.NODE_ENV === 'development') console.log('[useAnnouncements] Realtime event:', payload)
 
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             // Fetch completo para pegar dados do autor

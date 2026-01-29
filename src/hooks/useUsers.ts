@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { Sector } from '@/types/auth'
 
@@ -28,6 +28,8 @@ export function useUsers(): UseUsersReturn {
   const [users, setUsers] = useState<User[] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   useEffect(() => {
     if (!user) {
@@ -59,7 +61,8 @@ export function useUsers(): UseUsersReturn {
         name: u.name,
         avatar: u.avatar,
         sector: u.sector,
-        role: u.role.toLowerCase() as 'admin' | 'gerente' | 'colaborador',
+        // [M13] Mantido PascalCase como definido em types/auth.ts (removido .toLowerCase())
+        role: u.role as 'admin' | 'gerente' | 'colaborador',
         createdAt: new Date(u.created_at),
         updatedAt: new Date(u.updated_at),
       })))

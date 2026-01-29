@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import type { CalendarEvent } from '@/types/calendar'
 import type { Sector } from '@/types/auth'
@@ -39,6 +39,8 @@ export function useCalendar(): UseCalendarReturn {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   // Fetch inicial de events
   useEffect(() => {
@@ -145,10 +147,12 @@ export function useCalendar(): UseCalendarReturn {
         linked_ticket_id: event.linkedTicketId || null,
       }
 
-      // Debug logging
-      console.log('[useCalendar] createEvent - dados a inserir:', insertData)
-      console.log('[useCalendar] Validação: end_time > start_time?',
-        new Date(insertData.end_time) > new Date(insertData.start_time))
+      // [L03] Debug logging envolvido em dev check
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[useCalendar] createEvent - dados a inserir:', insertData)
+        console.log('[useCalendar] Validação: end_time > start_time?',
+          new Date(insertData.end_time) > new Date(insertData.start_time))
+      }
 
       const { data, error } = await supabase
         .from('calendar_events')

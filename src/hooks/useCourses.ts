@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import type { Course, Module, Lesson, CourseProgress } from '@/types/courses'
 import { toast } from 'sonner'
@@ -11,6 +11,8 @@ export function useCourses() {
   const [loading, setLoading] = useState(true)
   const [progressData, setProgressData] = useState<Record<string, string[]>>({}) // courseId -> [completedLessonIds]
   const { user } = useAuth()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = createClient()
 
   // --- Fetch Data ---
   const fetchCourses = useCallback(async () => {
@@ -177,7 +179,7 @@ export function useCourses() {
         duration: courseData.duration || 0,
       };
 
-      console.log('Creating course with payload:', payload);
+      if (process.env.NODE_ENV === 'development') console.log('Creating course with payload:', payload);
 
       const { data, error } = await supabase
         .from('courses' as any)
