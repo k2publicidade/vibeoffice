@@ -85,6 +85,13 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 }
 
+// Gerar opções de horário com intervalos de 30 minutos (24h)
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const hour = Math.floor(i / 2).toString().padStart(2, '0')
+  const min = i % 2 === 0 ? '00' : '30'
+  return `${hour}:${min}`
+})
+
 export function CreateEventModal({
   open,
   onClose,
@@ -94,18 +101,41 @@ export function CreateEventModal({
   availableAttendees = [],
   availableTags = defaultTags,
 }: CreateEventModalProps) {
+  // Todos os estados do formulário
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(selectedDate)
+  const [dateStr, setDateStr] = useState('')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
+  const [location, setLocation] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([])
+  const [linkType, setLinkType] = useState<'none' | 'task' | 'ticket'>('none')
+  const [selectedTaskId, setSelectedTaskId] = useState<string>()
+  const [selectedTicketId, setSelectedTicketId] = useState<string>()
 
-  // Sincronizar date e hora quando o modal abre ou selectedDate/selectedHour mudam
+  // Resetar e sincronizar tudo quando o modal abre
   useEffect(() => {
     if (open) {
-      // Normalizar data removendo componente de hora para evitar problemas de timezone
+      // Reset completo do formulário
+      setTitle('')
+      setLocation('')
+      setSelectedTags([])
+      setSelectedAttendees([])
+      setLinkType('none')
+      setSelectedTaskId(undefined)
+      setSelectedTicketId(undefined)
+
+      // Normalizar data removendo componente de hora
       const normalizedDate = new Date(selectedDate)
       normalizedDate.setHours(0, 0, 0, 0)
       setDate(normalizedDate)
+
+      // Formatar como yyyy-MM-dd para o input date
+      const year = normalizedDate.getFullYear()
+      const month = (normalizedDate.getMonth() + 1).toString().padStart(2, '0')
+      const day = normalizedDate.getDate().toString().padStart(2, '0')
+      setDateStr(`${year}-${month}-${day}`)
 
       // Definir hora baseada no slot clicado
       if (selectedHour !== undefined && selectedHour !== null) {
@@ -113,17 +143,22 @@ export function CreateEventModal({
         const endHour = Math.min(23, hour + 1)
         setStartTime(`${hour.toString().padStart(2, '0')}:00`)
         setEndTime(`${endHour.toString().padStart(2, '0')}:00`)
+      } else {
+        setStartTime('09:00')
+        setEndTime('10:00')
       }
     }
   }, [open, selectedDate, selectedHour])
-  const [location, setLocation] = useState('')
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([])
 
-  // Estados para vinculação
-  const [linkType, setLinkType] = useState<'none' | 'task' | 'ticket'>('none')
-  const [selectedTaskId, setSelectedTaskId] = useState<string>()
-  const [selectedTicketId, setSelectedTicketId] = useState<string>()
+  // Sincronizar dateStr -> date quando o usuário altera o input
+  const handleDateChange = (value: string) => {
+    setDateStr(value)
+    if (value) {
+      const [y, m, d] = value.split('-').map(Number)
+      const newDate = new Date(y, m - 1, d, 0, 0, 0, 0)
+      setDate(newDate)
+    }
+  }
 
   const { tasks } = useTasks()
   const { tickets } = useTickets()
@@ -191,20 +226,7 @@ export function CreateEventModal({
       linkedTaskId: linkType === 'task' ? selectedTaskId : undefined,
       linkedTicketId: linkType === 'ticket' ? selectedTicketId : undefined,
     })
-    handleReset()
     onClose()
-  }
-
-  const handleReset = () => {
-    setTitle('')
-    setStartTime('09:00')
-    setEndTime('10:00')
-    setLocation('')
-    setSelectedTags([])
-    setSelectedAttendees([])
-    setLinkType('none')
-    setSelectedTaskId(undefined)
-    setSelectedTicketId(undefined)
   }
 
   return (
@@ -245,15 +267,20 @@ export function CreateEventModal({
             />
           </motion.div>
 
-          {/* Date */}
-          <motion.div variants={itemVariants} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+          {/* Date - Editável */}
+          <motion.div variants={itemVariants} className="flex items-center gap-3">
             <div className="h-11 w-11 md:h-10 md:w-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
               <CalendarIcon className="h-5 w-5 text-orange-400" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Data</p>
-              <p className="font-medium text-sm md:text-base">
-                {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
+            <div className="flex-1">
+              <input
+                type="date"
+                value={dateStr}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="w-full h-12 md:h-11 px-3 rounded-xl border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 focus:outline-none transition-colors text-base md:text-sm text-foreground [color-scheme:dark]"
+              />
+              <p className="text-xs text-muted-foreground mt-1 capitalize">
+                {date && !isNaN(date.getTime()) ? format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR }) : ''}
               </p>
             </div>
           </motion.div>
@@ -269,14 +296,11 @@ export function CreateEventModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 24 }, (_, i) => {
-                    const hour = i.toString().padStart(2, '0')
-                    return (
-                      <SelectItem key={`${hour}:00`} value={`${hour}:00`}>
-                        {hour}:00
-                      </SelectItem>
-                    )
-                  })}
+                  {TIME_OPTIONS.map((time) => (
+                    <SelectItem key={`start-${time}`} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <span className="text-muted-foreground font-medium text-sm">até</span>
@@ -285,14 +309,11 @@ export function CreateEventModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 24 }, (_, i) => {
-                    const hour = i.toString().padStart(2, '0')
-                    return (
-                      <SelectItem key={`${hour}:00`} value={`${hour}:00`}>
-                        {hour}:00
-                      </SelectItem>
-                    )
-                  })}
+                  {TIME_OPTIONS.map((time) => (
+                    <SelectItem key={`end-${time}`} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
