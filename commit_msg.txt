@@ -1,9 +1,0 @@
-feat(drive): add drag-and-drop to move files between folders
-
-- useDrive: add moveItem() with circular reference protection
-- FileCard: draggable cards with visual drop target highlight on folders
-- DriveGrid: pass onMoveItem to FileCard components
-- DriveList: drag-and-drop on table rows with amber highlight
-- DrivePage: wire handleMoveItem with toast feedback and error handling
-
-Uses native HTML5 Drag & Drop API (no extra dependencies)
