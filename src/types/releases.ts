@@ -38,6 +38,7 @@ export interface CreateReleaseInput {
   releaseType: ReleaseType
   genre?: string
   releaseDate?: Date
+  releaseTime?: string // HH:mm format for calendar event
   status?: ReleaseStatus
   coverUrl?: string
   spotifyUrl?: string
