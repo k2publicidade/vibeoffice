@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { toast } from 'sonner'
 import type { Release, ReleaseStatus, CreateReleaseInput, ReleaseFilters } from '@/types/releases'
+import type { CreateEventInput } from './useCalendar'
 
 function mapDbToRelease(row: any): Release {
   return {
@@ -32,7 +33,11 @@ function mapDbToRelease(row: any): Release {
   }
 }
 
-export function useReleases() {
+interface UseReleasesOptions {
+  createCalendarEvent?: (event: CreateEventInput) => Promise<void>
+}
+
+export function useReleases(options?: UseReleasesOptions) {
   const [releases, setReleases] = useState<Release[]>([])
   const [filters, setFilters] = useState<ReleaseFilters>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -135,8 +140,34 @@ export function useReleases() {
 
     const newRelease = mapDbToRelease(data)
     setReleases(prev => [...prev, newRelease])
+
+    // Auto-create calendar event if release has a date
+    if (input.releaseDate && options?.createCalendarEvent) {
+      try {
+        const startTime = new Date(input.releaseDate)
+        if (input.releaseTime) {
+          const [hours, minutes] = input.releaseTime.split(':').map(Number)
+          startTime.setHours(hours, minutes, 0, 0)
+        }
+        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000) // +1h
+
+        await options.createCalendarEvent({
+          title: `${input.artist} - ${input.title}`,
+          description: `Lançamento: ${input.releaseType?.toUpperCase() || 'SINGLE'}${input.genre ? ` | ${input.genre}` : ''}`,
+          startTime,
+          endTime,
+          type: 'company',
+          sector: input.sector,
+          linkedReleaseId: newRelease.id,
+        })
+      } catch (calError) {
+        console.error('Error creating calendar event for release:', calError)
+        // Don't throw - release was created successfully
+      }
+    }
+
     return newRelease
-  }, [user, releases])
+  }, [user, releases, options?.createCalendarEvent])
 
   const updateRelease = useCallback(async (id: string, updates: Partial<Release>) => {
     const updateData: Record<string, any> = {}
@@ -169,8 +200,56 @@ export function useReleases() {
 
     const updated = mapDbToRelease(data)
     setReleases(prev => prev.map(r => r.id === id ? updated : r))
+
+    // Sync calendar event if date changed
+    if (updates.releaseDate !== undefined && options?.createCalendarEvent) {
+      try {
+        const { data: existingEvents } = await supabase
+          .from('calendar_events')
+          .select('id')
+          .eq('linked_release_id', id)
+          .limit(1)
+
+        if (updates.releaseDate && existingEvents && existingEvents.length > 0) {
+          const startTime = new Date(updates.releaseDate)
+          startTime.setHours(12, 0, 0, 0)
+          const endTime = new Date(startTime.getTime() + 60 * 60 * 1000)
+
+          await supabase
+            .from('calendar_events')
+            .update({
+              title: `${updated.artist} - ${updated.title}`,
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+            })
+            .eq('id', existingEvents[0].id)
+        } else if (updates.releaseDate && (!existingEvents || existingEvents.length === 0)) {
+          const startTime = new Date(updates.releaseDate)
+          startTime.setHours(12, 0, 0, 0)
+          const endTime = new Date(startTime.getTime() + 60 * 60 * 1000)
+
+          await options.createCalendarEvent({
+            title: `${updated.artist} - ${updated.title}`,
+            description: `Lançamento: ${updated.releaseType?.toUpperCase() || 'SINGLE'}`,
+            startTime,
+            endTime,
+            type: 'company',
+            sector: updated.sector,
+            linkedReleaseId: id,
+          })
+        } else if (!updates.releaseDate && existingEvents && existingEvents.length > 0) {
+          await supabase
+            .from('calendar_events')
+            .delete()
+            .eq('id', existingEvents[0].id)
+        }
+      } catch (calError) {
+        console.error('Error syncing calendar event for release:', calError)
+      }
+    }
+
     return updated
-  }, [])
+  }, [options?.createCalendarEvent])
 
   const deleteRelease = useCallback(async (id: string) => {
     const { error } = await supabase
