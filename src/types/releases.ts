@@ -19,18 +19,36 @@ export interface PlatformLink {
   artistName?: string
 }
 
+export type ArtistRole = 'main' | 'feat' | 'producer'
+
+export interface ReleaseArtist {
+  name: string
+  role: ArtistRole
+}
+
+export interface Track {
+  id: string
+  title: string
+  composers: Composer[]
+  isrc?: string
+  duration?: string
+}
+
 export interface Release {
   id: string
   title: string
-  artist: string
+  artist: string // Main artist name for display/compatibility
+  artists: ReleaseArtist[] // New structured artists
   releaseType: ReleaseType
   genre?: string
   releaseDate?: Date
   status: ReleaseStatus
   coverUrl?: string
-  composers: Composer[]
+  wavUrl?: string
+  composers: Composer[] // Used for singles
+  tracks: Track[] // New: Used for EP/Albums
   platformLinks: PlatformLink[]
-  isrc?: string
+  isrc?: string // Used for singles
   upc?: string
   label?: string
   distributor?: string
@@ -45,13 +63,16 @@ export interface Release {
 export interface CreateReleaseInput {
   title: string
   artist: string
+  artists?: ReleaseArtist[]
   releaseType: ReleaseType
   genre?: string
   releaseDate?: Date
-  releaseTime?: string // HH:mm format for calendar event
+  releaseTime?: string
   status?: ReleaseStatus
   coverUrl?: string
+  wavUrl?: string
   composers?: Composer[]
+  tracks?: Track[]
   platformLinks?: PlatformLink[]
   isrc?: string
   upc?: string

@@ -1,5 +1,5 @@
-'use client'
-
+import { useRef } from 'react'
+import html2canvas from 'html2canvas'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import {
   Disc3, Music, Calendar, ExternalLink, Copy, Trash2, Pencil,
   Tag, Building2, Truck, Hash, Globe, Users,
+  Download,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -47,9 +48,34 @@ export function ReleaseDetailsModal({
   onDuplicate,
   onDelete,
 }: ReleaseDetailsModalProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+
   if (!release) return null
 
   const linkItems = (release.platformLinks || []).filter(l => l.url || l.platform)
+
+  const handleDownload = async () => {
+    if (!contentRef.current) return
+
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        backgroundColor: '#0a0a0a', // Match the modal background
+        scale: 2, // Higher resolution
+        useCORS: true, // For external images (cover)
+        logging: false,
+      })
+
+      const image = canvas.toDataURL('image/png')
+      const link = document.createElement('a')
+      link.href = image
+      link.download = `release-${release.title.toLowerCase().replace(/\s+/g, '-')}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Error generating image:', error)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -61,12 +87,12 @@ export function ReleaseDetailsModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
+        <div ref={contentRef} className="space-y-4 mt-2 p-4 bg-[#0a0a0a] rounded-lg">
           {/* Cover + Title */}
           <div className="flex gap-4">
             <div className="w-20 h-20 rounded-lg bg-[#111] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 overflow-hidden">
               {release.coverUrl ? (
-                <img src={release.coverUrl} alt={release.title} className="w-full h-full object-cover" />
+                <img src={release.coverUrl} alt={release.title} className="w-full h-full object-cover" crossOrigin="anonymous" />
               ) : (
                 <Disc3 className="w-8 h-8 text-gray-600" />
               )}
@@ -212,39 +238,48 @@ export function ReleaseDetailsModal({
               </div>
             </>
           )}
+        </div>
 
-          <Separator className="bg-[#2a2a2a]" />
+        <Separator className="bg-[#2a2a2a]" />
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(release)}
-              className="text-gray-400 hover:text-white"
-            >
-              <Pencil className="w-4 h-4 mr-1.5" />
-              Editar
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDuplicate(release.id)}
-              className="text-gray-400 hover:text-white"
-            >
-              <Copy className="w-4 h-4 mr-1.5" />
-              Duplicar
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(release.id)}
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            >
-              <Trash2 className="w-4 h-4 mr-1.5" />
-              Excluir
-            </Button>
-          </div>
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(release)}
+            className="text-gray-400 hover:text-white"
+          >
+            <Pencil className="w-4 h-4 mr-1.5" />
+            Editar
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDuplicate(release.id)}
+            className="text-gray-400 hover:text-white"
+          >
+            <Copy className="w-4 h-4 mr-1.5" />
+            Duplicar
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownload}
+            className="text-gray-400 hover:text-white"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            Baixar
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(release.id)}
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 ml-auto"
+          >
+            <Trash2 className="w-4 h-4 mr-1.5" />
+            Excluir
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

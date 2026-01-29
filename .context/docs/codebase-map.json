@@ -1,0 +1,2135 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-01-17T18:28:25.378Z",
+  "stack": {
+    "primaryLanguage": "typescript",
+    "languages": [
+      "javascript",
+      "typescript"
+    ],
+    "frameworks": [
+      "nextjs"
+    ],
+    "buildTools": [],
+    "testFrameworks": [
+      "jest"
+    ],
+    "packageManager": "npm",
+    "isMonorepo": false,
+    "hasDocker": false,
+    "hasCI": false
+  },
+  "structure": {
+    "totalFiles": 8131,
+    "topDirectories": [
+      {
+        "name": "AGENTS.md",
+        "fileCount": 1
+      },
+      {
+        "name": "ARCHITECT_REVIEW_REPORT.md",
+        "fileCount": 1
+      },
+      {
+        "name": "chat.md",
+        "fileCount": 1
+      },
+      {
+        "name": "CLAUDE.md",
+        "fileCount": 1
+      },
+      {
+        "name": "components.json",
+        "fileCount": 1
+      },
+      {
+        "name": "coverage",
+        "fileCount": 145
+      },
+      {
+        "name": "docs",
+        "fileCount": 51
+      },
+      {
+        "name": "eslint.config.mjs",
+        "fileCount": 1
+      },
+      {
+        "name": "jest.config.js",
+        "fileCount": 1
+      },
+      {
+        "name": "jest.setup.js",
+        "fileCount": 1
+      },
+      {
+        "name": "layout.webp",
+        "fileCount": 1
+      },
+      {
+        "name": "layout2.webp",
+        "fileCount": 1
+      },
+      {
+        "name": "layout3.webp",
+        "fileCount": 1
+      },
+      {
+        "name": "multiselect.md",
+        "fileCount": 1
+      },
+      {
+        "name": "next-env.d.ts",
+        "fileCount": 1
+      },
+      {
+        "name": "next.config.ts",
+        "fileCount": 1
+      },
+      {
+        "name": "nul",
+        "fileCount": 1
+      },
+      {
+        "name": "package-lock.json",
+        "fileCount": 1
+      },
+      {
+        "name": "package.json",
+        "fileCount": 1
+      },
+      {
+        "name": "postcss.config.mjs",
+        "fileCount": 1
+      },
+      {
+        "name": "prompt.md",
+        "fileCount": 1
+      },
+      {
+        "name": "public",
+        "fileCount": 6
+      },
+      {
+        "name": "README.md",
+        "fileCount": 1
+      },
+      {
+        "name": "scripts",
+        "fileCount": 2
+      },
+      {
+        "name": "src",
+        "fileCount": 236
+      },
+      {
+        "name": "supabase",
+        "fileCount": 2
+      },
+      {
+        "name": "SUPABASE_INTEGRATION_PLAN.md",
+        "fileCount": 1
+      },
+      {
+        "name": "tailwind.config.ts",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-14fb-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-1944-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-21f0-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-2605-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-304d-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-39cf-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-3fe9-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-5cbc-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-6281-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-70d5-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-7bb6-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-7d4a-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-801d-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-9f9d-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-a7a5-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-a830-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-aa55-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-afc7-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-b284-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-c239-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-c4a4-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-cc53-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-cc7d-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-cf29-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-d921-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-e649-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-eac0-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-f84a-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tmpclaude-fd89-cwd",
+        "fileCount": 1
+      },
+      {
+        "name": "tsconfig.json",
+        "fileCount": 1
+      },
+      {
+        "name": "tsconfig.tsbuildinfo",
+        "fileCount": 1
+      },
+      {
+        "name": "vibe-distro-studio",
+        "fileCount": 15
+      },
+      {
+        "name": "vibecanvas",
+        "fileCount": 7620
+      },
+      {
+        "name": "yanger 01 (2).png",
+        "fileCount": 1
+      }
+    ],
+    "languageDistribution": [
+      {
+        "extension": ".js",
+        "count": 3805
+      },
+      {
+        "extension": ".map",
+        "count": 2549
+      },
+      {
+        "extension": ".ts",
+        "count": 615
+      },
+      {
+        "extension": ".json",
+        "count": 230
+      },
+      {
+        "extension": ".md",
+        "count": 205
+      },
+      {
+        "extension": ".tsx",
+        "count": 188
+      },
+      {
+        "extension": ".html",
+        "count": 138
+      },
+      {
+        "extension": ".mjs",
+        "count": 53
+      },
+      {
+        "extension": ".mts",
+        "count": 45
+      },
+      {
+        "extension": ".cts",
+        "count": 31
+      }
+    ]
+  },
+  "architecture": {
+    "layers": [
+      {
+        "name": "Models",
+        "description": "Data structures and domain objects",
+        "directories": [
+          "src\\lib"
+        ],
+        "symbolCount": 24,
+        "dependsOn": []
+      },
+      {
+        "name": "Utils",
+        "description": "Shared utilities and helpers",
+        "directories": [
+          "src\\lib",
+          "src\\lib\\supabase",
+          "src\\lib\\notifications",
+          "src\\lib\\vibecanvas"
+        ],
+        "symbolCount": 20,
+        "dependsOn": [
+          "Controllers"
+        ]
+      },
+      {
+        "name": "Repositories",
+        "description": "Data access and persistence",
+        "directories": [
+          "src\\lib",
+          "src\\lib\\supabase",
+          "src\\lib\\notifications"
+        ],
+        "symbolCount": 10,
+        "dependsOn": []
+      },
+      {
+        "name": "Controllers",
+        "description": "Request handling and routing",
+        "directories": [
+          "src\\lib",
+          "src\\lib\\notifications\\handlers",
+          "src\\app\\auth\\callback",
+          "vibecanvas\\components",
+          "src\\components\\vibecanvas"
+        ],
+        "symbolCount": 18,
+        "dependsOn": []
+      },
+      {
+        "name": "Components",
+        "description": "UI components and views",
+        "directories": [
+          "src\\components\\notifications",
+          "vibecanvas\\components",
+          "vibe-distro-studio\\components",
+          "src\\components\\vibecanvas",
+          "src\\components\\tickets",
+          "src\\components\\ui",
+          "src\\components\\studio",
+          "src\\components\\tasks",
+          "src\\components\\settings",
+          "src\\components\\presence",
+          "src\\components\\layout",
+          "src\\components\\drive",
+          "src\\components\\dashboard",
+          "src\\components\\courses",
+          "src\\components\\chat",
+          "src\\components\\calendar",
+          "src\\components\\announcements",
+          "src\\app\\(dashboard)",
+          "src\\components\\dashboard\\__tests__",
+          "src\\app\\(dashboard)\\vibecanvas",
+          "src\\app\\(dashboard)\\tickets",
+          "src\\app\\(dashboard)\\settings",
+          "src\\app\\(dashboard)\\tasks",
+          "src\\app\\(dashboard)\\studio",
+          "src\\app\\(dashboard)\\profile",
+          "src\\app\\(dashboard)\\drive",
+          "src\\app\\(dashboard)\\courses",
+          "src\\app\\(dashboard)\\chat",
+          "src\\app\\(dashboard)\\calendar",
+          "src\\app\\(auth)\\update-password",
+          "src\\app\\(auth)\\login",
+          "src\\app\\(dashboard)\\settings\\notifications",
+          "src\\app\\(dashboard)\\courses\\[id]",
+          "src\\app\\(dashboard)\\courses\\manage",
+          "src\\app\\(dashboard)\\admin\\avisos",
+          "src\\app\\(dashboard)\\courses\\manage\\[id]"
+        ],
+        "symbolCount": 232,
+        "dependsOn": []
+      }
+    ],
+    "patterns": [
+      {
+        "name": "Singleton",
+        "confidence": 0.7,
+        "description": "Ensures a class has only one instance",
+        "occurrences": 1
+      },
+      {
+        "name": "Observer",
+        "confidence": 0.75,
+        "description": "Defines a subscription mechanism to notify multiple objects",
+        "occurrences": 3
+      }
+    ],
+    "entryPoints": [
+      "src\\lib\\supabase\\server.ts",
+      "src\\components\\notifications\\index.ts",
+      "supabase\\functions\\send-push\\index.ts",
+      "supabase\\functions\\send-email\\index.ts",
+      "vibecanvas\\index.tsx",
+      "vibe-distro-studio\\index.tsx"
+    ]
+  },
+  "symbols": {
+    "classes": [
+      {
+        "name": "APIClient",
+        "kind": "class",
+        "file": "src\\lib\\api-client.ts",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "APIError",
+        "kind": "class",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "AuthenticationError",
+        "kind": "class",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 46,
+        "exported": true
+      },
+      {
+        "name": "AuthorizationError",
+        "kind": "class",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 56,
+        "exported": true
+      },
+      {
+        "name": "EmailHandler",
+        "kind": "class",
+        "file": "src\\lib\\notifications\\handlers\\emailHandler.ts",
+        "line": 55,
+        "exported": true
+      },
+      {
+        "name": "InAppHandler",
+        "kind": "class",
+        "file": "src\\lib\\notifications\\handlers\\inAppHandler.ts",
+        "line": 4,
+        "exported": true
+      },
+      {
+        "name": "NetworkError",
+        "kind": "class",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 26,
+        "exported": true
+      },
+      {
+        "name": "NotFoundError",
+        "kind": "class",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 66,
+        "exported": true
+      },
+      {
+        "name": "NotificationProcessor",
+        "kind": "class",
+        "file": "src\\lib\\notifications\\processor.ts",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "PushHandler",
+        "kind": "class",
+        "file": "src\\lib\\notifications\\handlers\\pushHandler.ts",
+        "line": 4,
+        "exported": true
+      },
+      {
+        "name": "ServerError",
+        "kind": "class",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 76,
+        "exported": true
+      },
+      {
+        "name": "ValidationError",
+        "kind": "class",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 36,
+        "exported": true
+      },
+      {
+        "name": "CircuitBreaker",
+        "kind": "class",
+        "file": "src\\lib\\notifications\\handlers\\emailHandler.ts",
+        "line": 7,
+        "exported": false,
+        "description": "Circuit Breaker para prevenir email spam"
+      },
+      {
+        "name": "EventBusInstance",
+        "kind": "class",
+        "file": "src\\lib\\notifications\\eventBus.ts",
+        "line": 8,
+        "exported": false,
+        "description": "EventBus Singleton para notificações"
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "AddCommentInput",
+        "kind": "interface",
+        "file": "src\\hooks\\useTickets.ts",
+        "line": 27,
+        "exported": true
+      },
+      {
+        "name": "Announcement",
+        "kind": "interface",
+        "file": "src\\types\\announcements.ts",
+        "line": 33,
+        "exported": true
+      },
+      {
+        "name": "AnnouncementFilters",
+        "kind": "interface",
+        "file": "src\\types\\announcements.ts",
+        "line": 88,
+        "exported": true
+      },
+      {
+        "name": "AnnouncementMetadata",
+        "kind": "interface",
+        "file": "src\\types\\announcements.ts",
+        "line": 19,
+        "exported": true
+      },
+      {
+        "name": "AnnouncementStats",
+        "kind": "interface",
+        "file": "src\\types\\announcements.ts",
+        "line": 104,
+        "exported": true
+      },
+      {
+        "name": "AnnouncementWithAuthor",
+        "kind": "interface",
+        "file": "src\\types\\announcements.ts",
+        "line": 50,
+        "exported": true
+      },
+      {
+        "name": "APIResponse",
+        "kind": "interface",
+        "file": "src\\lib\\api-types.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "AppState",
+        "kind": "interface",
+        "file": "vibecanvas\\types.ts",
+        "line": 274,
+        "exported": true
+      },
+      {
+        "name": "AppState",
+        "kind": "interface",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 312,
+        "exported": true
+      },
+      {
+        "name": "AuthResponse",
+        "kind": "interface",
+        "file": "src\\types\\auth.ts",
+        "line": 32,
+        "exported": true
+      },
+      {
+        "name": "BentoItem",
+        "kind": "interface",
+        "file": "src\\components\\ui\\bento-grid.tsx",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "CalendarEvent",
+        "kind": "interface",
+        "file": "src\\types\\calendar.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "CalendarEvent",
+        "kind": "interface",
+        "file": "src\\components\\calendar\\WeekView.tsx",
+        "line": 36,
+        "exported": true
+      },
+      {
+        "name": "CalendarEvent",
+        "kind": "interface",
+        "file": "src\\components\\calendar\\MonthView.tsx",
+        "line": 36,
+        "exported": true
+      },
+      {
+        "name": "CalendarEvent",
+        "kind": "interface",
+        "file": "src\\components\\calendar\\DayView.tsx",
+        "line": 32,
+        "exported": true
+      },
+      {
+        "name": "CalendarEvent",
+        "kind": "interface",
+        "file": "src\\components\\calendar\\AgendaView.tsx",
+        "line": 22,
+        "exported": true
+      },
+      {
+        "name": "ChatRoom",
+        "kind": "interface",
+        "file": "src\\types\\chat.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "ChatUser",
+        "kind": "interface",
+        "file": "src\\hooks\\useChat.ts",
+        "line": 17,
+        "exported": true
+      },
+      {
+        "name": "Course",
+        "kind": "interface",
+        "file": "src\\types\\courses.ts",
+        "line": 25,
+        "exported": true
+      },
+      {
+        "name": "CourseProgress",
+        "kind": "interface",
+        "file": "src\\types\\courses.ts",
+        "line": 46,
+        "exported": true
+      },
+      {
+        "name": "CreateAnnouncementData",
+        "kind": "interface",
+        "file": "src\\types\\announcements.ts",
+        "line": 62,
+        "exported": true
+      },
+      {
+        "name": "CreateEventInput",
+        "kind": "interface",
+        "file": "src\\types\\calendar.ts",
+        "line": 28,
+        "exported": true
+      },
+      {
+        "name": "CreateEventInput",
+        "kind": "interface",
+        "file": "src\\hooks\\useCalendar.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "CreateFolderInput",
+        "kind": "interface",
+        "file": "src\\hooks\\useDrive.ts",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "CreateProjectGroupData",
+        "kind": "interface",
+        "file": "src\\types\\chat.ts",
+        "line": 48,
+        "exported": true
+      },
+      {
+        "name": "CreateTaskInput",
+        "kind": "interface",
+        "file": "src\\types\\tasks.ts",
+        "line": 28,
+        "exported": true
+      },
+      {
+        "name": "CreateTicketInput",
+        "kind": "interface",
+        "file": "src\\types\\tickets.ts",
+        "line": 46,
+        "exported": true
+      },
+      {
+        "name": "DirectMessage",
+        "kind": "interface",
+        "file": "src\\types\\chat.ts",
+        "line": 36,
+        "exported": true
+      },
+      {
+        "name": "DriveItem",
+        "kind": "interface",
+        "file": "src\\types\\drive.ts",
+        "line": 11,
+        "exported": true
+      },
+      {
+        "name": "DrivePermission",
+        "kind": "interface",
+        "file": "src\\types\\drive.ts",
+        "line": 34,
+        "exported": true
+      },
+      {
+        "name": "GenerationConfig",
+        "kind": "interface",
+        "file": "vibecanvas\\types.ts",
+        "line": 265,
+        "exported": true
+      },
+      {
+        "name": "GenerationConfig",
+        "kind": "interface",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 297,
+        "exported": true
+      },
+      {
+        "name": "KanbanColumn",
+        "kind": "interface",
+        "file": "src\\components\\ui\\trello-kanban-board.tsx",
+        "line": 42,
+        "exported": true
+      },
+      {
+        "name": "KanbanColumnData",
+        "kind": "interface",
+        "file": "src\\components\\tasks\\PremiumKanbanBoard.tsx",
+        "line": 29,
+        "exported": true
+      },
+      {
+        "name": "KanbanTask",
+        "kind": "interface",
+        "file": "src\\components\\ui\\trello-kanban-board.tsx",
+        "line": 35,
+        "exported": true
+      },
+      {
+        "name": "Lesson",
+        "kind": "interface",
+        "file": "src\\types\\courses.ts",
+        "line": 4,
+        "exported": true
+      },
+      {
+        "name": "Message",
+        "kind": "interface",
+        "file": "src\\types\\chat.ts",
+        "line": 23,
+        "exported": true
+      },
+      {
+        "name": "MessageSearchFilters",
+        "kind": "interface",
+        "file": "src\\hooks\\useMessageSearch.ts",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "Module",
+        "kind": "interface",
+        "file": "src\\types\\courses.ts",
+        "line": 17,
+        "exported": true
+      },
+      {
+        "name": "MultiSelectOption",
+        "kind": "interface",
+        "file": "src\\components\\ui\\multi-select.tsx",
+        "line": 12,
+        "exported": true
+      },
+      {
+        "name": "Notification",
+        "kind": "interface",
+        "file": "src\\types\\notifications.ts",
+        "line": 18,
+        "exported": true
+      },
+      {
+        "name": "NotificationEvent",
+        "kind": "interface",
+        "file": "src\\types\\notifications.ts",
+        "line": 56,
+        "exported": true
+      },
+      {
+        "name": "NotificationMetadata",
+        "kind": "interface",
+        "file": "src\\lib\\notifications\\metadata.ts",
+        "line": 5,
+        "exported": true
+      },
+      {
+        "name": "NotificationPreference",
+        "kind": "interface",
+        "file": "src\\types\\notifications.ts",
+        "line": 34,
+        "exported": true
+      },
+      {
+        "name": "OnlineUser",
+        "kind": "interface",
+        "file": "src\\hooks\\usePresence.ts",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "PaginationParams",
+        "kind": "interface",
+        "file": "src\\lib\\api-types.ts",
+        "line": 24,
+        "exported": true
+      },
+      {
+        "name": "Person",
+        "kind": "interface",
+        "file": "vibe-distro-studio\\types.ts",
+        "line": 6,
+        "exported": true
+      },
+      {
+        "name": "Person",
+        "kind": "interface",
+        "file": "src\\types\\studio.ts",
+        "line": 3,
+        "exported": true
+      },
+      {
+        "name": "PriorityConfig",
+        "kind": "interface",
+        "file": "src\\types\\announcements.ts",
+        "line": 121,
+        "exported": true
+      },
+      {
+        "name": "PushSubscription",
+        "kind": "interface",
+        "file": "src\\types\\notifications.ts",
+        "line": 45,
+        "exported": true
+      }
+    ],
+    "functions": [
+      {
+        "name": "AlertModal",
+        "kind": "function",
+        "file": "src\\components\\drive\\AlertModal.tsx",
+        "line": 87,
+        "exported": true
+      },
+      {
+        "name": "AnnouncementStats",
+        "kind": "function",
+        "file": "src\\components\\announcements\\AnnouncementStats.tsx",
+        "line": 12,
+        "exported": true
+      },
+      {
+        "name": "AuthLayout",
+        "kind": "function",
+        "file": "src\\app\\(auth)\\layout.tsx",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "CalendarPage",
+        "kind": "function",
+        "file": "src\\app\\(dashboard)\\calendar\\page.tsx",
+        "line": 17,
+        "exported": true
+      },
+      {
+        "name": "canAccessRoute",
+        "kind": "function",
+        "file": "src\\lib\\auth-utils.ts",
+        "line": 24,
+        "exported": true
+      },
+      {
+        "name": "ChatRoom",
+        "kind": "function",
+        "file": "src\\components\\chat\\ChatRoom.tsx",
+        "line": 18,
+        "exported": true
+      },
+      {
+        "name": "cn",
+        "kind": "function",
+        "file": "src\\lib\\utils.ts",
+        "line": 4,
+        "exported": true
+      },
+      {
+        "name": "CourseEditorPage",
+        "kind": "function",
+        "file": "src\\app\\(dashboard)\\courses\\manage\\[id]\\page.tsx",
+        "line": 21,
+        "exported": true
+      },
+      {
+        "name": "CreateCourseModal",
+        "kind": "function",
+        "file": "src\\components\\courses\\CreateCourseModal.tsx",
+        "line": 18,
+        "exported": true
+      },
+      {
+        "name": "createDefaultPreferences",
+        "kind": "function",
+        "file": "src\\lib\\notifications\\defaults.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "createDefaultPreferencesClient",
+        "kind": "function",
+        "file": "src\\lib\\notifications\\defaults.ts",
+        "line": 36,
+        "exported": true
+      },
+      {
+        "name": "CreateFolderModal",
+        "kind": "function",
+        "file": "src\\components\\drive\\CreateFolderModal.tsx",
+        "line": 23,
+        "exported": true
+      },
+      {
+        "name": "CreateModuleModal",
+        "kind": "function",
+        "file": "src\\components\\courses\\CreateModuleModal.tsx",
+        "line": 15,
+        "exported": true
+      },
+      {
+        "name": "createServerSupabaseClient",
+        "kind": "function",
+        "file": "src\\lib\\supabase\\server.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "DashboardLayout",
+        "kind": "function",
+        "file": "src\\app\\(dashboard)\\layout.tsx",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "DashboardShell",
+        "kind": "function",
+        "file": "src\\components\\layout\\DashboardShell.tsx",
+        "line": 12,
+        "exported": true
+      },
+      {
+        "name": "deleteFile",
+        "kind": "function",
+        "file": "src\\lib\\supabase\\storage.ts",
+        "line": 82,
+        "exported": true
+      },
+      {
+        "name": "Demo",
+        "kind": "function",
+        "file": "src\\components\\ui\\demo.tsx",
+        "line": 4,
+        "exported": true
+      },
+      {
+        "name": "DriveGrid",
+        "kind": "function",
+        "file": "src\\components\\drive\\DriveGrid.tsx",
+        "line": 22,
+        "exported": true
+      },
+      {
+        "name": "extractMentionedUserIds",
+        "kind": "function",
+        "file": "src\\lib\\mentions.tsx",
+        "line": 15,
+        "exported": true
+      },
+      {
+        "name": "fetchAnnouncements",
+        "kind": "function",
+        "file": "src\\hooks\\useAnnouncements.ts",
+        "line": 78,
+        "exported": true
+      },
+      {
+        "name": "fetchComments",
+        "kind": "function",
+        "file": "src\\hooks\\useTickets.ts",
+        "line": 170,
+        "exported": true
+      },
+      {
+        "name": "fetchEvents",
+        "kind": "function",
+        "file": "src\\hooks\\useCalendar.ts",
+        "line": 47,
+        "exported": true
+      },
+      {
+        "name": "fetchItems",
+        "kind": "function",
+        "file": "src\\hooks\\useDrive.ts",
+        "line": 73,
+        "exported": true
+      },
+      {
+        "name": "fetchRooms",
+        "kind": "function",
+        "file": "src\\hooks\\useChat.ts",
+        "line": 65,
+        "exported": true
+      },
+      {
+        "name": "fetchTasks",
+        "kind": "function",
+        "file": "src\\hooks\\useTasks.ts",
+        "line": 141,
+        "exported": true
+      },
+      {
+        "name": "fetchTickets",
+        "kind": "function",
+        "file": "src\\hooks\\useTickets.ts",
+        "line": 137,
+        "exported": true
+      },
+      {
+        "name": "fetchUserProfile",
+        "kind": "function",
+        "file": "src\\hooks\\useAuth.ts",
+        "line": 52,
+        "exported": true
+      },
+      {
+        "name": "fetchUsers",
+        "kind": "function",
+        "file": "src\\hooks\\useUsers.ts",
+        "line": 42,
+        "exported": true
+      },
+      {
+        "name": "fetchUsers",
+        "kind": "function",
+        "file": "src\\hooks\\useDrive.ts",
+        "line": 106,
+        "exported": true
+      },
+      {
+        "name": "fetchUsers",
+        "kind": "function",
+        "file": "src\\hooks\\useChat.ts",
+        "line": 93,
+        "exported": true
+      },
+      {
+        "name": "FileList",
+        "kind": "function",
+        "file": "src\\components\\drive\\FileList.tsx",
+        "line": 19,
+        "exported": true
+      },
+      {
+        "name": "FilePreviewModal",
+        "kind": "function",
+        "file": "src\\components\\drive\\FilePreviewModal.tsx",
+        "line": 132,
+        "exported": true
+      },
+      {
+        "name": "formatZodErrors",
+        "kind": "function",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 218,
+        "exported": true
+      },
+      {
+        "name": "GET",
+        "kind": "function",
+        "file": "src\\app\\auth\\callback\\route.ts",
+        "line": 5,
+        "exported": true
+      },
+      {
+        "name": "getDashboardRoute",
+        "kind": "function",
+        "file": "src\\lib\\auth-utils.ts",
+        "line": 11,
+        "exported": true
+      },
+      {
+        "name": "getMetadataByCategory",
+        "kind": "function",
+        "file": "src\\lib\\notifications\\metadata.ts",
+        "line": 185,
+        "exported": true
+      },
+      {
+        "name": "getSession",
+        "kind": "function",
+        "file": "src\\lib\\auth.ts",
+        "line": 18,
+        "exported": true
+      },
+      {
+        "name": "getSignedUrl",
+        "kind": "function",
+        "file": "src\\lib\\supabase\\storage.ts",
+        "line": 63,
+        "exported": true
+      },
+      {
+        "name": "handleAPIError",
+        "kind": "function",
+        "file": "src\\lib\\api-errors.ts",
+        "line": 86,
+        "exported": true
+      },
+      {
+        "name": "InitialsAvatar",
+        "kind": "function",
+        "file": "src\\components\\ui\\initials-avatar.tsx",
+        "line": 18,
+        "exported": true
+      },
+      {
+        "name": "isAuthenticated",
+        "kind": "function",
+        "file": "src\\lib\\auth.ts",
+        "line": 88,
+        "exported": true
+      },
+      {
+        "name": "LeaveStats",
+        "kind": "function",
+        "file": "src\\components\\dashboard\\LeaveStats.tsx",
+        "line": 88,
+        "exported": true
+      },
+      {
+        "name": "listFiles",
+        "kind": "function",
+        "file": "src\\lib\\supabase\\storage.ts",
+        "line": 93,
+        "exported": true
+      },
+      {
+        "name": "LoginPage",
+        "kind": "function",
+        "file": "src\\app\\(auth)\\login\\page.tsx",
+        "line": 11,
+        "exported": true
+      },
+      {
+        "name": "MentionBadge",
+        "kind": "function",
+        "file": "src\\components\\chat\\MentionBadge.tsx",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "MessageInput",
+        "kind": "function",
+        "file": "src\\components\\chat\\MessageInput.tsx",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "middleware",
+        "kind": "function",
+        "file": "src\\middleware.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "MobileSectorNav",
+        "kind": "function",
+        "file": "src\\components\\chat\\MobileSectorNav.tsx",
+        "line": 25,
+        "exported": true
+      },
+      {
+        "name": "NotificationsSettingsPage",
+        "kind": "function",
+        "file": "src\\app\\(dashboard)\\settings\\notifications\\page.tsx",
+        "line": 17,
+        "exported": true
+      }
+    ],
+    "types": [
+      {
+        "name": "AlertType",
+        "kind": "type",
+        "file": "src\\components\\drive\\AlertModal.tsx",
+        "line": 20,
+        "exported": true
+      },
+      {
+        "name": "AnnouncementPriority",
+        "kind": "type",
+        "file": "src\\types\\announcements.ts",
+        "line": 14,
+        "exported": true
+      },
+      {
+        "name": "ChannelType",
+        "kind": "type",
+        "file": "src\\hooks\\useNotificationPreferences.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "CreateCalendarEventInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 175,
+        "exported": true
+      },
+      {
+        "name": "CreateChatMessageInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 192,
+        "exported": true
+      },
+      {
+        "name": "CreateDriveItemInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 138,
+        "exported": true
+      },
+      {
+        "name": "CreateEventInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 86,
+        "exported": true
+      },
+      {
+        "name": "CreateFolderInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 101,
+        "exported": true
+      },
+      {
+        "name": "CreateTaskInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 48,
+        "exported": true
+      },
+      {
+        "name": "CreateTaskInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 32,
+        "exported": true
+      },
+      {
+        "name": "CreateTicketCommentInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 95,
+        "exported": true
+      },
+      {
+        "name": "CreateTicketInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 93,
+        "exported": true
+      },
+      {
+        "name": "CreateTicketInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 49,
+        "exported": true
+      },
+      {
+        "name": "Database",
+        "kind": "type",
+        "file": "src\\lib\\supabase\\database.types.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "DateFilter",
+        "kind": "type",
+        "file": "src\\hooks\\useTasks.ts",
+        "line": 19,
+        "exported": true
+      },
+      {
+        "name": "DifficultyLevel",
+        "kind": "type",
+        "file": "src\\types\\courses.ts",
+        "line": 1,
+        "exported": true
+      },
+      {
+        "name": "Endpoint",
+        "kind": "type",
+        "file": "src\\lib\\api-types.ts",
+        "line": 160,
+        "exported": true
+      },
+      {
+        "name": "EntityType",
+        "kind": "type",
+        "file": "src\\types\\notifications.ts",
+        "line": 16,
+        "exported": true
+      },
+      {
+        "name": "Enums",
+        "kind": "type",
+        "file": "src\\lib\\supabase\\database.types.ts",
+        "line": 931,
+        "exported": true
+      },
+      {
+        "name": "EventType",
+        "kind": "type",
+        "file": "src\\types\\calendar.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "ItemType",
+        "kind": "type",
+        "file": "src\\types\\drive.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "Json",
+        "kind": "type",
+        "file": "src\\lib\\supabase\\database.types.ts",
+        "line": 1,
+        "exported": true
+      },
+      {
+        "name": "LessonType",
+        "kind": "type",
+        "file": "src\\types\\courses.ts",
+        "line": 2,
+        "exported": true
+      },
+      {
+        "name": "LoginInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 271,
+        "exported": true
+      },
+      {
+        "name": "LoginInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 17,
+        "exported": true
+      },
+      {
+        "name": "NotificationCategory",
+        "kind": "type",
+        "file": "src\\lib\\notifications\\metadata.ts",
+        "line": 3,
+        "exported": true
+      },
+      {
+        "name": "NotificationPriority",
+        "kind": "type",
+        "file": "src\\types\\notifications.ts",
+        "line": 14,
+        "exported": true
+      },
+      {
+        "name": "NotificationType",
+        "kind": "type",
+        "file": "src\\types\\notifications.ts",
+        "line": 1,
+        "exported": true
+      },
+      {
+        "name": "ReadStatus",
+        "kind": "type",
+        "file": "src\\components\\chat\\ReadReceipt.tsx",
+        "line": 6,
+        "exported": true
+      },
+      {
+        "name": "Role",
+        "kind": "type",
+        "file": "src\\types\\auth.ts",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "RoomType",
+        "kind": "type",
+        "file": "src\\types\\chat.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "Sector",
+        "kind": "type",
+        "file": "src\\types\\auth.ts",
+        "line": 6,
+        "exported": true
+      },
+      {
+        "name": "SendMessageInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 70,
+        "exported": true
+      },
+      {
+        "name": "SessionType",
+        "kind": "type",
+        "file": "vibe-distro-studio\\types.ts",
+        "line": 2,
+        "exported": true
+      },
+      {
+        "name": "SessionType",
+        "kind": "type",
+        "file": "src\\types\\studio.ts",
+        "line": 1,
+        "exported": true
+      },
+      {
+        "name": "ShareDriveItemInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 139,
+        "exported": true
+      },
+      {
+        "name": "SharePermission",
+        "kind": "type",
+        "file": "src\\types\\drive.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "SignupInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 272,
+        "exported": true
+      },
+      {
+        "name": "Tables",
+        "kind": "type",
+        "file": "src\\lib\\supabase\\database.types.ts",
+        "line": 864,
+        "exported": true
+      },
+      {
+        "name": "TablesInsert",
+        "kind": "type",
+        "file": "src\\lib\\supabase\\database.types.ts",
+        "line": 889,
+        "exported": true
+      },
+      {
+        "name": "TablesUpdate",
+        "kind": "type",
+        "file": "src\\lib\\supabase\\database.types.ts",
+        "line": 910,
+        "exported": true
+      },
+      {
+        "name": "TaskPriority",
+        "kind": "type",
+        "file": "src\\types\\tasks.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "TaskStatus",
+        "kind": "type",
+        "file": "src\\types\\tasks.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "TicketPriority",
+        "kind": "type",
+        "file": "src\\types\\tickets.ts",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "TicketStatus",
+        "kind": "type",
+        "file": "src\\types\\tickets.ts",
+        "line": 6,
+        "exported": true
+      },
+      {
+        "name": "UpdateCalendarEventInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 176,
+        "exported": true
+      },
+      {
+        "name": "UpdateEventInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 90,
+        "exported": true
+      },
+      {
+        "name": "UpdateTaskInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 49,
+        "exported": true
+      },
+      {
+        "name": "UpdateTaskInput",
+        "kind": "type",
+        "file": "src\\lib\\schemas.ts",
+        "line": 36,
+        "exported": true
+      },
+      {
+        "name": "UpdateTicketInput",
+        "kind": "type",
+        "file": "src\\lib\\validation-schemas.ts",
+        "line": 94,
+        "exported": true
+      }
+    ],
+    "enums": [
+      {
+        "name": "AlbumMood",
+        "kind": "enum",
+        "file": "vibecanvas\\types.ts",
+        "line": 157,
+        "exported": true
+      },
+      {
+        "name": "AlbumMood",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 157,
+        "exported": true
+      },
+      {
+        "name": "Contrast",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 291,
+        "exported": true
+      },
+      {
+        "name": "FontStyle",
+        "kind": "enum",
+        "file": "vibecanvas\\types.ts",
+        "line": 202,
+        "exported": true
+      },
+      {
+        "name": "FontStyle",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 202,
+        "exported": true
+      },
+      {
+        "name": "Lighting",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 265,
+        "exported": true
+      },
+      {
+        "name": "MusicGenre",
+        "kind": "enum",
+        "file": "vibecanvas\\types.ts",
+        "line": 99,
+        "exported": true
+      },
+      {
+        "name": "MusicGenre",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 99,
+        "exported": true
+      },
+      {
+        "name": "TextEffect",
+        "kind": "enum",
+        "file": "vibecanvas\\types.ts",
+        "line": 229,
+        "exported": true
+      },
+      {
+        "name": "TextEffect",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 229,
+        "exported": true
+      },
+      {
+        "name": "TextMaterial",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 277,
+        "exported": true
+      },
+      {
+        "name": "VisualStyle",
+        "kind": "enum",
+        "file": "vibecanvas\\types.ts",
+        "line": 2,
+        "exported": true
+      },
+      {
+        "name": "VisualStyle",
+        "kind": "enum",
+        "file": "src\\types\\vibecanvas.ts",
+        "line": 2,
+        "exported": true
+      },
+      {
+        "name": "ViewState",
+        "kind": "enum",
+        "file": "vibe-distro-studio\\App.tsx",
+        "line": 12,
+        "exported": false
+      }
+    ]
+  },
+  "publicAPI": [
+    {
+      "name": "AddCommentInput",
+      "kind": "interface",
+      "file": "src\\hooks\\useTickets.ts",
+      "line": 27,
+      "exported": true
+    },
+    {
+      "name": "AlertModal",
+      "kind": "function",
+      "file": "src\\components\\drive\\AlertModal.tsx",
+      "line": 87,
+      "exported": true
+    },
+    {
+      "name": "AlertType",
+      "kind": "type",
+      "file": "src\\components\\drive\\AlertModal.tsx",
+      "line": 20,
+      "exported": true
+    },
+    {
+      "name": "Announcement",
+      "kind": "interface",
+      "file": "src\\types\\announcements.ts",
+      "line": 33,
+      "exported": true
+    },
+    {
+      "name": "AnnouncementFilters",
+      "kind": "interface",
+      "file": "src\\types\\announcements.ts",
+      "line": 88,
+      "exported": true
+    },
+    {
+      "name": "AnnouncementMetadata",
+      "kind": "interface",
+      "file": "src\\types\\announcements.ts",
+      "line": 19,
+      "exported": true
+    },
+    {
+      "name": "AnnouncementPriority",
+      "kind": "type",
+      "file": "src\\types\\announcements.ts",
+      "line": 14,
+      "exported": true
+    },
+    {
+      "name": "AnnouncementStats",
+      "kind": "interface",
+      "file": "src\\types\\announcements.ts",
+      "line": 104,
+      "exported": true
+    },
+    {
+      "name": "AnnouncementStats",
+      "kind": "function",
+      "file": "src\\components\\announcements\\AnnouncementStats.tsx",
+      "line": 12,
+      "exported": true
+    },
+    {
+      "name": "AnnouncementWithAuthor",
+      "kind": "interface",
+      "file": "src\\types\\announcements.ts",
+      "line": 50,
+      "exported": true
+    },
+    {
+      "name": "APIClient",
+      "kind": "class",
+      "file": "src\\lib\\api-client.ts",
+      "line": 13,
+      "exported": true
+    },
+    {
+      "name": "APIError",
+      "kind": "class",
+      "file": "src\\lib\\api-errors.ts",
+      "line": 9,
+      "exported": true
+    },
+    {
+      "name": "APIResponse",
+      "kind": "interface",
+      "file": "src\\lib\\api-types.ts",
+      "line": 9,
+      "exported": true
+    },
+    {
+      "name": "AppState",
+      "kind": "interface",
+      "file": "vibecanvas\\types.ts",
+      "line": 274,
+      "exported": true
+    },
+    {
+      "name": "AppState",
+      "kind": "interface",
+      "file": "src\\types\\vibecanvas.ts",
+      "line": 312,
+      "exported": true
+    },
+    {
+      "name": "AuthenticationError",
+      "kind": "class",
+      "file": "src\\lib\\api-errors.ts",
+      "line": 46,
+      "exported": true
+    },
+    {
+      "name": "AuthLayout",
+      "kind": "function",
+      "file": "src\\app\\(auth)\\layout.tsx",
+      "line": 8,
+      "exported": true
+    },
+    {
+      "name": "AuthorizationError",
+      "kind": "class",
+      "file": "src\\lib\\api-errors.ts",
+      "line": 56,
+      "exported": true
+    },
+    {
+      "name": "AuthResponse",
+      "kind": "interface",
+      "file": "src\\types\\auth.ts",
+      "line": 32,
+      "exported": true
+    },
+    {
+      "name": "BentoItem",
+      "kind": "interface",
+      "file": "src\\components\\ui\\bento-grid.tsx",
+      "line": 7,
+      "exported": true
+    },
+    {
+      "name": "CalendarEvent",
+      "kind": "interface",
+      "file": "src\\types\\calendar.ts",
+      "line": 10,
+      "exported": true
+    },
+    {
+      "name": "CalendarEvent",
+      "kind": "interface",
+      "file": "src\\components\\calendar\\WeekView.tsx",
+      "line": 36,
+      "exported": true
+    },
+    {
+      "name": "CalendarEvent",
+      "kind": "interface",
+      "file": "src\\components\\calendar\\MonthView.tsx",
+      "line": 36,
+      "exported": true
+    },
+    {
+      "name": "CalendarEvent",
+      "kind": "interface",
+      "file": "src\\components\\calendar\\DayView.tsx",
+      "line": 32,
+      "exported": true
+    },
+    {
+      "name": "CalendarEvent",
+      "kind": "interface",
+      "file": "src\\components\\calendar\\AgendaView.tsx",
+      "line": 22,
+      "exported": true
+    },
+    {
+      "name": "CalendarPage",
+      "kind": "function",
+      "file": "src\\app\\(dashboard)\\calendar\\page.tsx",
+      "line": 17,
+      "exported": true
+    },
+    {
+      "name": "canAccessRoute",
+      "kind": "function",
+      "file": "src\\lib\\auth-utils.ts",
+      "line": 24,
+      "exported": true
+    },
+    {
+      "name": "ChannelType",
+      "kind": "type",
+      "file": "src\\hooks\\useNotificationPreferences.ts",
+      "line": 10,
+      "exported": true
+    },
+    {
+      "name": "ChatRoom",
+      "kind": "interface",
+      "file": "src\\types\\chat.ts",
+      "line": 10,
+      "exported": true
+    },
+    {
+      "name": "ChatRoom",
+      "kind": "function",
+      "file": "src\\components\\chat\\ChatRoom.tsx",
+      "line": 18,
+      "exported": true
+    },
+    {
+      "name": "ChatUser",
+      "kind": "interface",
+      "file": "src\\hooks\\useChat.ts",
+      "line": 17,
+      "exported": true
+    },
+    {
+      "name": "cn",
+      "kind": "function",
+      "file": "src\\lib\\utils.ts",
+      "line": 4,
+      "exported": true
+    },
+    {
+      "name": "Course",
+      "kind": "interface",
+      "file": "src\\types\\courses.ts",
+      "line": 25,
+      "exported": true
+    },
+    {
+      "name": "CourseEditorPage",
+      "kind": "function",
+      "file": "src\\app\\(dashboard)\\courses\\manage\\[id]\\page.tsx",
+      "line": 21,
+      "exported": true
+    },
+    {
+      "name": "CourseProgress",
+      "kind": "interface",
+      "file": "src\\types\\courses.ts",
+      "line": 46,
+      "exported": true
+    },
+    {
+      "name": "CreateAnnouncementData",
+      "kind": "interface",
+      "file": "src\\types\\announcements.ts",
+      "line": 62,
+      "exported": true
+    },
+    {
+      "name": "CreateCalendarEventInput",
+      "kind": "type",
+      "file": "src\\lib\\validation-schemas.ts",
+      "line": 175,
+      "exported": true
+    },
+    {
+      "name": "CreateChatMessageInput",
+      "kind": "type",
+      "file": "src\\lib\\validation-schemas.ts",
+      "line": 192,
+      "exported": true
+    },
+    {
+      "name": "CreateCourseModal",
+      "kind": "function",
+      "file": "src\\components\\courses\\CreateCourseModal.tsx",
+      "line": 18,
+      "exported": true
+    },
+    {
+      "name": "createDefaultPreferences",
+      "kind": "function",
+      "file": "src\\lib\\notifications\\defaults.ts",
+      "line": 10,
+      "exported": true
+    },
+    {
+      "name": "createDefaultPreferencesClient",
+      "kind": "function",
+      "file": "src\\lib\\notifications\\defaults.ts",
+      "line": 36,
+      "exported": true
+    },
+    {
+      "name": "CreateDriveItemInput",
+      "kind": "type",
+      "file": "src\\lib\\validation-schemas.ts",
+      "line": 138,
+      "exported": true
+    },
+    {
+      "name": "CreateEventInput",
+      "kind": "interface",
+      "file": "src\\types\\calendar.ts",
+      "line": 28,
+      "exported": true
+    },
+    {
+      "name": "CreateEventInput",
+      "kind": "type",
+      "file": "src\\lib\\schemas.ts",
+      "line": 86,
+      "exported": true
+    },
+    {
+      "name": "CreateEventInput",
+      "kind": "interface",
+      "file": "src\\hooks\\useCalendar.ts",
+      "line": 9,
+      "exported": true
+    },
+    {
+      "name": "CreateFolderInput",
+      "kind": "type",
+      "file": "src\\lib\\schemas.ts",
+      "line": 101,
+      "exported": true
+    },
+    {
+      "name": "CreateFolderInput",
+      "kind": "interface",
+      "file": "src\\hooks\\useDrive.ts",
+      "line": 13,
+      "exported": true
+    },
+    {
+      "name": "CreateFolderModal",
+      "kind": "function",
+      "file": "src\\components\\drive\\CreateFolderModal.tsx",
+      "line": 23,
+      "exported": true
+    },
+    {
+      "name": "CreateModuleModal",
+      "kind": "function",
+      "file": "src\\components\\courses\\CreateModuleModal.tsx",
+      "line": 15,
+      "exported": true
+    },
+    {
+      "name": "CreateProjectGroupData",
+      "kind": "interface",
+      "file": "src\\types\\chat.ts",
+      "line": 48,
+      "exported": true
+    }
+  ],
+  "dependencies": {
+    "mostImported": [
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\hooks\\useAuth.ts",
+        "importedBy": 14
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\vibe-distro-studio\\types.ts",
+        "importedBy": 7
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\vibecanvas\\types.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\types\\auth.ts",
+        "importedBy": 5
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\supabase\\database.types.ts",
+        "importedBy": 2
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\vibecanvas\\services\\storageService.ts",
+        "importedBy": 2
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\components\\layout\\UserMenu.tsx",
+        "importedBy": 2
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\components\\drive\\FileCard.tsx",
+        "importedBy": 2
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\components\\chat\\MessageReactions.tsx",
+        "importedBy": 2
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\.next\\dev\\types\\routes.d.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\mock-data.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\supabase\\server.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\api-errors.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\api-types.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\hooks\\useArchiveChat.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\supabase\\client.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\notifications\\handlers\\inAppHandler.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\notifications\\handlers\\pushHandler.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\notifications\\handlers\\emailHandler.ts",
+        "importedBy": 1
+      },
+      {
+        "file": "C:\\Users\\ksinh\\Documents\\TRABALHOS 2026\\CLAUDE\\vibeoffice\\src\\lib\\notifications\\processor.ts",
+        "importedBy": 1
+      }
+    ]
+  },
+  "stats": {
+    "totalSymbols": 473,
+    "exportedSymbols": 254,
+    "analysisTimeMs": 2556
+  }
+}
