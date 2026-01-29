@@ -97,6 +97,7 @@ export function FileCard({
   const fileInfo = getFileInfo(item.mimeType, isFolder)
   const FileIcon = fileInfo.icon
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   const isShared = (item.sharedWith && item.sharedWith.length > 0) || item.isPublic
 
@@ -104,6 +105,18 @@ export function FileCard({
   const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('application/vibeoffice-item-id', item.id)
     e.dataTransfer.effectAllowed = 'move'
+    setIsDragging(true)
+    // Adicionar classe visual ao elemento arrastado
+    if (e.currentTarget) {
+      e.currentTarget.style.opacity = '0.4'
+    }
+  }
+
+  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
+    setIsDragging(false)
+    if (e.currentTarget) {
+      e.currentTarget.style.opacity = '1'
+    }
   }
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -143,14 +156,16 @@ export function FileCard({
   return (
     <Card
       className={cn(
-        "cursor-pointer group relative overflow-hidden border-0 bg-zinc-900/40 backdrop-blur-sm",
+        "cursor-grab active:cursor-grabbing group relative overflow-hidden border-0 bg-zinc-900/40 backdrop-blur-sm",
         "transition-all duration-300 ease-out",
         "hover:bg-zinc-800/60 hover:shadow-2xl hover:shadow-black/20 hover:-translate-y-1",
         "ring-1 ring-white/5 hover:ring-white/10",
-        isDragOver && isFolder && "ring-2 ring-amber-400/60 bg-amber-400/10 scale-[1.03]"
+        isDragging && "opacity-40 scale-95 ring-2 ring-blue-400/40",
+        isDragOver && isFolder && "ring-2 ring-amber-400/60 bg-amber-400/10 scale-[1.05] shadow-lg shadow-amber-400/20"
       )}
       draggable
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -160,6 +175,15 @@ export function FileCard({
         "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-100",
         fileInfo.gradient
       )} />
+
+      {/* Drop zone indicator */}
+      {isDragOver && isFolder && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-amber-400/15 backdrop-blur-[2px] rounded-lg border-2 border-dashed border-amber-400/60">
+          <span className="text-amber-300 text-xs font-semibold px-3 py-1.5 bg-black/60 rounded-full">
+            Solte aqui
+          </span>
+        </div>
+      )}
 
       <CardContent className="p-4 relative z-10">
         <div className="flex items-start justify-between gap-3 mb-3">
