@@ -210,8 +210,8 @@ export function ReleaseDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 bg-[#0a0a0a] border-[#2a2a2a] text-white overflow-hidden flex flex-col">
-        <DialogHeader className="px-6 py-4 border-b border-[#2a2a2a] flex-shrink-0">
+      <DialogContent className="max-w-4xl w-[calc(100%-1rem)] sm:w-[95vw] h-[calc(100vh-2rem)] sm:h-[90vh] p-0 bg-[#0a0a0a] border-[#2a2a2a] text-white overflow-hidden flex flex-col">
+        <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a] flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Disc3 className="w-5 h-5 text-[#fc7a67]" />
             Detalhes do Lançamento
@@ -219,11 +219,11 @@ export function ReleaseDetailsModal({
         </DialogHeader>
 
         <ScrollArea className="flex-1">
-          <div className="p-6 bg-[#0a0a0a]">
+          <div className="p-4 sm:p-6 bg-[#0a0a0a]">
             {/* Header Section with Cover and Main Info */}
-            <div className="flex flex-col md:flex-row gap-6 mb-8">
+            <div className="flex flex-col md:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
               {/* Cover Image */}
-              <div className="w-full md:w-64 flex-shrink-0">
+              <div className="w-40 mx-auto md:mx-0 md:w-64 flex-shrink-0">
                 <div className="aspect-square rounded-xl bg-[#111] border border-[#2a2a2a] overflow-hidden shadow-2xl relative group">
                   {release.coverUrl ? (
                     <img src={release.coverUrl} alt={release.title} className="w-full h-full object-cover" crossOrigin="anonymous" />
@@ -258,16 +258,16 @@ export function ReleaseDetailsModal({
                           {TYPE_LABELS[release.releaseType]}
                         </Badge>
                       </div>
-                      <h1 className="text-3xl font-bold leading-tight mb-1">{release.title}</h1>
-                      <div className="text-xl text-gray-400 flex items-center gap-2">
-                        <Music className="w-5 h-5" />
+                      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight mb-1">{release.title}</h1>
+                      <div className="text-base sm:text-lg md:text-xl text-gray-400 flex items-center gap-2">
+                        <Music className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                         {release.artist}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm mt-6 p-4 bg-[#111] rounded-lg border border-[#222]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:gap-x-8 gap-y-3 sm:gap-y-4 text-sm mt-4 sm:mt-6 p-3 sm:p-4 bg-[#111] rounded-lg border border-[#222]">
                   <div className="space-y-4">
                     {release.releaseDate && (
                       <div>
@@ -315,9 +315,9 @@ export function ReleaseDetailsModal({
               </div>
             </div>
 
-            <Separator className="bg-[#222] my-6" />
+            <Separator className="bg-[#222] my-4 sm:my-6" />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
               {/* LEFT COLUMN: Technical Info & Assets */}
               <div className="space-y-6">
                 {/* Identification */}
@@ -533,41 +533,41 @@ export function ReleaseDetailsModal({
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t border-[#2a2a2a] bg-[#0a0a0a] flex items-center justify-between">
+        <div className="p-3 sm:p-4 border-t border-[#2a2a2a] bg-[#0a0a0a] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0 flex-shrink-0">
           <Button
             variant="ghost"
             onClick={() => onDelete(release.id)}
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full sm:w-auto order-last sm:order-first"
           >
             <Trash2 className="w-4 h-4 mr-2" />
-            Excluir Release
+            Excluir
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <Button
               variant="outline"
               onClick={() => onDuplicate(release.id)}
-              className="border-[#333] text-gray-300 hover:text-white hover:bg-[#222]"
+              className="border-[#333] text-gray-300 hover:text-white hover:bg-[#222] flex-1 sm:flex-none text-xs sm:text-sm"
             >
-              <Copy className="w-4 h-4 mr-2" />
+              <Copy className="w-4 h-4 mr-1.5" />
               Duplicar
             </Button>
 
             <Button
               variant="outline"
               onClick={handleDownload}
-              className="border-[#333] text-gray-300 hover:text-white hover:bg-[#222]"
+              className="border-[#333] text-gray-300 hover:text-white hover:bg-[#222] flex-1 sm:flex-none text-xs sm:text-sm"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Baixar Card
+              <Download className="w-4 h-4 mr-1.5" />
+              Card
             </Button>
 
             <Button
               onClick={() => onEdit(release)}
-              className="bg-white text-black hover:bg-gray-200"
+              className="bg-white text-black hover:bg-gray-200 flex-1 sm:flex-none text-xs sm:text-sm"
             >
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar Lançamento
+              <Pencil className="w-4 h-4 mr-1.5" />
+              Editar
             </Button>
           </div>
         </div>

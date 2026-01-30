@@ -406,7 +406,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[96vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white p-6">
+      <DialogContent className="max-w-6xl w-[calc(100%-1rem)] sm:w-[95vw] max-h-[96vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white p-3 sm:p-4 md:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#fc7a67] to-[#ff0300] flex items-center justify-center">
@@ -448,7 +448,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                             className="bg-[#111] border-[#2a2a2a] text-white pl-9"
                           />
                         </div>
-                        <div className="w-[160px] flex-shrink-0">
+                        <div className="w-[120px] sm:w-[160px] flex-shrink-0">
                           <Select value={artist.role} onValueChange={(v: any) => updateArtist(index, 'role', v)}>
                             <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white text-sm">
                               <SelectValue />
@@ -899,40 +899,40 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                   )}
 
                   {/* Upload + URL + Drive */}
-                  <div className="flex gap-2">
-                    <input
-                      ref={coverInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleCoverFileSelect}
-                      className="hidden"
-                    />
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverFileSelect}
+                    className="hidden"
+                  />
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => coverInputRef.current?.click()}
-                      className="bg-[#111] border-[#2a2a2a] text-gray-300 hover:text-white hover:bg-[#222]"
+                      className="bg-[#111] border-[#2a2a2a] text-gray-300 hover:text-white hover:bg-[#222] text-xs sm:text-sm"
                     >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {coverFile ? 'Trocar Imagem' : 'Enviar Capa'}
+                      <Upload className="w-4 h-4 mr-1.5" />
+                      {coverFile ? 'Trocar' : 'Enviar Capa'}
                     </Button>
-                    <Input
-                      value={coverUrl}
-                      onChange={(e) => { setCoverUrl(e.target.value); removeCoverFile() }}
-                      placeholder="ou cole a URL da capa..."
-                      className="bg-[#111] border-[#2a2a2a] text-white text-sm flex-1"
-                      disabled={!!coverFile}
-                    />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => openDrivePicker('cover')}
-                      className="bg-[#111] border-[#2a2a2a] text-gray-300 hover:text-white hover:bg-[#222]"
+                      className="bg-[#111] border-[#2a2a2a] text-gray-300 hover:text-white hover:bg-[#222] text-xs sm:text-sm"
                     >
-                      <FolderOpen className="w-4 h-4 mr-2" />
+                      <FolderOpen className="w-4 h-4 mr-1.5" />
                       Drive
                     </Button>
                   </div>
+                  <Input
+                    value={coverUrl}
+                    onChange={(e) => { setCoverUrl(e.target.value); removeCoverFile() }}
+                    placeholder="ou cole a URL da capa..."
+                    className="bg-[#111] border-[#2a2a2a] text-white text-sm"
+                    disabled={!!coverFile}
+                  />
                   {coverFile && (
                     <p className="text-xs text-gray-500 mt-1">
                       {coverFile.name} ({(coverFile.size / 1024 / 1024).toFixed(1)} MB)
@@ -973,14 +973,14 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#2a2a2a]">
-            <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-[#2a2a2a]">
+            <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white w-full sm:w-auto">
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
               disabled={!title.trim() || saving}
-              className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:opacity-90"
+              className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:opacity-90 w-full sm:w-auto"
             >
               {saving ? (uploadingCover ? 'Enviando capa...' : 'Salvando...') : isEditing ? 'Salvar Alteracoes' : 'Criar Lancamento'}
             </Button>

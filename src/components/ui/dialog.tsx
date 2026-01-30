@@ -67,7 +67,7 @@ function DialogContent({
           "bg-zinc-900",
           "text-foreground",
           // Position and size
-          "fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)]",
+          "fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-0.5rem)] sm:max-w-[calc(100%-2rem)]",
           "translate-x-[-50%] translate-y-[-50%]",
           // Styling
           "rounded-3xl border border-zinc-800 p-6 shadow-2xl",
