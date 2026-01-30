@@ -279,11 +279,14 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   const uploadCoverImage = async (file: File): Promise<string> => {
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Usuário não autenticado')
+
     const ext = file.name.split('.').pop() || 'jpg'
-    const fileName = `release-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
     const { data, error } = await supabase.storage
-      .from('drive-files')
+      .from('covers')
       .upload(fileName, file, {
         cacheControl: '31536000',
         upsert: false,
@@ -293,7 +296,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
     if (error) throw new Error(`Upload falhou: ${error.message}`)
 
     const { data: urlData } = supabase.storage
-      .from('drive-files')
+      .from('covers')
       .getPublicUrl(data.path)
 
     return urlData.publicUrl
