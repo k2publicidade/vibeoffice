@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useCallback } from 'react'
 import html2canvas from 'html2canvas'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -51,21 +51,140 @@ export function ReleaseDetailsModal({
   onDuplicate,
   onDelete,
 }: ReleaseDetailsModalProps) {
-  const contentRef = useRef<HTMLDivElement>(null)
-
   if (!release) return null
 
   const linkItems = (release.platformLinks || []).filter(l => l.url || l.platform)
 
-  const handleDownload = async () => {
-    if (!contentRef.current) return
+  const handleDownload = useCallback(async () => {
+    if (!release) return
+
+    const container = document.createElement('div')
+    container.style.position = 'fixed'
+    container.style.left = '-9999px'
+    container.style.top = '0'
+    container.style.zIndex = '-1'
+    document.body.appendChild(container)
+
+    const dateStr = release.releaseDate
+      ? format(release.releaseDate, "dd 'de' MMMM, yyyy", { locale: ptBR })
+      : ''
+
+    const artists = release.artists && release.artists.length > 0
+      ? release.artists.map(a => {
+          const role = a.role === 'main' ? 'Principal' : a.role === 'feat' ? 'Feat.' : 'Produtor'
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;"><span style="color:#e5e5e5;">${a.name}</span><span style="color:#888;font-size:11px;background:#1a1a1a;padding:2px 8px;border-radius:4px;">${role}</span></div>`
+        }).join('')
+      : ''
+
+    const composers = release.composers && release.composers.length > 0
+      ? release.composers.map(c => {
+          const extra = c.artistName ? ` <span style="color:#666;">(${c.artistName})</span>` : ''
+          return `<div style="padding:2px 0;color:#ccc;">● ${c.name}${extra}</div>`
+        }).join('')
+      : ''
+
+    const platforms = linkItems.map(l => {
+      const extra = l.artistName ? ` <span style="color:#666;">(${l.artistName})</span>` : ''
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><div style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;"></div><span style="color:#ccc;">${l.platform || 'Link'}${extra}</span></div>`
+    }).join('')
+
+    const tracks = (release.releaseType === 'album' || release.releaseType === 'ep') && release.tracks && release.tracks.length > 0
+      ? release.tracks.map((t, i) => {
+          const artistNames = t.artists.map((a: any) => a.name).join(', ')
+          const dur = t.duration ? `<span style="color:#666;font-family:monospace;font-size:11px;">${t.duration}</span>` : ''
+          return `<div style="display:flex;align-items:center;gap:10px;padding:4px 0;"><span style="color:#555;font-family:monospace;font-size:11px;width:20px;text-align:right;">${i + 1}</span><div style="flex:1;"><div style="color:#e5e5e5;font-size:13px;">${t.title}</div><div style="color:#666;font-size:11px;">${artistNames}</div></div>${dur}</div>`
+        }).join('')
+      : ''
+
+    const statusLabel = STATUS_LABELS[release.status] || release.status
+    const typeLabel = TYPE_LABELS[release.releaseType] || release.releaseType
+    const statusColor = release.status === 'released' ? '#22c55e' : release.status === 'in_progress' ? '#f97316' : '#3b82f6'
+
+    container.innerHTML = `
+      <div id="card-export" style="width:800px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:white;padding:40px;border-radius:20px;border:1px solid #222;">
+        <!-- Header -->
+        <div style="display:flex;gap:24px;margin-bottom:32px;">
+          <div style="width:180px;height:180px;border-radius:16px;overflow:hidden;background:#111;border:1px solid #2a2a2a;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            ${release.coverUrl
+              ? `<img src="${release.coverUrl}" style="width:100%;height:100%;object-fit:cover;" crossorigin="anonymous" />`
+              : `<div style="color:#444;font-size:48px;">♪</div>`
+            }
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+              <span style="background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;padding:3px 10px;border-radius:6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">${statusLabel}</span>
+              <span style="background:#1a1a1a;color:#888;border:1px solid #2a2a2a;padding:3px 10px;border-radius:6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">${typeLabel}</span>
+            </div>
+            <div style="font-size:28px;font-weight:bold;line-height:1.2;margin-bottom:6px;">${release.title}</div>
+            <div style="font-size:18px;color:#999;">♪ ${release.artist}</div>
+            ${dateStr ? `<div style="font-size:13px;color:#666;margin-top:12px;">📅 ${dateStr}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+          ${release.genre ? `<div style="background:#111;border:1px solid #222;border-radius:12px;padding:14px;"><div style="color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Gênero</div><div style="color:#e5e5e5;font-size:14px;">${release.genre}</div></div>` : ''}
+          ${release.label ? `<div style="background:#111;border:1px solid #222;border-radius:12px;padding:14px;"><div style="color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Selo / Gravadora</div><div style="color:#e5e5e5;font-size:14px;">${release.label}</div></div>` : ''}
+          ${release.distributor ? `<div style="background:#111;border:1px solid #222;border-radius:12px;padding:14px;"><div style="color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Distribuidora</div><div style="color:#e5e5e5;font-size:14px;">${release.distributor}</div></div>` : ''}
+          ${release.sector ? `<div style="background:#111;border:1px solid #222;border-radius:12px;padding:14px;"><div style="color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Setor</div><div style="color:#e5e5e5;font-size:14px;">${release.sector}</div></div>` : ''}
+          ${release.isrc ? `<div style="background:#111;border:1px solid #222;border-radius:12px;padding:14px;"><div style="color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">ISRC</div><div style="color:#e5e5e5;font-size:13px;font-family:monospace;">${release.isrc}</div></div>` : ''}
+          ${release.upc ? `<div style="background:#111;border:1px solid #222;border-radius:12px;padding:14px;"><div style="color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">UPC / EAN</div><div style="color:#e5e5e5;font-size:13px;font-family:monospace;">${release.upc}</div></div>` : ''}
+        </div>
+
+        <!-- Artists & Composers -->
+        ${artists || composers ? `
+        <div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;color:#999;margin-bottom:12px;">CRÉDITOS & ARTISTAS</div>
+          ${artists ? `<div style="margin-bottom:${composers ? '16px' : '0'};">${artists}</div>` : ''}
+          ${composers ? `${artists ? '<div style="border-top:1px solid #222;padding-top:12px;margin-top:4px;">' : '<div>'}<div style="color:#666;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Compositores</div>${composers}</div>` : ''}
+        </div>` : ''}
+
+        <!-- Tracks -->
+        ${tracks ? `
+        <div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;color:#999;margin-bottom:12px;">FAIXAS (${release.tracks!.length})</div>
+          ${tracks}
+        </div>` : ''}
+
+        <!-- Platforms -->
+        ${platforms ? `
+        <div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;color:#999;margin-bottom:12px;">PLATAFORMAS DIGITAIS</div>
+          ${platforms}
+        </div>` : ''}
+
+        <!-- Notes -->
+        ${release.notes ? `
+        <div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;">
+          <div style="font-size:12px;font-weight:600;color:#999;margin-bottom:8px;">OBSERVAÇÕES</div>
+          <div style="color:#999;font-size:13px;line-height:1.6;white-space:pre-wrap;">${release.notes}</div>
+        </div>` : ''}
+
+        <!-- Footer -->
+        <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #1a1a1a;">
+          <span style="color:#444;font-size:11px;">VIBEDISTRO · Release Card</span>
+        </div>
+      </div>
+    `
 
     try {
-      const canvas = await html2canvas(contentRef.current, {
+      // Wait for cover image to load if present
+      const img = container.querySelector('img')
+      if (img && !img.complete) {
+        await new Promise<void>((resolve) => {
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+          setTimeout(resolve, 3000)
+        })
+      }
+
+      const cardEl = container.querySelector('#card-export') as HTMLElement
+      const canvas = await html2canvas(cardEl, {
         backgroundColor: '#0a0a0a',
         scale: 2,
         useCORS: true,
         logging: false,
+        allowTaint: false,
       })
 
       const image = canvas.toDataURL('image/png')
@@ -75,12 +194,14 @@ export function ReleaseDetailsModal({
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      toast.success('Imagem gerada com sucesso!')
+      toast.success('Card gerado com sucesso!')
     } catch (error) {
-      console.error('Error generating image:', error)
-      toast.error('Erro ao gerar imagem')
+      console.error('Error generating card:', error)
+      toast.error('Erro ao gerar card')
+    } finally {
+      document.body.removeChild(container)
     }
-  }
+  }, [release, linkItems])
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -98,7 +219,7 @@ export function ReleaseDetailsModal({
         </DialogHeader>
 
         <ScrollArea className="flex-1">
-          <div ref={contentRef} className="p-6 bg-[#0a0a0a]">
+          <div className="p-6 bg-[#0a0a0a]">
             {/* Header Section with Cover and Main Info */}
             <div className="flex flex-col md:flex-row gap-6 mb-8">
               {/* Cover Image */}
