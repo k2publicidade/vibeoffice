@@ -66,17 +66,18 @@ function DialogContent({
           // Dark mode only
           "bg-zinc-900",
           "text-foreground",
-          // Position and size
-          "fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-0.5rem)] sm:max-w-[calc(100%-2rem)]",
-          "translate-x-[-50%] translate-y-[-50%]",
+          // Position and size — inset approach for proper scroll
+          "fixed inset-0 z-50 m-auto",
+          "w-full max-w-[calc(100%-0.5rem)] sm:max-w-[calc(100%-2rem)]",
+          "max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)]",
+          "h-fit",
+          "overflow-y-auto",
           // Styling
           "rounded-3xl border border-zinc-800 p-6 shadow-2xl",
           // Premium animations
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-          "data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]",
-          "data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
           "duration-300 ease-out",
           "outline-none",
           className
