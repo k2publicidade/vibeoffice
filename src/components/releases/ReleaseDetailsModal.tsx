@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Disc3, Music, Calendar, ExternalLink, Copy, Trash2, Pencil,
   Tag, Building2, Truck, Hash, Globe, Users,
@@ -210,15 +209,15 @@ export function ReleaseDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl w-[calc(100%-1rem)] sm:w-[95vw] max-h-[calc(100vh-1rem)] sm:max-h-[90vh] overflow-hidden p-0 bg-[#0a0a0a] border-[#2a2a2a] text-white flex flex-col">
-        <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a] flex-shrink-0">
+      <DialogContent className="max-w-4xl w-[calc(100%-1rem)] sm:w-[95vw] p-0 bg-[#0a0a0a] border-[#2a2a2a] text-white">
+        <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a]">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Disc3 className="w-5 h-5 text-[#fc7a67]" />
             Detalhes do Lançamento
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
+        <div>
           <div className="p-4 sm:p-6 bg-[#0a0a0a]">
             {/* Header Section with Cover and Main Info */}
             <div className="flex flex-col md:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -531,7 +530,7 @@ export function ReleaseDetailsModal({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="p-3 sm:p-4 border-t border-[#2a2a2a] bg-[#0a0a0a] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0 flex-shrink-0">
           <Button
