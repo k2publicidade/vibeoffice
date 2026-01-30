@@ -1,6 +1,6 @@
 'use client'
 // Composers & Dynamic Platform Links - v2
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,11 +23,15 @@ import {
   Users,
   Plus,
   X,
-  FolderOpen
+  FolderOpen,
+  Upload,
+  Trash2
 } from 'lucide-react'
 import type { Release, ReleaseStatus, ReleaseType, CreateReleaseInput, Composer, PlatformLink, Track, ReleaseArtist } from '@/types/releases'
 import type { Sector } from '@/types/auth'
 import { DrivePickerModal } from '@/components/drive/DrivePickerModal'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 const RELEASE_TYPES: { value: ReleaseType; label: string }[] = [
   { value: 'single', label: 'Single' },
@@ -82,6 +86,10 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
   const [notes, setNotes] = useState('')
   const [sector, setSector] = useState<Sector | ''>('')
   const [saving, setSaving] = useState(false)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const coverInputRef = useRef<HTMLInputElement>(null)
 
   // Drive Picker State
   const [drivePickerOpen, setDrivePickerOpen] = useState(false)
@@ -109,6 +117,8 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         setReleaseDate(release.releaseDate ? new Date(release.releaseDate) : undefined)
         setStatus(release.status)
         setCoverUrl(release.coverUrl || '')
+        setCoverFile(null)
+        setCoverPreview(null)
         setWavUrl(release.wavUrl || '')
         setIsrc(release.isrc || '')
         setUpc(release.upc || '')
@@ -127,6 +137,8 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         setReleaseDate(undefined)
         setStatus(initialStatus || 'scheduled')
         setCoverUrl('')
+        setCoverFile(null)
+        setCoverPreview(null)
         setWavUrl('')
         setIsrc('')
         setUpc('')
@@ -242,6 +254,51 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
     setPlatformLinks(prev => prev.filter((_, i) => i !== index))
   }
 
+  const handleCoverFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione um arquivo de imagem')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Imagem deve ter no máximo 10MB')
+      return
+    }
+    setCoverFile(file)
+    setCoverPreview(URL.createObjectURL(file))
+    setCoverUrl('') // Clear URL since we're using file upload
+  }
+
+  const removeCoverFile = () => {
+    setCoverFile(null)
+    if (coverPreview) URL.revokeObjectURL(coverPreview)
+    setCoverPreview(null)
+    if (coverInputRef.current) coverInputRef.current.value = ''
+  }
+
+  const uploadCoverImage = async (file: File): Promise<string> => {
+    const supabase = createClient()
+    const ext = file.name.split('.').pop() || 'jpg'
+    const fileName = `release-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+    const { data, error } = await supabase.storage
+      .from('drive-files')
+      .upload(fileName, file, {
+        cacheControl: '31536000',
+        upsert: false,
+        contentType: file.type,
+      })
+
+    if (error) throw new Error(`Upload falhou: ${error.message}`)
+
+    const { data: urlData } = supabase.storage
+      .from('drive-files')
+      .getPublicUrl(data.path)
+
+    return urlData.publicUrl
+  }
+
   const handleSave = async () => {
     // Validate: At least one main artist
     const validArtists = artists.filter(a => a.name.trim())
@@ -259,9 +316,24 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
       const validTracks = tracks.filter(t => t.title.trim())
 
       // Derive main artist string for backward compatibility
-      // Use the first MAIN artist, or just the first artist if no Main is found.
       const mainArtistObj = validArtists.find(a => a.role === 'main') || validArtists[0]
       const derivedArtistString = mainArtistObj.name
+
+      // Upload cover image if a file was selected
+      let finalCoverUrl = coverUrl.trim() || undefined
+      if (coverFile) {
+        setUploadingCover(true)
+        try {
+          finalCoverUrl = await uploadCoverImage(coverFile)
+          toast.success('Capa enviada com sucesso!')
+        } catch (err) {
+          console.error('Cover upload error:', err)
+          toast.error('Erro ao enviar capa. Tente novamente.')
+          return
+        } finally {
+          setUploadingCover(false)
+        }
+      }
 
       await onSave({
         title: title.trim(),
@@ -272,7 +344,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         releaseDate: releaseDate || undefined,
         releaseTime,
         status,
-        coverUrl: coverUrl.trim() || undefined,
+        coverUrl: finalCoverUrl,
         wavUrl: wavUrl.trim() || undefined,
         composers: validComposers.length > 0 ? validComposers : undefined,
         tracks: validTracks.length > 0 ? validTracks : undefined,
@@ -799,13 +871,57 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
               <SectionHeader icon={Image} title="Capa, Audio e Observacoes" />
               <div className="space-y-3">
                 <div>
-                  <Label className="text-gray-400 text-xs mb-1.5 block">URL da Capa</Label>
+                  <Label className="text-gray-400 text-xs mb-1.5 block">Capa do Lancamento</Label>
+
+                  {/* Cover Preview */}
+                  {(coverPreview || coverUrl) && (
+                    <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-[#2a2a2a] mb-3 group">
+                      <img
+                        src={coverPreview || coverUrl}
+                        alt="Preview da capa"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="text-white hover:bg-white/20"
+                          onClick={() => {
+                            removeCoverFile()
+                            setCoverUrl('')
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload + URL + Drive */}
                   <div className="flex gap-2">
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCoverFileSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => coverInputRef.current?.click()}
+                      className="bg-[#111] border-[#2a2a2a] text-gray-300 hover:text-white hover:bg-[#222]"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {coverFile ? 'Trocar Imagem' : 'Enviar Capa'}
+                    </Button>
                     <Input
                       value={coverUrl}
-                      onChange={(e) => setCoverUrl(e.target.value)}
-                      placeholder="https://..."
+                      onChange={(e) => { setCoverUrl(e.target.value); removeCoverFile() }}
+                      placeholder="ou cole a URL da capa..."
                       className="bg-[#111] border-[#2a2a2a] text-white text-sm flex-1"
+                      disabled={!!coverFile}
                     />
                     <Button
                       type="button"
@@ -817,6 +933,11 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                       Drive
                     </Button>
                   </div>
+                  {coverFile && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {coverFile.name} ({(coverFile.size / 1024 / 1024).toFixed(1)} MB)
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-gray-400 text-xs mb-1.5 block">URL do Audio (WAV)</Label>
@@ -861,7 +982,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
               disabled={!title.trim() || saving}
               className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:opacity-90"
             >
-              {saving ? 'Salvando...' : isEditing ? 'Salvar Alteracoes' : 'Criar Lancamento'}
+              {saving ? (uploadingCover ? 'Enviando capa...' : 'Salvando...') : isEditing ? 'Salvar Alteracoes' : 'Criar Lancamento'}
             </Button>
           </div>
         </div>
