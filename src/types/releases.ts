@@ -29,6 +29,7 @@ export interface ReleaseArtist {
 export interface Track {
   id: string
   title: string
+  artists: ReleaseArtist[]
   composers: Composer[]
   isrc?: string
   duration?: string

@@ -25,7 +25,7 @@ import {
   X,
   FolderOpen
 } from 'lucide-react'
-import type { Release, ReleaseStatus, ReleaseType, CreateReleaseInput, Composer, PlatformLink, Track } from '@/types/releases'
+import type { Release, ReleaseStatus, ReleaseType, CreateReleaseInput, Composer, PlatformLink, Track, ReleaseArtist } from '@/types/releases'
 import type { Sector } from '@/types/auth'
 import { DrivePickerModal } from '@/components/drive/DrivePickerModal'
 
@@ -155,6 +155,30 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
     setArtists(prev => prev.filter((_, i) => i !== index))
   }
 
+  // Track Artist Handlers
+  const addTrackArtist = (trackIndex: number) => {
+    setTracks(prev => prev.map((t, i) => {
+      if (i !== trackIndex) return t
+      return { ...t, artists: [...(t.artists || []), { name: '', role: 'main' }] }
+    }))
+  }
+
+  const updateTrackArtist = (trackIndex: number, artistIndex: number, field: keyof ReleaseArtist, value: any) => {
+    setTracks(prev => prev.map((t, i) => {
+      if (i !== trackIndex) return t
+      const newArtists = [...(t.artists || [])]
+      newArtists[artistIndex] = { ...newArtists[artistIndex], [field]: value }
+      return { ...t, artists: newArtists }
+    }))
+  }
+
+  const removeTrackArtist = (trackIndex: number, artistIndex: number) => {
+    setTracks(prev => prev.map((t, i) => {
+      if (i !== trackIndex) return t
+      return { ...t, artists: (t.artists || []).filter((_, ai) => ai !== artistIndex) }
+    }))
+  }
+
   // Composers handlers
   const addComposer = () => {
     setComposers(prev => [...prev, { name: '', artistName: '' }])
@@ -170,7 +194,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   // Track handlers
   const addTrack = () => {
-    setTracks(prev => [...prev, { id: crypto.randomUUID(), title: '', composers: [], isrc: '' }])
+    setTracks(prev => [...prev, { id: crypto.randomUUID(), title: '', artists: [], composers: [], isrc: '' }])
   }
 
   const updateTrack = (index: number, field: keyof Track, value: any) => {
@@ -310,7 +334,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white">
+      <DialogContent className="max-w-[70vw] w-full max-h-[90vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#fc7a67] to-[#ff0300] flex items-center justify-center">
@@ -622,6 +646,56 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                           </Button>
                         </div>
 
+                        {/* Track Artists */}
+                        <div className="pl-8 space-y-2">
+                          <Label className="text-xs text-gray-500">Artistas</Label>
+                          {(track.artists || []).map((artist, aIndex) => (
+                            <div key={aIndex} className="flex gap-2 items-center">
+                              <Input
+                                value={artist.name}
+                                onChange={(e) => updateTrackArtist(trackIndex, aIndex, 'name', e.target.value)}
+                                placeholder="Nome do artista"
+                                className="bg-[#0a0a0a] border-[#333] h-7 text-xs flex-1"
+                              />
+                              <div className="w-[110px]">
+                                <Select
+                                  value={artist.role}
+                                  onValueChange={(v: any) => updateTrackArtist(trackIndex, aIndex, 'role', v)}
+                                >
+                                  <SelectTrigger className="bg-[#0a0a0a] border-[#333] h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-[#111] border-[#2a2a2a]">
+                                    {ARTIST_ROLES.map(role => (
+                                      <SelectItem key={role.value} value={role.value} className="text-white text-xs">
+                                        {role.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeTrackArtist(trackIndex, aIndex)}
+                                className="h-7 w-7 text-gray-500 hover:text-red-400 flex-shrink-0"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => addTrackArtist(trackIndex)}
+                            className="text-[#fc7a67] hover:text-[#ff0300] text-xs h-6 px-2"
+                          >
+                            + Add Artista
+                          </Button>
+                        </div>
+
                         {/* Track ISRC */}
                         <div className="pl-8">
                           <Label className="text-xs text-gray-500">ISRC</Label>
@@ -787,7 +861,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </DialogContent >
 
       <DrivePickerModal
         open={drivePickerOpen}
@@ -796,6 +870,6 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         title={drivePickerTarget === 'cover' ? 'Selecionar Capa' : 'Selecionar Audio (WAV)'}
         acceptedMimeTypes={drivePickerTarget === 'cover' ? ['image/*'] : ['audio/*', 'audio/wav', 'audio/x-wav']}
       />
-    </Dialog>
+    </Dialog >
   )
 }
