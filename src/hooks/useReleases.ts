@@ -26,7 +26,7 @@ function mapDbToRelease(row: any): Release {
     artists: parseJsonb(row.artists, []),
     releaseType: row.release_type,
     genre: row.genre || undefined,
-    releaseDate: row.release_date ? new Date(row.release_date) : undefined,
+    releaseDate: row.release_date ? new Date(row.release_date + 'T12:00:00') : undefined,
     status: row.status as ReleaseStatus,
     coverUrl: row.cover_url || undefined,
     wavUrl: row.wav_url || undefined,
@@ -132,7 +132,7 @@ export function useReleases(options?: UseReleasesOptions) {
         artists: input.artists && input.artists.length > 0 ? JSON.stringify(input.artists) : '[]',
         release_type: input.releaseType,
         genre: input.genre || null,
-        release_date: input.releaseDate?.toISOString().split('T')[0] || null,
+        release_date: input.releaseDate ? `${input.releaseDate.getFullYear()}-${String(input.releaseDate.getMonth() + 1).padStart(2, '0')}-${String(input.releaseDate.getDate()).padStart(2, '0')}` : null,
         status: input.status || 'scheduled',
         cover_url: input.coverUrl || null,
         wav_url: input.wavUrl || null,
@@ -191,7 +191,7 @@ export function useReleases(options?: UseReleasesOptions) {
     if (updates.artists !== undefined) updateData.artists = JSON.stringify(updates.artists || [])
     if (updates.releaseType !== undefined) updateData.release_type = updates.releaseType
     if (updates.genre !== undefined) updateData.genre = updates.genre || null
-    if (updates.releaseDate !== undefined) updateData.release_date = updates.releaseDate?.toISOString().split('T')[0] || null
+    if (updates.releaseDate !== undefined) updateData.release_date = updates.releaseDate ? `${updates.releaseDate.getFullYear()}-${String(updates.releaseDate.getMonth() + 1).padStart(2, '0')}-${String(updates.releaseDate.getDate()).padStart(2, '0')}` : null
     if (updates.status !== undefined) updateData.status = updates.status
     if (updates.coverUrl !== undefined) updateData.cover_url = updates.coverUrl || null
     if (updates.wavUrl !== undefined) updateData.wav_url = updates.wavUrl || null
