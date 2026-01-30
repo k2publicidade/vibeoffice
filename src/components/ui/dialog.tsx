@@ -39,6 +39,9 @@ function DialogOverlay({
       data-slot="dialog-overlay"
       className={cn(
         "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm",
+        "overflow-y-auto",
+        "flex items-start sm:items-center justify-center",
+        "p-2 sm:p-4",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "duration-300",
@@ -59,52 +62,51 @@ function DialogContent({
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        data-slot="dialog-content"
-        className={cn(
-          // Dark mode only
-          "bg-zinc-900",
-          "text-foreground",
-          // Position and size — inset approach for proper scroll
-          "fixed inset-0 z-50 m-auto",
-          "w-full max-w-[calc(100%-0.5rem)] sm:max-w-[calc(100%-2rem)]",
-          "max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)]",
-          "h-fit",
-          "overflow-y-auto",
-          // Styling
-          "rounded-3xl border border-zinc-800 p-6 shadow-2xl",
-          // Premium animations
-          "data-[state=open]:animate-in data-[state=closed]:animate-out",
-          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-          "duration-300 ease-out",
-          "outline-none",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className={cn(
-              "absolute top-4 right-4",
-              "h-8 w-8 rounded-full",
-              "flex items-center justify-center",
-              "bg-muted/80 hover:bg-muted",
-              "text-muted-foreground hover:text-foreground",
-              "transition-all duration-200",
-              "hover:scale-110 active:scale-95",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-              "disabled:pointer-events-none"
-            )}
-          >
-            <XIcon className="h-4 w-4" />
-            <span className="sr-only">Fechar</span>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Content>
+      <DialogOverlay>
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          className={cn(
+            // Dark mode only
+            "bg-zinc-900",
+            "text-foreground",
+            // Size
+            "relative z-50 w-full max-w-lg",
+            "my-auto",
+            "shrink-0",
+            // Styling
+            "rounded-3xl border border-zinc-800 p-6 shadow-2xl",
+            // Premium animations
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            "duration-300 ease-out",
+            "outline-none",
+            className
+          )}
+          {...props}
+        >
+          {children}
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              className={cn(
+                "absolute top-4 right-4 z-10",
+                "h-8 w-8 rounded-full",
+                "flex items-center justify-center",
+                "bg-muted/80 hover:bg-muted",
+                "text-muted-foreground hover:text-foreground",
+                "transition-all duration-200",
+                "hover:scale-110 active:scale-95",
+                "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                "disabled:pointer-events-none"
+              )}
+            >
+              <XIcon className="h-4 w-4" />
+              <span className="sr-only">Fechar</span>
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Content>
+      </DialogOverlay>
     </DialogPortal>
   )
 }

@@ -210,7 +210,7 @@ export function ReleaseDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl w-[calc(100%-1rem)] sm:w-[95vw] !max-h-[calc(100vh-1rem)] sm:!max-h-[90vh] !overflow-hidden p-0 bg-[#0a0a0a] border-[#2a2a2a] text-white flex flex-col">
+      <DialogContent className="max-w-4xl w-[calc(100%-1rem)] sm:w-[95vw] max-h-[calc(100vh-1rem)] sm:max-h-[90vh] overflow-hidden p-0 bg-[#0a0a0a] border-[#2a2a2a] text-white flex flex-col">
         <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a] flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Disc3 className="w-5 h-5 text-[#fc7a67]" />
