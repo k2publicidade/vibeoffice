@@ -334,7 +334,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[96vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white">
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[96vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#fc7a67] to-[#ff0300] flex items-center justify-center">
@@ -345,9 +345,9 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         </DialogHeader>
 
         <div className="space-y-6 mt-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* LEFT COLUMN */}
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
               {/* Section 1: Basic Info */}
               <SectionHeader icon={Music} title="Informacoes Basicas" />
               <div className="space-y-3">
@@ -376,9 +376,9 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                             className="bg-[#111] border-[#2a2a2a] text-white pl-9"
                           />
                         </div>
-                        <div className="w-[140px]">
+                        <div className="w-[160px] flex-shrink-0">
                           <Select value={artist.role} onValueChange={(v: any) => updateArtist(index, 'role', v)}>
-                            <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white">
+                            <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-[#111] border-[#2a2a2a]">
@@ -414,7 +414,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-gray-400 text-xs mb-1.5 block">Tipo</Label>
                     <Select value={releaseType} onValueChange={(v) => setReleaseType(v as ReleaseType)}>
@@ -446,7 +446,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
               {/* Section 2: Scheduling */}
               <SectionHeader icon={CalendarClock} title="Agendamento" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <PremiumDatePicker
                   date={releaseDate}
                   onDateChange={handleDateChange}
@@ -460,7 +460,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
               {/* Section 4: Details */}
               <SectionHeader icon={Tag} title="Detalhes" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-400 text-xs mb-1.5 block">Genero</Label>
                   <div className="relative">
@@ -514,7 +514,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
             </div>
 
             {/* RIGHT COLUMN */}
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
               {/* Section 3: Composers (Conditional) & Tracks (Conditional) */}
               {releaseType === 'single' ? (
                 <>
@@ -561,7 +561,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
                   {/* Section 5: Identifiers (Only for Single) */}
                   <SectionHeader icon={Fingerprint} title="Identificadores" />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-gray-400 text-xs mb-1.5 block">ISRC</Label>
                       <Input
@@ -739,32 +739,36 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
               <div className="space-y-2">
                 {platformLinks.map((link, index) => (
                   <div key={index} className="flex items-start gap-2">
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <Select
-                        value={link.platform}
-                        onValueChange={(v) => updatePlatformLink(index, 'platform', v)}
-                      >
-                        <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white text-sm">
-                          <SelectValue placeholder="Plataforma" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#111] border-[#2a2a2a]">
-                          {PLATFORM_OPTIONS.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value} className="text-white">
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        value={link.url}
-                        onChange={(e) => updatePlatformLink(index, 'url', e.target.value)}
-                        placeholder="URL"
-                        className="bg-[#111] border-[#2a2a2a] text-white text-sm"
-                      />
+                    <div className="flex-1 space-y-2">
+                      <div className="flex gap-2">
+                        <div className="w-[140px] flex-shrink-0">
+                          <Select
+                            value={link.platform}
+                            onValueChange={(v) => updatePlatformLink(index, 'platform', v)}
+                          >
+                            <SelectTrigger className="bg-[#111] border-[#2a2a2a] text-white text-sm">
+                              <SelectValue placeholder="Plataforma" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#111] border-[#2a2a2a]">
+                              {PLATFORM_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value} className="text-white">
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Input
+                          value={link.url}
+                          onChange={(e) => updatePlatformLink(index, 'url', e.target.value)}
+                          placeholder="URL da plataforma"
+                          className="bg-[#111] border-[#2a2a2a] text-white text-sm flex-1"
+                        />
+                      </div>
                       <Input
                         value={link.artistName || ''}
                         onChange={(e) => updatePlatformLink(index, 'artistName', e.target.value)}
-                        placeholder="Nome artistico"
+                        placeholder="Nome artistico na plataforma (opcional)"
                         className="bg-[#111] border-[#2a2a2a] text-white text-sm"
                       />
                     </div>
