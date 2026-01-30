@@ -334,7 +334,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-[90vw] w-full max-h-[96vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white">
+      <DialogContent className="max-w-[65vw] w-full max-h-[96vh] overflow-y-auto bg-[#0a0a0a] border-[#2a2a2a] text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#fc7a67] to-[#ff0300] flex items-center justify-center">
