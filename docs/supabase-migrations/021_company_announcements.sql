@@ -261,7 +261,6 @@ BEGIN
       priority,
       created_by,
       target_sectors,
-      ARRAY['Marketing']::sector_type[],
       expires_at,
       active,
       metadata
