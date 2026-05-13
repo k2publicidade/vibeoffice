@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { CheckIcon, ChevronDownIcon, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +21,9 @@ interface MultiSelectContextValue {
   onSelect: (value: string) => void
   onRemove: (value: string) => void
   isSelected: (value: string) => boolean
+  open: boolean
+  triggerRef: React.RefObject<HTMLButtonElement | null>
+  registerContent: (node: HTMLDivElement | null) => void
 }
 
 // ============================================================================
@@ -63,7 +67,11 @@ function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
   const triggerRef = React.useRef<HTMLButtonElement>(null)
-  const contentRef = React.useRef<HTMLDivElement>(null)
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
+
+  const registerContent = React.useCallback((node: HTMLDivElement | null) => {
+    contentRef.current = node
+  }, [])
 
   const handleSelect = React.useCallback(
     (selectedValue: string) => {
@@ -90,21 +98,21 @@ function MultiSelect({
 
   // Close on click outside
   React.useEffect(() => {
+    if (!open) return
+
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
       if (
         contentRef.current &&
-        !contentRef.current.contains(event.target as Node) &&
+        !contentRef.current.contains(target) &&
         triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node)
+        !triggerRef.current.contains(target)
       ) {
         setOpen(false)
       }
     }
 
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
+    document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
@@ -112,6 +120,8 @@ function MultiSelect({
 
   // Close on Escape
   React.useEffect(() => {
+    if (!open) return
+
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setOpen(false)
@@ -119,10 +129,7 @@ function MultiSelect({
       }
     }
 
-    if (open) {
-      document.addEventListener('keydown', handleEscape)
-    }
-
+    document.addEventListener('keydown', handleEscape)
     return () => {
       document.removeEventListener('keydown', handleEscape)
     }
@@ -134,8 +141,11 @@ function MultiSelect({
       onSelect: handleSelect,
       onRemove: handleRemove,
       isSelected,
+      open,
+      triggerRef,
+      registerContent,
     }),
-    [value, handleSelect, handleRemove, isSelected]
+    [value, handleSelect, handleRemove, isSelected, open, registerContent]
   )
 
   return (
@@ -150,11 +160,7 @@ function MultiSelect({
           maxDisplayItems={maxDisplayItems}
           renderSelectedValues={renderSelectedValues}
         />
-        {open && (
-          <MultiSelectContent ref={contentRef}>
-            {children}
-          </MultiSelectContent>
-        )}
+        {children}
       </div>
     </MultiSelectContext.Provider>
   )
@@ -256,29 +262,97 @@ const MultiSelectTrigger = React.forwardRef<HTMLButtonElement, MultiSelectTrigge
 MultiSelectTrigger.displayName = 'MultiSelectTrigger'
 
 // ============================================================================
-// MultiSelect Content
+// MultiSelect Content (portaled to document.body)
 // ============================================================================
 
-const MultiSelectContent = React.forwardRef<HTMLDivElement, { children?: React.ReactNode }>(
-  ({ children }, ref) => {
-    return (
+interface MultiSelectContentProps {
+  children?: React.ReactNode
+  className?: string
+}
+
+const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentProps>(
+  ({ children, className }, forwardedRef) => {
+    const { open, triggerRef, registerContent } = useMultiSelect()
+    const [mounted, setMounted] = React.useState(false)
+    const [position, setPosition] = React.useState<{
+      top: number
+      left: number
+      width: number
+    } | null>(null)
+    const innerRef = React.useRef<HTMLDivElement | null>(null)
+
+    React.useEffect(() => {
+      setMounted(true)
+    }, [])
+
+    React.useEffect(() => {
+      if (!open || !triggerRef.current) {
+        setPosition(null)
+        return
+      }
+
+      const updatePosition = () => {
+        const rect = triggerRef.current?.getBoundingClientRect()
+        if (rect) {
+          setPosition({
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+          })
+        }
+      }
+
+      updatePosition()
+
+      window.addEventListener('scroll', updatePosition, true)
+      window.addEventListener('resize', updatePosition)
+
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true)
+        window.removeEventListener('resize', updatePosition)
+      }
+    }, [open, triggerRef])
+
+    const setRefs = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        innerRef.current = node
+        registerContent(node)
+        if (typeof forwardedRef === 'function') {
+          forwardedRef(node)
+        } else if (forwardedRef) {
+          forwardedRef.current = node
+        }
+      },
+      [forwardedRef, registerContent]
+    )
+
+    if (!mounted || !open || !position) return null
+
+    return createPortal(
       <div
-        ref={ref}
+        ref={setRefs}
         role="listbox"
         aria-multiselectable="true"
+        style={{
+          position: 'fixed',
+          top: position.top,
+          left: position.left,
+          width: position.width,
+          zIndex: 100,
+        }}
         className={cn(
-          // Position
-          'absolute z-50 top-full left-0 right-0 mt-1',
           // Dark mode styling (matching Select)
           'bg-zinc-900 text-foreground border border-zinc-800',
           // Animations
           'animate-in fade-in-0 zoom-in-95 slide-in-from-top-2',
           // Layout
-          'max-h-60 overflow-y-auto overflow-x-hidden rounded-xl shadow-lg p-1'
+          'max-h-60 overflow-y-auto overflow-x-hidden rounded-xl shadow-lg p-1',
+          className
         )}
       >
         {children}
-      </div>
+      </div>,
+      document.body
     )
   }
 )

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select'
 import {
   MultiSelect,
+  MultiSelectContent,
   MultiSelectItem,
 } from '@/components/ui/multi-select'
 import { Button } from '@/components/ui/button'
@@ -154,17 +155,19 @@ export function TicketFilters({ filters, onFiltersChange }: TicketFiltersProps) 
             placeholder="Todos os status"
             renderSelectedValues={renderSelectedStatus}
           >
-            {statuses.map((status) => {
-              const config = statusConfig[status]
-              return (
-                <MultiSelectItem key={status} value={status}>
-                  <div className="flex items-center gap-2">
-                    <span className={config.color.split(' ')[1]}>{config.icon}</span>
-                    <span>{config.label}</span>
-                  </div>
-                </MultiSelectItem>
-              )
-            })}
+            <MultiSelectContent>
+              {statuses.map((status) => {
+                const config = statusConfig[status]
+                return (
+                  <MultiSelectItem key={status} value={status}>
+                    <div className="flex items-center gap-2">
+                      <span className={config.color.split(' ')[1]}>{config.icon}</span>
+                      <span>{config.label}</span>
+                    </div>
+                  </MultiSelectItem>
+                )
+              })}
+            </MultiSelectContent>
           </MultiSelect>
 
           {/* Quick filters */}
