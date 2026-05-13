@@ -98,9 +98,11 @@ export function PremiumModal({
               'shadow-2xl',
               'border-0 md:border md:border-zinc-800',
               mobileFullScreen ? 'p-0 md:p-6' : 'p-6',
-              // Mobile full height
-              mobileFullScreen &&
-                'flex flex-col h-full md:h-auto md:max-h-[90vh]',
+              // Height + internal scroll
+              'flex flex-col',
+              mobileFullScreen
+                ? 'h-full md:h-auto md:max-h-[90vh]'
+                : 'max-h-[calc(100vh-2rem)] md:max-h-[90vh]',
               className
             )}
           >
@@ -159,8 +161,8 @@ export function PremiumModal({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.2 }}
               className={cn(
-                mobileFullScreen &&
-                  'flex-1 overflow-y-auto px-4 py-4 md:px-0 md:py-0'
+                'flex-1 overflow-y-auto min-h-0',
+                mobileFullScreen && 'px-4 py-4 md:px-0 md:py-0'
               )}
             >
               {children}
