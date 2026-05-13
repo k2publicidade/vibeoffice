@@ -77,6 +77,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
+  // Rotas restritas a Admin (Tarefas + Configurações de Cursos)
+  const isAdminOnlyRoute =
+    request.nextUrl.pathname === '/tasks' ||
+    request.nextUrl.pathname.startsWith('/tasks/') ||
+    request.nextUrl.pathname.startsWith('/courses/manage')
+
+  if (isAdminOnlyRoute && user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'Admin') {
+      const redirectUrl = new URL('/', request.url)
+      redirectUrl.searchParams.set('access', 'denied')
+      return NextResponse.redirect(redirectUrl)
+    }
+  }
+
   return response
 }
 

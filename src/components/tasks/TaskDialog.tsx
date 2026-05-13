@@ -35,12 +35,15 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react'
-import { useUsers } from '@/hooks/useUsers'
+import { useUsers, User } from '@/hooks/useUsers'
 import {
   MultiSelect,
   MultiSelectContent,
   MultiSelectItem,
 } from '@/components/ui/multi-select'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Loader2 } from 'lucide-react'
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
 import { PremiumTimePicker } from '@/components/ui/premium-time-picker'
 import { cn } from '@/lib/utils'
@@ -77,9 +80,26 @@ export function TaskDialog({
   onOpenChange,
   defaultStatus,
 }: TaskDialogProps) {
-  const { users } = useUsers()
+  const { users, isLoading: usersLoading } = useUsers()
   const [open, setOpen] = useState(isOpen || false)
   const [formData, setFormData] = useState(() => getInitialFormData(task, defaultStatus))
+  const [assigneeSearch, setAssigneeSearch] = useState('')
+
+  // Mapa id->user para renderizar badges com nome real (não UUID)
+  const userById = (users || []).reduce<Record<string, User>>((acc, u) => {
+    acc[u.id] = u
+    return acc
+  }, {})
+
+  // Filtragem por busca
+  const filteredUsers = (users || []).filter(u => {
+    if (!assigneeSearch.trim()) return true
+    const q = assigneeSearch.toLowerCase()
+    return u.name.toLowerCase().includes(q) || u.sector.toLowerCase().includes(q)
+  })
+
+  const getInitials = (name: string) =>
+    name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -260,20 +280,95 @@ export function TaskDialog({
               <Label className="flex items-center gap-2">
                 <Users className="h-3.5 w-3.5 text-zinc-500" />
                 Responsáveis
+                {!!formData.assignees?.length && (
+                  <span className="text-xs text-zinc-500 font-normal">
+                    ({formData.assignees.length} selecionado{formData.assignees.length > 1 ? 's' : ''})
+                  </span>
+                )}
               </Label>
+
               <MultiSelect
                 value={formData.assignees || []}
                 onValueChange={(value) => setFormData({ ...formData, assignees: value })}
-                placeholder="Selecione os responsáveis"
-                maxDisplayItems={3}
-                className="bg-zinc-800/50 border-zinc-700"
+                placeholder={
+                  usersLoading
+                    ? 'Carregando usuários...'
+                    : (users || []).length === 0
+                      ? 'Nenhum usuário cadastrado'
+                      : 'Selecione os responsáveis'
+                }
+                maxDisplayItems={4}
+                className="bg-zinc-800/50 border-zinc-700 min-h-11"
+                renderSelectedValues={(selected) => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selected.slice(0, 4).map(id => {
+                      const u = userById[id]
+                      if (!u) return null
+                      return (
+                        <div
+                          key={id}
+                          className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-700"
+                        >
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={u.avatar || undefined} />
+                            <AvatarFallback className="text-[10px] bg-zinc-800 text-zinc-300">
+                              {getInitials(u.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-zinc-100">{u.name.split(' ')[0]}</span>
+                        </div>
+                      )
+                    })}
+                    {selected.length > 4 && (
+                      <span className="text-xs text-zinc-500 self-center">
+                        +{selected.length - 4}
+                      </span>
+                    )}
+                  </div>
+                )}
               >
                 <MultiSelectContent>
-                  {(users || []).map((user) => (
-                    <MultiSelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </MultiSelectItem>
-                  ))}
+                  {/* Search */}
+                  <div className="sticky top-0 z-10 -m-1 mb-1 p-2 bg-zinc-900 border-b border-zinc-800">
+                    <Input
+                      placeholder="Buscar por nome ou setor..."
+                      value={assigneeSearch}
+                      onChange={(e) => setAssigneeSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="h-8 bg-zinc-800/60 border-zinc-700 text-xs"
+                    />
+                  </div>
+
+                  {usersLoading ? (
+                    <div className="flex items-center justify-center py-6 text-sm text-zinc-500 gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Carregando usuários...
+                    </div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="px-3 py-6 text-center text-sm text-zinc-500">
+                      {users && users.length === 0
+                        ? 'Nenhum usuário cadastrado ainda.'
+                        : 'Nenhum usuário encontrado.'}
+                    </div>
+                  ) : (
+                    filteredUsers.map((u) => (
+                      <MultiSelectItem key={u.id} value={u.id}>
+                        <div className="flex items-center gap-2.5 w-full">
+                          <Avatar className="h-7 w-7 shrink-0">
+                            <AvatarImage src={u.avatar || undefined} />
+                            <AvatarFallback className="text-[10px] bg-zinc-800 text-zinc-300">
+                              {getInitials(u.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <span className="text-sm text-zinc-100 truncate">{u.name}</span>
+                            <span className="text-[10px] text-zinc-500 truncate">{u.sector}</span>
+                          </div>
+                        </div>
+                      </MultiSelectItem>
+                    ))
+                  )}
                 </MultiSelectContent>
               </MultiSelect>
             </div>

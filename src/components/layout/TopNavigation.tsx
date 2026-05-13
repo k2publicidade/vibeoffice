@@ -16,22 +16,28 @@ interface TopNavigationProps {
   onMenuClick?: () => void
 }
 
-const navItems = [
+const baseNavItems = [
   { name: 'Início', url: '/', icon: Home },
   { name: 'Agenda', url: '/calendar', icon: Calendar },
   { name: 'Solicitações', url: '/tickets', icon: Ticket },
   // { name: 'Chat', url: '/chat', icon: MessageSquare },
   { name: 'Capas', url: '/vibecanvas', icon: Palette },
-  { name: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { name: 'Drive', url: '/drive', icon: FolderOpen },
   { name: 'Cursos', url: '/courses', icon: GraduationCap },
   { name: 'Estúdio', url: '/studio', icon: Mic2 },
   { name: 'Lançamentos', url: '/lancamentos', icon: Disc3 },
 ]
 
+const adminNavItem = { name: 'Tarefas', url: '/tasks', icon: CheckSquare }
+
 export function TopNavigation({ onMenuClick }: TopNavigationProps) {
   const pathname = usePathname()
   const { user } = useAuth()
+
+  // Tarefas só pra Admin — ordenado de forma natural (entre Capas e Drive)
+  const navItems = user?.role === 'Admin'
+    ? [...baseNavItems.slice(0, 4), adminNavItem, ...baseNavItems.slice(4)]
+    : baseNavItems
 
   const isActive = (href: string) => {
     if (href === '/') {

@@ -16,17 +16,17 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/useAuth'
 
 interface MobileDrawerProps {
   isOpen: boolean
   onClose: () => void
 }
 
-const navItems = [
+const baseNavItems = [
   { href: '/', label: 'Início', icon: LayoutDashboard },
   { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/drive', label: 'Arquivos', icon: HardDrive },
-  { href: '/tasks', label: 'Tarefas', icon: CheckSquare },
   { href: '/tickets', label: 'Solicitações', icon: Ticket },
   { href: '/courses', label: 'Cursos', icon: BookOpen },
   { href: '/calendar', label: 'Agenda', icon: Calendar },
@@ -34,8 +34,15 @@ const navItems = [
   { href: '/lancamentos', label: 'Lançamentos', icon: Disc3 },
 ]
 
+const adminNavItem = { href: '/tasks', label: 'Tarefas', icon: CheckSquare }
+
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const pathname = usePathname()
+  const { user } = useAuth()
+
+  const navItems = user?.role === 'Admin'
+    ? [...baseNavItems.slice(0, 3), adminNavItem, ...baseNavItems.slice(3)]
+    : baseNavItems
 
   const isActive = (href: string) => {
     if (href === '/') {

@@ -16,57 +16,32 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { OnlineUsersSidebar } from '@/components/presence/OnlineUsersSidebar'
+import { useAuth } from '@/hooks/useAuth'
 
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
 }
 
-const navigation = [
-  {
-    name: 'Início',
-    href: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Chat',
-    href: '/chat',
-    icon: MessageSquare,
-  },
-  {
-    name: 'Arquivos',
-    href: '/drive',
-    icon: HardDrive,
-  },
-  {
-    name: 'Tarefas',
-    href: '/tasks',
-    icon: CheckSquare,
-  },
-  {
-    name: 'Solicitações',
-    href: '/tickets',
-    icon: Ticket,
-  },
-  {
-    name: 'Cursos',
-    href: '/courses',
-    icon: BookOpen,
-  },
-  {
-    name: 'Agenda',
-    href: '/calendar',
-    icon: Calendar,
-  },
-  {
-    name: 'Estúdio',
-    href: '/studio',
-    icon: Mic2,
-  },
+const baseNavigation = [
+  { name: 'Início', href: '/', icon: LayoutDashboard },
+  { name: 'Chat', href: '/chat', icon: MessageSquare },
+  { name: 'Arquivos', href: '/drive', icon: HardDrive },
+  { name: 'Solicitações', href: '/tickets', icon: Ticket },
+  { name: 'Cursos', href: '/courses', icon: BookOpen },
+  { name: 'Agenda', href: '/calendar', icon: Calendar },
+  { name: 'Estúdio', href: '/studio', icon: Mic2 },
 ]
+
+const adminNavItem = { name: 'Tarefas', href: '/tasks', icon: CheckSquare }
 
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const { user } = useAuth()
+
+  const navigation = user?.role === 'Admin'
+    ? [...baseNavigation.slice(0, 3), adminNavItem, ...baseNavigation.slice(3)]
+    : baseNavigation
 
   return (
     <>

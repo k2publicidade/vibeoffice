@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTasks } from '@/hooks/useTasks'
+import { useAuth } from '@/hooks/useAuth'
 import { Task, TaskStatus } from '@/types/tasks'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PremiumKanbanBoard, KanbanColumnData } from '@/components/tasks/PremiumKanbanBoard'
@@ -9,7 +11,7 @@ import { TaskList } from '@/components/tasks/TaskList'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
 import { TaskDialog } from '@/components/tasks/TaskDialog'
 import { DeleteTaskDialog } from '@/components/tasks/DeleteTaskDialog'
-import { LayoutGrid, List, Filter, ListTodo, Clock, CheckCircle2 } from 'lucide-react'
+import { LayoutGrid, List, Filter, ListTodo, Clock, CheckCircle2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -51,6 +53,15 @@ function tasksToPremiumColumns(tasks: Task[]): KanbanColumnData[] {
 }
 
 export default function TasksPage() {
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== 'Admin') {
+      router.replace('/')
+    }
+  }, [user, authLoading, router])
+
   const {
     filteredTasks,
     filters,
@@ -159,8 +170,23 @@ export default function TasksPage() {
     setIsDialogOpen(true)
   }
 
+  // Guard visual enquanto carrega ou redireciona
+  if (authLoading || (user && user.role !== 'Admin')) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 border border-white/5">
+          <Lock className="h-7 w-7 text-zinc-500" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Acesso restrito</h2>
+        <p className="text-sm text-zinc-400">
+          O módulo de Tarefas está disponível apenas para administradores.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="w-[90%] mx-auto py-6 md:py-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-10">
         <div>

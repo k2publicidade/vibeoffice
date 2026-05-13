@@ -164,19 +164,40 @@ export function useCourses() {
 
   // --- Admin Actions ---
 
+  const slugify = (text: string) =>
+    text
+      .toString()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+
   const createCourse = async (courseData: Partial<Course>): Promise<Course | undefined> => {
     if (!user) return undefined;
 
     try {
-      // Sanitize payload to ensure only valid columns are sent
-      const payload = {
-        title: courseData.title,
-        description: courseData.description,
+      // Sanitize payload: omitir campos undefined pra não conflitar com NOT NULL antigos
+      // e sempre prover description/instructor com fallback (compatibilidade com schemas antigos NOT NULL).
+      const title = courseData.title?.trim() || ''
+      if (!title) throw new Error('Título é obrigatório')
+
+      const slug = courseData.slug?.trim() || `${slugify(title)}-${Math.random().toString(36).slice(2, 7)}`
+
+      const payload: Record<string, any> = {
+        title,
+        slug,
+        subtitle: courseData.subtitle || null,
+        description: courseData.description || '',
         difficulty: courseData.difficulty || 'beginner',
         tags: Array.isArray(courseData.tags) ? courseData.tags : [],
         thumbnail: courseData.thumbnail || null,
-        instructor: courseData.instructor || null,
-        duration: courseData.duration || 0,
+        instructor: courseData.instructor || user.name || 'Equipe',
+        duration: courseData.duration ?? 0,
+        is_published: courseData.is_published ?? true,
+        author_id: user.id,
       };
 
       if (process.env.NODE_ENV === 'development') console.log('Creating course with payload:', payload);
@@ -205,11 +226,10 @@ export function useCourses() {
         ...newCourse,
         modules: [],
         lessons_count: 0,
-        createdAt: new Date(newCourse.created_at),
-        updatedAt: new Date(newCourse.updated_at)
-      };
+      } as Course;
 
       setCourses(prev => [courseResult, ...prev]);
+      toast.success('Curso criado com sucesso!')
       return courseResult;
     } catch (error: any) {
       console.error('Error creating course:', error);
