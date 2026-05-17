@@ -35,13 +35,9 @@ export default function ChatPage() {
     }
   }, [rooms, currentRoom, setCurrentRoom])
 
-  // Simular contagem de mensagens não lidas
-  const unreadCounts: Record<string, number> = {
-    [rooms[0]?.id]: 3,
-    [rooms[3]?.id]: 1,
-    [rooms[1]?.id]: 5,
-    'dm-001': 2,
-  }
+  // TODO: implementar contagem real de nao-lidas via last_read_at por room/user
+  // Ver achado S-P0-03 do diagnostico docs/superpowers/reports/2026-05-17-CONSOLIDADO.md
+  const unreadCounts: Record<string, number> = {}
 
   // Obter última mensagem de cada sala para preview
   const lastMessages = useMemo(() => {
@@ -79,7 +75,7 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="flex flex-col bg-black text-white overflow-hidden h-[calc(100vh-64px)]">
+      <div className="flex flex-col bg-background text-foreground overflow-hidden h-[calc(100vh-64px)]">
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar - Integrated List */}
           <div className={cn(
@@ -100,10 +96,11 @@ export default function ChatPage() {
           </div>
 
           {/* Overlay for mobile */}
-          {showChatList && (
+          {showChatList && currentRoom && (
             <div
               className="fixed inset-0 bg-black/50 lg:hidden z-30"
               onClick={() => setShowChatList(false)}
+              aria-hidden="true"
             />
           )}
 
