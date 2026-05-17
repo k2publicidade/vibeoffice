@@ -42,6 +42,8 @@ import { Ticket, TicketComment } from '@/types/tickets'
 import { cn } from '@/lib/utils'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { useUsers } from '@/hooks/useUsers'
+import { useAuth } from '@/hooks/useAuth'
 
 interface TicketDetailModalProps {
   ticket: Ticket | null
@@ -50,7 +52,11 @@ interface TicketDetailModalProps {
   comments: TicketComment[]
   onAddComment: (content: string, isInternal: boolean) => void
   onDeleteComment: (commentId: string) => void
-  getUserById: (userId: string) => Promise<{ name: string; avatar?: string } | null>
+  /**
+   * @deprecated Cache de usuarios agora vem de useUsers() diretamente no modal.
+   * Mantido na assinatura por compatibilidade com a prop atualmente passada em tickets/page.tsx.
+   */
+  getUserById?: (userId: string) => Promise<{ name: string; avatar?: string } | null>
 }
 
 const statusConfig = {
@@ -92,13 +98,20 @@ export function TicketDetailModal({
   comments,
   onAddComment,
   onDeleteComment,
-  getUserById,
 }: TicketDetailModalProps) {
   const [newComment, setNewComment] = useState('')
   const [isInternal, setIsInternal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Cache de usuarios sincronos (S-P1-10): substitui o TODO de cache async
+  const { getUserById } = useUsers()
+  const { user: currentUser } = useAuth()
+
+  const requesterUser = ticket ? getUserById(ticket.requester) : null
+  const requesterName = requesterUser?.name || 'Usuário desconhecido'
+  const requesterAvatar = requesterUser?.avatar || undefined
 
   // Auto-scroll to bottom when new comment is added
   useEffect(() => {
@@ -215,12 +228,16 @@ export function TicketDetailModal({
             </motion.div>
 
             <motion.div variants={itemVariants} className="flex items-center gap-2 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
-              <User className="h-4 w-4 text-zinc-500" />
-              <div>
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarImage src={requesterAvatar} />
+                <AvatarFallback className="bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white text-[10px]">
+                  {getInitials(requesterName)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
                 <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-bold">Solicitante</p>
-                <p className="text-sm font-medium text-zinc-300 truncate">
-                  {/* TODO: Implementar cache de usuários */}
-                  Usuário
+                <p className="text-sm font-medium text-zinc-300 truncate" title={requesterName}>
+                  {requesterName}
                 </p>
               </div>
             </motion.div>
@@ -256,9 +273,11 @@ export function TicketDetailModal({
                     </motion.div>
                   ) : (
                     comments.map((comment, index) => {
-                      // TODO: Implementar cache de usuários
-                      // const user = await getUserById(comment.userId)
-                      const isCurrentUser = comment.userId === 'current-user'
+                      // S-P1-10: lookup sincrono via useUsers
+                      const commentUser = getUserById(comment.userId)
+                      const commentUserName = commentUser?.name || 'Usuário desconhecido'
+                      const commentUserAvatar = commentUser?.avatar || undefined
+                      const isCurrentUser = !!currentUser && comment.userId === currentUser.id
 
                       return (
                         <motion.div
@@ -274,16 +293,16 @@ export function TicketDetailModal({
                           )}
                         >
                           <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarImage src={undefined} />
+                            <AvatarImage src={commentUserAvatar} />
                             <AvatarFallback className="bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white text-xs">
-                              {getInitials('Usuário')}
+                              {getInitials(commentUserName)}
                             </AvatarFallback>
                           </Avatar>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-sm font-medium text-zinc-200">
-                                Usuário
+                                {commentUserName}
                               </span>
                               <span className="text-xs text-zinc-500">
                                 {formatCommentTime(comment.createdAt)}
