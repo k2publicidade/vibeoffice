@@ -84,13 +84,24 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/courses/manage')
 
   if (isAdminOnlyRoute && user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // TODO: rodada futura — popular app_metadata.role via trigger no signup ou função RPC
+    // pra eliminar o fallback de DB query. Ver achado S-P0-02 do diagnostico.
+    // Preferir role do JWT custom claim (sem query no banco)
+    let role: string | undefined =
+      (user.app_metadata?.role as string | undefined) ??
+      (user.user_metadata?.role as string | undefined)
 
-    if (profile?.role !== 'Admin') {
+    // Fallback: se app_metadata ainda não estiver populado (migration de role no JWT pendente)
+    if (!role) {
+      const { data } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      role = data?.role ?? undefined
+    }
+
+    if (role !== 'Admin') {
       const redirectUrl = new URL('/', request.url)
       redirectUrl.searchParams.set('access', 'denied')
       return NextResponse.redirect(redirectUrl)

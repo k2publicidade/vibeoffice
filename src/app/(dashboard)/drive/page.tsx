@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 type ViewMode = 'grid' | 'list'
 
@@ -160,10 +161,35 @@ export default function DrivePage() {
     }
   }
 
-  const handleDownload = (itemId: string) => {
+  const handleDownload = async (itemId: string) => {
     const item = getItemById(itemId)
-    if (item) {
-      toast.success(`Download de "${item.name}" iniciado`)
+    if (!item || item.type !== 'file') return
+
+    try {
+      const supabase = createClient()
+      // No useDrive, o `storage_path` do banco é mapeado para `item.url`
+      const path = item.url
+      if (!path) throw new Error('Caminho do arquivo não encontrado')
+
+      const { data, error } = await supabase.storage
+        .from('drive-files')
+        .download(path)
+      if (error) throw error
+
+      // Criar link e disparar download
+      const url = URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = item.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      toast.success(`Download iniciado: ${item.name}`)
+    } catch (e) {
+      console.error('Download error:', e)
+      toast.error('Erro ao baixar arquivo')
     }
   }
 
@@ -249,7 +275,7 @@ export default function DrivePage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-black text-zinc-100">
+    <div className="flex h-[calc(100dvh-64px)] overflow-hidden bg-black text-zinc-100">
 
       {/* Sidebar - Desktop */}
       <div className="hidden lg:flex w-64 flex-col border-r border-[#262626] bg-black/50 backdrop-blur-sm">
@@ -399,21 +425,7 @@ export default function DrivePage() {
             <DriveGrid
               items={displayItems}
               currentFolderId={searchQuery ? null : (currentFolderId || null)}
-              // Se tiver busca, passamos null par mostrar tudo que foi filtrado. Se não, mostra pasta atual.
-              // Isso requer que DriveGrid ignore o filtro de pasta se receber Items já filtrados, 
-              // mas o DriveGrid atual filtra de novo. Precisamos ajustar lógica de filtragem lá ou aqui.
-              // Ajuste rápido: Se tiver query, o DriveGrid deve receber items já filtrados e currentFolderId null 
-              // E precisa que DriveGrid trate "null" como raiz... O design do DriveGrid filtra internamente.
-              // Solução ideal: DriveGrid deve aceitar propriedade "isFiltered" ou simplesmente não filtrar se passarmos os itens exatos.
-              // Vou ajustar passando uma prop "disableFiltering" ou apenas currentFolderId={null} e garantir que DriveGrid mostre tudo se receber itens.
-              // O DriveGrid atual filtra: items.filter(i => i.parentId === currentFolderId or null/undefined).
-              // Se tiver busca, isso vai quebrar pq os itens da busca podem estar em qualquer pasta.
-              // Vou alterar o DriveGrid para não filtrar se estiver buscando, porem aqui não tenho como passar 'isSearching'.
-              // Simplificação: Vou filtrar aqui e passar para o grid apenas o que deve ser mostrado, e pedir pro Grid mostrar TUDO que recebe se não passar folderId?
-              // Melhor: O DriveGrid atual SEMPRE filtra.
-              // Vou ter que alterar o DriveGrid ou passar todos os itens se não estiver buscando.
-              // Vamos manter o comportamento padrão e assumir busca apenas no contexto atual por simplicidade, 
-              // OU hackear passando currentFolderId={null} e alterando todos os pais dos itens filtrados para null (feio).
+              disableFiltering={!!searchQuery}
               onFolderOpen={handleFolderOpen}
               onFileClick={handleFileClick}
               onFileDelete={handleDelete}
@@ -426,6 +438,7 @@ export default function DrivePage() {
             <DriveList
               items={displayItems}
               currentFolderId={searchQuery ? null : (currentFolderId || null)}
+              disableFiltering={!!searchQuery}
               onFolderOpen={handleFolderOpen}
               onFileClick={handleFileClick}
               onFileDelete={handleDelete}

@@ -6,6 +6,7 @@ import { Calendar as CalendarIcon, Clock, MapPin, Plus, Users } from 'lucide-rea
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   PremiumModal,
   PremiumModalHeader,
@@ -43,6 +44,7 @@ interface CreateEventModalProps {
   onClose: () => void
   onSave: (event: {
     title: string
+    description?: string
     date: Date
     startTime: string
     endTime: string
@@ -107,6 +109,7 @@ export function CreateEventModal({
 }: CreateEventModalProps) {
   // Todos os estados do formulário
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [date, setDate] = useState(selectedDate)
   const [dateStr, setDateStr] = useState('')
   const [startTime, setStartTime] = useState('09:00')
@@ -124,6 +127,7 @@ export function CreateEventModal({
     if (open) {
       // Reset completo do formulário
       setTitle('')
+      setDescription('')
       setLocation('')
       setEventType('personal')
       setEventSector(undefined)
@@ -215,6 +219,7 @@ export function CreateEventModal({
 
     onSave({
       title,
+      description: description.trim() || undefined,
       date,
       startTime,
       endTime,
@@ -263,6 +268,21 @@ export function CreateEventModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="mt-1.5 h-12 md:h-11 rounded-xl border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 focus:border-orange-500 focus:ring-orange-500/20 transition-colors text-base md:text-sm"
+            />
+          </motion.div>
+
+          {/* Description (optional) */}
+          <motion.div variants={itemVariants}>
+            <Label htmlFor="event-description" className="text-sm font-medium">
+              Descrição (opcional)
+            </Label>
+            <Textarea
+              id="event-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Pauta, link da chamada, observações..."
+              rows={3}
+              className="mt-1.5 rounded-xl border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 focus:border-orange-500 focus-visible:ring-orange-500/20 transition-colors text-base md:text-sm resize-none"
             />
           </motion.div>
 

@@ -152,6 +152,7 @@ export default function CalendarPage() {
   // Merged Create Event Handler
   const handleCreateEvent = async (eventData: {
     title: string
+    description?: string
     date: Date
     startTime: string
     endTime: string
@@ -197,7 +198,7 @@ export default function CalendarPage() {
 
       await createEvent({
         title: eventData.title,
-        description: '',
+        description: eventData.description ?? '',
         startTime,
         endTime,
         type: eventData.type,
