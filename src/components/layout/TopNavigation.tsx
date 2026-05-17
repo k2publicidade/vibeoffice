@@ -1,50 +1,28 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { Menu } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { UserMenu } from './UserMenu'
 import { NavBar } from '@/components/ui/tubelight-navbar'
-import { Home, Calendar, Ticket, MessageSquare, CheckSquare, FolderOpen, GraduationCap, Mic2, Palette, Disc3 } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { getNavForRole } from '@/lib/navigation'
 
 interface TopNavigationProps {
   onMenuClick?: () => void
 }
 
-const baseNavItems = [
-  { name: 'Início', url: '/', icon: Home },
-  { name: 'Agenda', url: '/calendar', icon: Calendar },
-  { name: 'Solicitações', url: '/tickets', icon: Ticket },
-  // { name: 'Chat', url: '/chat', icon: MessageSquare },
-  { name: 'Capas', url: '/vibecanvas', icon: Palette },
-  { name: 'Drive', url: '/drive', icon: FolderOpen },
-  { name: 'Cursos', url: '/courses', icon: GraduationCap },
-  { name: 'Estúdio', url: '/studio', icon: Mic2 },
-  { name: 'Lançamentos', url: '/lancamentos', icon: Disc3 },
-]
-
-const adminNavItem = { name: 'Tarefas', url: '/tasks', icon: CheckSquare }
-
 export function TopNavigation({ onMenuClick }: TopNavigationProps) {
-  const pathname = usePathname()
   const { user } = useAuth()
 
-  // Tarefas só pra Admin — ordenado de forma natural (entre Capas e Drive)
-  const navItems = user?.role === 'Admin'
-    ? [...baseNavItems.slice(0, 4), adminNavItem, ...baseNavItems.slice(4)]
-    : baseNavItems
-
-  const isActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/'
-    }
-    return pathname.startsWith(href)
-  }
+  // Itens vêm de lib/navigation.ts (fonte única).
+  // NavBar (tubelight) usa shape { name, url, icon } — mapeamos aqui.
+  const navItems = getNavForRole(user?.role).map((item) => ({
+    name: item.label,
+    url: item.href,
+    icon: item.icon,
+  }))
 
   const getUserRole = () => {
     if (user?.role === 'Admin') return 'Administrador'
