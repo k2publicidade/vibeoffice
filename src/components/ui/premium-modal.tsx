@@ -88,15 +88,15 @@ export function PremiumModal({
                 : 'mx-4',
               !mobileFullScreen && sizeClasses[size],
               mobileFullScreen && `md:${sizeClasses[size]}`,
-              // Dark mode only
-              'bg-zinc-900',
-              'text-foreground',
+              // Dark mode only (tokens semânticos)
+              'bg-popover',
+              'text-popover-foreground',
               // Premium styling
               mobileFullScreen
                 ? 'rounded-none md:rounded-3xl'
                 : 'rounded-3xl',
               'shadow-2xl',
-              'border-0 md:border md:border-zinc-800',
+              'border-0 md:border md:border-border',
               mobileFullScreen ? 'p-0 md:p-6' : 'p-6',
               // Height + internal scroll
               'flex flex-col',
@@ -118,10 +118,10 @@ export function PremiumModal({
 
             {/* Mobile Header - only when mobileFullScreen is true */}
             {mobileFullScreen && (
-              <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-800 flex-shrink-0">
+              <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
                 <button
                   onClick={onClose}
-                  className="h-11 w-11 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors -ml-2"
+                  className="h-11 w-11 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-muted transition-colors -ml-2"
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
@@ -264,7 +264,7 @@ export function PremiumModalFooter({
       className={cn(
         'mt-6 flex justify-end gap-3',
         stickyOnMobile &&
-          'sticky bottom-0 bg-zinc-900 py-4 -mx-4 px-4 md:relative md:bottom-auto md:bg-transparent md:py-0 md:mx-0 md:px-0 border-t border-zinc-800 md:border-0',
+          'sticky bottom-0 bg-popover py-4 -mx-4 px-4 md:relative md:bottom-auto md:bg-transparent md:py-0 md:mx-0 md:px-0 border-t border-border md:border-0',
         className
       )}
     >

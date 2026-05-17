@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { User, Shield, Bell, Palette, Globe, Save, Lock } from 'lucide-react'
 import { RadialGlowBackground } from '@/components/ui/radial-glow-background'
-import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
 const containerVariants = {
@@ -182,35 +181,13 @@ export default function SettingsPage() {
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-4">
-                                                <Label className="text-gray-400">Esquema de Cores</Label>
-                                                <div className="grid grid-cols-3 gap-3">
-                                                    {[
-                                                        { name: 'Coral', color: 'bg-[#fc7a67]' },
-                                                        { name: 'Azur', color: 'bg-blue-500' },
-                                                        { name: 'Esmeralda', color: 'bg-emerald-500' },
-                                                    ].map((theme) => (
-                                                        <button
-                                                            key={theme.name}
-                                                            className={cn(
-                                                                "flex flex-col items-center gap-2 p-3 rounded-xl border border-[#2a2a2a] hover:border-white/20 transition-all",
-                                                                theme.name === 'Coral' && "border-[#fc7a67] bg-[#fc7a67]/5"
-                                                            )}
-                                                        >
-                                                            <div className={cn("h-6 w-6 rounded-full", theme.color)} />
-                                                            <span className="text-[10px] font-medium text-white">{theme.name}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-4">
                                                 <Label className="text-gray-400">Modo do Sistema</Label>
                                                 <div className="space-y-3">
                                                     <div className="flex items-center justify-between p-3 rounded-xl bg-[#0a0a0a] border border-[#2a2a2a]">
                                                         <span className="text-sm text-white font-medium">Sempre Escuro (Dark)</span>
                                                         <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                                                     </div>
-                                                    <p className="text-[10px] text-gray-500 italic">O modo escuro é o padrão recomendado para a experiência Premium VibeOffice.</p>
+                                                    <p className="text-[10px] text-gray-500 italic">VIBEDISTRO usa tema escuro permanente. Personalização de cores em breve.</p>
                                                 </div>
                                             </div>
                                         </div>

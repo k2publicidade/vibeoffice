@@ -66,15 +66,15 @@ function DialogContent({
         <DialogPrimitive.Content
           data-slot="dialog-content"
           className={cn(
-            // Dark mode only
-            "bg-zinc-900",
-            "text-foreground",
+            // Dark mode only (tokens semânticos)
+            "bg-popover",
+            "text-popover-foreground",
             // Size
             "relative z-50 w-full max-w-lg",
             "my-auto",
             "shrink-0",
             // Styling
-            "rounded-3xl border border-zinc-800 p-6 shadow-2xl",
+            "rounded-3xl border border-border p-6 shadow-2xl",
             // Premium animations
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
