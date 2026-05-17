@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCourses } from '@/hooks/useCourses';
-import { CheckCircle, LayoutList, ArrowLeft, FileText, CheckCircle2, Menu } from 'lucide-react';
+import { CheckCircle, LayoutList, ArrowLeft, FileText, CheckCircle2, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -40,6 +40,31 @@ export default function CoursePlayerPage() {
         return null;
     }, [course, currentLessonId]);
 
+    // Aplaina todas as aulas na ordem correta (modules.order asc, lessons.order asc)
+    const allLessons = useMemo(() => {
+        if (!course?.modules) return [];
+        return [...course.modules]
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .flatMap(m => (m.lessons || []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+    }, [course]);
+
+    const currentIndex = useMemo(
+        () => allLessons.findIndex(l => l.id === currentLessonId),
+        [allLessons, currentLessonId]
+    );
+
+    const previousLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+    const nextLesson = currentIndex !== -1 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+    // Navega pra aula específica, scroll pro topo e fecha sidebar mobile
+    const goToLesson = useCallback((lessonId: string) => {
+        setCurrentLessonId(lessonId);
+        if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        setSidebarOpen(false);
+    }, []);
+
     if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500">Carregando curso...</div>;
     if (!course) return <div className="min-h-screen bg-black flex items-center justify-center text-red-500">Curso não encontrado.</div>;
 
@@ -51,9 +76,17 @@ export default function CoursePlayerPage() {
         setCurrentLessonId(lessonId);
     };
 
-    const handleToggleComplete = () => {
-        if (currentLesson) {
-            toggleLessonComplete(course.id, currentLesson.id, !isCurrentCompleted);
+    const handleToggleComplete = async () => {
+        if (!currentLesson) return;
+        const wasCompleted = isCurrentCompleted;
+        try {
+            await toggleLessonComplete(course.id, currentLesson.id, !wasCompleted);
+            // Se acabou de marcar como concluída (e não estava antes) E tem próxima aula → auto-avança
+            if (!wasCompleted && nextLesson) {
+                setTimeout(() => goToLesson(nextLesson.id), 400);
+            }
+        } catch (e) {
+            // toast.error já vem do hook
         }
     };
 
@@ -247,29 +280,75 @@ export default function CoursePlayerPage() {
 
                         {/* Lesson Info & Actions */}
                         {currentLesson && (
-                            <div className="flex flex-col md:flex-row justify-between items-start gap-4 md:gap-6 pb-20">
-                                <div className="flex-1 space-y-4">
-                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                        <h2 className="text-xl md:text-2xl font-bold text-white">{currentLesson.title}</h2>
-                                        {isCurrentCompleted && <span className="bg-emerald-500/10 text-emerald-500 text-xs px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle2 size={12} /> Concluído</span>}
+                            <div className="space-y-6 pb-20">
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-4 md:gap-6">
+                                    <div className="flex-1 space-y-4">
+                                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                            <h2 className="text-xl md:text-2xl font-bold text-white">{currentLesson.title}</h2>
+                                            {isCurrentCompleted && <span className="bg-emerald-500/10 text-emerald-500 text-xs px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle2 size={12} /> Concluído</span>}
+                                        </div>
+                                        <p className="text-zinc-400 leading-relaxed text-sm md:text-base">
+                                            {currentLesson.description || 'Sem descrição para esta aula.'}
+                                        </p>
                                     </div>
-                                    <p className="text-zinc-400 leading-relaxed text-sm md:text-base">
-                                        {currentLesson.description || 'Sem descrição para esta aula.'}
-                                    </p>
+
+                                    <div className="flex flex-col gap-3 w-full md:w-auto md:min-w-[200px]">
+                                        <button
+                                            onClick={handleToggleComplete}
+                                            className={cn(
+                                                "w-full min-h-11 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95",
+                                                isCurrentCompleted
+                                                    ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20"
+                                                    : "bg-white text-black hover:bg-zinc-200"
+                                            )}
+                                        >
+                                            <CheckCircle size={18} />
+                                            {isCurrentCompleted ? 'Concluída' : 'Marcar como Concluída'}
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="flex flex-col gap-3 w-full md:w-auto md:min-w-[200px]">
+                                {/* Navegação Anterior/Próxima */}
+                                <div className="flex flex-col-reverse sm:flex-row gap-2 mt-6 pt-6 border-t border-zinc-800">
                                     <button
-                                        onClick={handleToggleComplete}
+                                        type="button"
+                                        onClick={() => previousLesson && goToLesson(previousLesson.id)}
+                                        disabled={!previousLesson}
                                         className={cn(
-                                            "w-full min-h-11 py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95",
-                                            isCurrentCompleted
-                                                ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20"
-                                                : "bg-white text-black hover:bg-zinc-200"
+                                            "min-h-11 px-4 py-2 rounded-xl border flex items-center gap-2 font-medium transition-all active:scale-95",
+                                            previousLesson
+                                                ? "bg-zinc-900/50 border-zinc-800 text-white hover:bg-zinc-800 hover:border-zinc-700"
+                                                : "bg-zinc-900/30 border-zinc-900 text-zinc-600 cursor-not-allowed opacity-50"
                                         )}
+                                        aria-label="Ir para a aula anterior"
                                     >
-                                        <CheckCircle size={18} />
-                                        {isCurrentCompleted ? 'Concluída' : 'Marcar como Concluída'}
+                                        <ChevronLeft className="h-4 w-4 shrink-0" />
+                                        <span>Aula anterior</span>
+                                        {previousLesson && (
+                                            <span className="ml-2 hidden md:inline text-zinc-400 truncate max-w-[200px]">
+                                                {previousLesson.title}
+                                            </span>
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => nextLesson && goToLesson(nextLesson.id)}
+                                        disabled={!nextLesson}
+                                        className={cn(
+                                            "sm:ml-auto min-h-11 px-4 py-2 rounded-xl border flex items-center gap-2 font-medium transition-all active:scale-95",
+                                            nextLesson
+                                                ? "bg-red-600 border-red-500 text-white hover:bg-red-500"
+                                                : "bg-zinc-900/30 border-zinc-900 text-zinc-600 cursor-not-allowed opacity-50"
+                                        )}
+                                        aria-label="Ir para a próxima aula"
+                                    >
+                                        {nextLesson && (
+                                            <span className="mr-2 hidden md:inline text-zinc-200 truncate max-w-[200px]">
+                                                {nextLesson.title}
+                                            </span>
+                                        )}
+                                        <span>Próxima aula</span>
+                                        <ChevronRight className="h-4 w-4 shrink-0" />
                                     </button>
                                 </div>
                             </div>
