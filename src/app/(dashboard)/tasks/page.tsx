@@ -124,11 +124,11 @@ export default function TasksPage() {
     setTaskToDelete(task)
   }
 
-  // Handler para confirmar delete (usado no List view)
+  // Handler para iniciar delete via List view — abre o DeleteTaskDialog
+  // (substitui confirm() nativo; ver achado S-P1-16)
   const handleDeleteTaskById = (taskId: string) => {
-    if (confirm('Tem certeza que deseja deletar esta tarefa?')) {
-      deleteTask(taskId)
-    }
+    const task = filteredTasks.find(t => t.id === taskId)
+    if (task) setTaskToDelete(task)
   }
 
   // Handler para confirmar delete via dialog
@@ -307,9 +307,10 @@ export default function TasksPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog para edição de tarefa */}
+      {/* Dialog para edição de tarefa — hideTrigger pra evitar botão duplicado no DOM */}
       {selectedTask && (
         <TaskDialog
+          hideTrigger
           task={selectedTask}
           onSave={handleSaveTask}
           isOpen={isDialogOpen && !!selectedTask}

@@ -430,10 +430,10 @@ export function useTickets(): UseTicketsReturn {
             taskUpdates.status = taskStatus
           }
 
-          if (assigneeChanged && updates.assignedTo) {
-            taskUpdates.assigned_to = updates.assignedTo
-          }
-
+          // assigned_to removido do sync reverso ticket → task
+          // Fonte da verdade dos assignees da task agora e exclusivamente
+          // a tabela M2M task_assignees. Ver achado S-P0-05 do diagnostico 2026-05-17.
+          // (TODO futuro: sincronizar task_assignees a partir de tickets.assigned_to se necessario)
           if (Object.keys(taskUpdates).length > 0) {
             const { error: taskError } = await supabase
               .from('tasks')

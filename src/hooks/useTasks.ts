@@ -292,7 +292,8 @@ export function useTasks(): UseTasksReturn {
           status: taskData.status,
           priority: taskData.priority,
           due_date: taskData.dueDate?.toISOString(),
-          // assigned_to removido
+          // assigned_to removido — fonte da verdade e task_assignees (M2M)
+          // Ver achado S-P0-05 do diagnostico 2026-05-17
           sector: taskData.sector,
 
           created_by: user.id,
@@ -455,7 +456,8 @@ export function useTasks(): UseTasksReturn {
         status: updates.status,
         priority: updates.priority,
         due_date: updates.dueDate?.toISOString(),
-        // assigned_to: updates.assignedTo, // REMOVIDO
+        // assigned_to removido — fonte da verdade e task_assignees (M2M)
+        // Ver achado S-P0-05 do diagnostico 2026-05-17
         sector: updates.sector,
         tags: updates.tags,
       })
