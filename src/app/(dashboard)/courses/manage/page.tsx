@@ -69,9 +69,10 @@ export default function CoursesManagePage() {
     const authors = useMemo(() => {
         const set = new Set<string>()
         courses.forEach(c => {
-            if (c.instructor) set.add(c.instructor)
+            const name = c.instructor?.trim()
+            if (name) set.add(name)
         })
-        return Array.from(set).sort()
+        return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
     }, [courses])
 
     // Filtragem
@@ -86,7 +87,11 @@ export default function CoursesManagePage() {
                 (statusFilter === 'published' && c.is_published !== false) ||
                 (statusFilter === 'draft' && c.is_published === false)
 
-            const matchesAuthor = authorFilter === 'all' || c.instructor === authorFilter
+            const matchesAuthor = authorFilter === 'all'
+                ? true
+                : authorFilter === '__none__'
+                    ? !c.instructor?.trim()
+                    : (c.instructor || '').trim().toLowerCase() === authorFilter.toLowerCase()
 
             return matchesSearch && matchesStatus && matchesAuthor
         })
@@ -218,6 +223,7 @@ export default function CoursesManagePage() {
                         </SelectTrigger>
                         <SelectContent className="bg-zinc-900 border-zinc-800">
                             <SelectItem value="all">Todos os Autores</SelectItem>
+                            <SelectItem value="__none__">(Sem instrutor)</SelectItem>
                             {authors.map(a => (
                                 <SelectItem key={a} value={a}>{a}</SelectItem>
                             ))}

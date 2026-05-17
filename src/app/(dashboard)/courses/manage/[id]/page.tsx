@@ -82,6 +82,7 @@ export default function CourseEditorPage() {
         duration: 0,
         is_published: true,
     })
+    const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
     const [coverMode, setCoverMode] = useState<'upload' | 'url'>('upload')
     const [uploadingCover, setUploadingCover] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -93,9 +94,10 @@ export default function CourseEditorPage() {
 
     useEffect(() => {
         if (course) {
+            const currentSlug = course.slug || slugify(course.title)
             setFormData({
                 title: course.title,
-                slug: course.slug || slugify(course.title),
+                slug: currentSlug,
                 subtitle: course.subtitle || '',
                 description: course.description || '',
                 instructor: course.instructor || '',
@@ -104,6 +106,8 @@ export default function CourseEditorPage() {
                 duration: course.duration || 0,
                 is_published: course.is_published !== false,
             })
+            // Se o slug salvo difere do slugify(title), o admin editou manualmente antes
+            setSlugManuallyEdited(currentSlug !== slugify(course.title))
         }
     }, [course])
 
@@ -198,7 +202,29 @@ export default function CourseEditorPage() {
         if (!activeModuleId) return
         try {
             if (lessonData.id) {
-                await updateLesson(lessonData.id, lessonData)
+                // Whitelist explícita: só persiste campos editáveis da aula, nunca o id
+                const {
+                    title,
+                    description,
+                    type,
+                    content_url,
+                    content,
+                    chapter,
+                    materials,
+                    duration,
+                    order,
+                } = lessonData
+                await updateLesson(lessonData.id, {
+                    title,
+                    description,
+                    type,
+                    content_url,
+                    content,
+                    chapter,
+                    materials,
+                    duration,
+                    order,
+                })
                 toast.success('Aula atualizada!')
             } else {
                 const moduleLessons = course.modules?.find(m => m.id === activeModuleId)?.lessons || []
@@ -283,7 +309,14 @@ export default function CourseEditorPage() {
                                         <Label className="text-zinc-300">Título</Label>
                                         <Input
                                             value={formData.title}
-                                            onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                            onChange={e => {
+                                                const newTitle = e.target.value
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    title: newTitle,
+                                                    slug: slugManuallyEdited ? prev.slug : slugify(newTitle),
+                                                }))
+                                            }}
                                             className="bg-zinc-800 border-zinc-700 h-11"
                                         />
                                     </div>
@@ -298,12 +331,29 @@ export default function CourseEditorPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-zinc-300">Slug (URL)</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-zinc-300">Slug (URL)</Label>
+                                        {slugManuallyEdited && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSlugManuallyEdited(false)
+                                                    setFormData(prev => ({ ...prev, slug: slugify(prev.title) }))
+                                                }}
+                                                className="text-[10px] text-zinc-400 hover:text-white underline-offset-2 hover:underline"
+                                            >
+                                                Auto-gerar
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className="flex items-center bg-zinc-800 border border-zinc-700 rounded-md h-11 overflow-hidden">
                                         <span className="text-zinc-500 text-xs pl-3 select-none">/cursos/</span>
                                         <Input
                                             value={formData.slug}
-                                            onChange={e => setFormData({ ...formData, slug: slugify(e.target.value) })}
+                                            onChange={e => {
+                                                setSlugManuallyEdited(true)
+                                                setFormData(prev => ({ ...prev, slug: slugify(e.target.value) }))
+                                            }}
                                             className="bg-transparent border-0 focus-visible:ring-0 h-full"
                                         />
                                     </div>

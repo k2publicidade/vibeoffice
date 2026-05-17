@@ -72,7 +72,7 @@ export function CourseCard({ course, progress = 0, onClick }: CourseCardProps) {
             {course.title}
           </h3>
           <p className="text-sm text-zinc-400 line-clamp-2 font-medium">
-            {course.description}
+            {course.subtitle || course.description || 'Sem descrição.'}
           </p>
         </div>
 
