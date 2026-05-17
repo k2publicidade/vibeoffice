@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { videoEmbedUrl } from '@/lib/video';
+import { sanitizeLessonHtml } from '@/lib/sanitize';
 
 export default function CoursePlayerPage() {
     const { id } = useParams() as { id: string };
@@ -56,30 +57,16 @@ export default function CoursePlayerPage() {
         }
     };
 
-    // Render Video/Content
+    // Render Video/Content — 3 caminhos mutuamente exclusivos: video / texto / vazio.
     const renderContent = () => {
         if (!currentLesson) return <div className="text-zinc-500">Selecione uma aula</div>;
 
-        if (currentLesson.type === 'video' && currentLesson.content_url) {
-            const embedUrl = videoEmbedUrl(currentLesson.content_url);
+        const hasVideoUrl = currentLesson.type === 'video' && !!currentLesson.content_url;
+        const embedUrl = hasVideoUrl ? videoEmbedUrl(currentLesson.content_url!) : null;
+        const hasContent = !!currentLesson.content && currentLesson.content.trim().length > 0;
 
-            if (!embedUrl) {
-                return (
-                    <div className="flex flex-col items-center justify-center min-h-[400px] bg-zinc-900/30 rounded-xl border border-white/5 p-6 text-center">
-                        <FileText size={48} className="text-zinc-600 mb-4" />
-                        <p className="text-zinc-400 mb-2">URL do vídeo inválida ou não suportada.</p>
-                        <a
-                            href={currentLesson.content_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-red-400 hover:text-red-300 text-sm underline break-all"
-                        >
-                            Abrir em nova aba
-                        </a>
-                    </div>
-                );
-            }
-
+        // 1) Vídeo válido — player iframe.
+        if (hasVideoUrl && embedUrl) {
             return (
                 <div className="relative w-full h-0 pb-[56.25%] bg-black rounded-xl overflow-hidden border border-white/5 shadow-2xl">
                     <iframe
@@ -92,20 +79,40 @@ export default function CoursePlayerPage() {
             );
         }
 
-        if (currentLesson.type === 'html') {
+        // 2) URL de vídeo inválida/não suportada — fallback claro com link externo.
+        if (hasVideoUrl && !embedUrl) {
             return (
-                <div className="prose prose-invert max-w-none p-8 bg-zinc-900/50 rounded-xl border border-white/5">
-                    <div dangerouslySetInnerHTML={{ __html: currentLesson.content || '' }} />
+                <div className="flex flex-col items-center justify-center min-h-[400px] bg-zinc-900/30 rounded-xl border border-white/5 p-6 text-center">
+                    <FileText size={48} className="text-zinc-600 mb-4" />
+                    <p className="text-zinc-400 mb-2">URL do vídeo inválida ou não suportada.</p>
+                    <a
+                        href={currentLesson.content_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-red-400 hover:text-red-300 text-sm underline break-all"
+                    >
+                        Abrir em nova aba
+                    </a>
                 </div>
-            )
+            );
         }
 
+        // 3) Sem vídeo, mas com conteúdo HTML — renderiza sanitizado.
+        if (hasContent) {
+            return (
+                <article className="prose prose-invert max-w-none p-8 bg-zinc-900/50 rounded-xl border border-white/5">
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeLessonHtml(currentLesson.content || '') }} />
+                </article>
+            );
+        }
+
+        // 4) Aula vazia — fallback sólido (sem renderizar nada embaixo).
         return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] bg-zinc-900/30 rounded-xl border border-white/5">
-                <FileText size={48} className="text-zinc-600 mb-4" />
-                <p className="text-zinc-400">Conteúdo em texto/arquivo. Visualize o material abaixo.</p>
+            <div className="flex flex-col items-center justify-center min-h-[400px] bg-zinc-900/30 rounded-xl border border-dashed border-zinc-800 p-12 text-center text-zinc-500">
+                <FileText size={48} className="mb-4" />
+                <p>Esta aula ainda não tem conteúdo.</p>
             </div>
-        )
+        );
     };
 
     // Conteúdo da sidebar (lista de aulas) — reutilizado em desktop aside e mobile Sheet

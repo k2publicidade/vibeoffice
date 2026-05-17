@@ -23,6 +23,7 @@ import {
 import { Lesson, LessonMaterial } from '@/types/courses'
 import { uploadFile } from '@/lib/supabase/storage'
 import { videoEmbedUrl } from '@/lib/video'
+import { sanitizeLessonHtml } from '@/lib/sanitize'
 import {
     Bold,
     Heading2,
@@ -381,7 +382,11 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
                         />
                         <div
                             className="bg-zinc-950 border border-zinc-800 rounded-md min-h-[280px] p-4 overflow-y-auto prose prose-invert prose-sm max-w-none prose-headings:text-white prose-strong:text-white prose-p:text-zinc-300 prose-li:text-zinc-300 prose-a:text-red-400"
-                            dangerouslySetInnerHTML={{ __html: state.content || '<p class="text-zinc-600">Pré-visualização aparecerá aqui...</p>' }}
+                            dangerouslySetInnerHTML={{
+                                __html: state.content
+                                    ? sanitizeLessonHtml(state.content)
+                                    : '<p class="text-zinc-600">Pré-visualização aparecerá aqui...</p>',
+                            }}
                         />
                     </div>
                 </div>
