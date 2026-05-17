@@ -49,7 +49,7 @@ export function useAuth(): UseAuthReturn {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase])
 
   async function fetchUserProfile(userId: string) {
     const { data, error } = await supabase

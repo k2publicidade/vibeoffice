@@ -40,7 +40,7 @@ export function usePresence() {
     return () => {
       channel.unsubscribe()
     }
-  }, [user])
+  }, [user, supabase])
 
   return { onlineUsers }
 }

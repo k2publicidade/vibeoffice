@@ -71,27 +71,24 @@ export default function VibeCanvasPage() {
         setError(null);
         setGeneratedBriefing(null);
 
-        // Simulate processing time
-        setTimeout(() => {
-            try {
-                const briefing = generateBriefing(config);
-                setGeneratedBriefing(briefing);
+        try {
+            const briefing = generateBriefing(config);
+            setGeneratedBriefing(briefing);
 
-                // Auto Save or Update
-                if (currentProjectId) {
-                    updateProject(currentProjectId, config, briefing);
-                } else {
-                    const newProject = saveProject(config, briefing);
-                    setCurrentProjectId(newProject.id);
-                }
-                setView('results');
-
-            } catch (err: any) {
-                console.error(err);
-                setError(err.message || "Erro inesperado ao gerar briefing.");
-                setView('wizard'); // Go back to wizard on error
+            // Auto Save or Update
+            if (currentProjectId) {
+                updateProject(currentProjectId, config, briefing);
+            } else {
+                const newProject = saveProject(config, briefing);
+                setCurrentProjectId(newProject.id);
             }
-        }, 1500);
+            setView('results');
+
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Erro inesperado ao gerar briefing.");
+            setView('wizard'); // Go back to wizard on error
+        }
     };
 
     const handleCopy = () => {

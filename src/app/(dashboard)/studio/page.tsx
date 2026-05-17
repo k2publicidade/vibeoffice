@@ -106,7 +106,7 @@ export default function StudioPage() {
     const hasActiveFilters = searchQuery || filterStartDate || filterEndDate;
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-black to-black text-white">
+        <div className="min-h-[calc(100dvh-64px)] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900 via-black to-black text-white">
             <div className="p-6 lg:p-10 max-w-[1600px] mx-auto animate-in fade-in duration-700 slide-in-from-bottom-4">
 
                 {/* Header */}

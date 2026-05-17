@@ -19,8 +19,10 @@ import {
   Home,
   ChevronRight,
   Filter,
-  MoreHorizontal
+  MoreHorizontal,
+  Menu
 } from 'lucide-react'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
 import { DeleteConfirmModal, SuccessModal, ErrorModal } from '@/components/drive/AlertModal'
@@ -67,6 +69,7 @@ export default function DrivePage() {
   } = useDrive()
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [folderTreeOpen, setFolderTreeOpen] = useState(false)
 
   // Format bytes helper
   const formatBytes = (bytes: number, decimals = 1) => {
@@ -274,6 +277,13 @@ export default function DrivePage() {
     return link
   }
 
+  const folderTreeProps = {
+    items,
+    currentFolderId,
+    onFolderSelect: navigateToFolder,
+    breadcrumbs,
+  }
+
   return (
     <div className="flex h-[calc(100dvh-64px)] overflow-hidden bg-black text-zinc-100">
 
@@ -289,12 +299,7 @@ export default function DrivePage() {
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto px-2">
-          <FolderTree
-            items={items}
-            currentFolderId={currentFolderId}
-            onFolderSelect={navigateToFolder}
-            breadcrumbs={breadcrumbs}
-          />
+          <FolderTree {...folderTreeProps} />
         </div>
         <div className="p-4 border-t border-[#262626]">
           <div className="rounded-xl bg-zinc-900/50 p-3 space-y-2">
@@ -322,13 +327,77 @@ export default function DrivePage() {
         </div>
       </div>
 
+      {/* Sidebar - Mobile/Tablet (< 1024px) */}
+      <Sheet open={folderTreeOpen} onOpenChange={setFolderTreeOpen}>
+        <SheetContent
+          side="left"
+          className="w-80 p-0 lg:hidden bg-zinc-950 border-zinc-800 text-zinc-100"
+        >
+          <div className="flex h-full flex-col">
+            <div className="p-4 border-b border-zinc-800">
+              <Button
+                onClick={() => {
+                  setShowUploadModal(true)
+                  setFolderTreeOpen(false)
+                }}
+                className="w-full gap-2 bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67] shadow-lg shadow-orange-500/20"
+              >
+                <Upload className="h-4 w-4" />
+                Novo Upload
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 py-3">
+              <FolderTree
+                {...folderTreeProps}
+                onFolderSelect={(id) => {
+                  navigateToFolder(id)
+                  setFolderTreeOpen(false)
+                }}
+              />
+            </div>
+            <div className="p-4 border-t border-zinc-800">
+              <div className="rounded-xl bg-zinc-900/50 p-3 space-y-2">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Armazenamento</span>
+                  <span className={cn(isNearLimit ? "text-red-400" : "text-zinc-400")}>
+                    {usagePercentage.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-colors duration-300",
+                      isNearLimit ? "bg-red-500" : "bg-[#fc7a67]"
+                    )}
+                    style={{ width: `${usagePercentage}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-zinc-500 truncate">
+                  {formatBytes(storageUsage)} de {formatBytes(storageLimit)} usados
+                </p>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-br from-black to-zinc-900/20">
 
         {/* Toolbar */}
-        <div className="h-16 border-b border-[#262626] flex items-center justify-between px-6 bg-black/40 backdrop-blur-md sticky top-0 z-10">
-          <div className="flex items-center gap-4 flex-1">
-            {/* Mobile Menu Trigger would go here */}
+        <div className="h-16 border-b border-[#262626] flex items-center justify-between px-4 md:px-6 bg-black/40 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+            {/* Mobile/Tablet menu trigger */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="lg:hidden min-h-11 gap-2 border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 shrink-0"
+              onClick={() => setFolderTreeOpen(true)}
+              aria-label="Abrir lista de pastas"
+            >
+              <Menu className="h-4 w-4" />
+              <span className="hidden sm:inline">Pastas</span>
+            </Button>
 
             {/* Breadcrumbs */}
             <nav className="flex items-center text-sm font-medium text-zinc-500 overflow-hidden">

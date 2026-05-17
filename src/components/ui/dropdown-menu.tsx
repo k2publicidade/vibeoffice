@@ -42,10 +42,10 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          // Dark mode only
-          "bg-zinc-900",
-          "text-foreground",
-          "border border-zinc-800",
+          // Dark mode only (tokens semânticos)
+          "bg-popover",
+          "text-popover-foreground",
+          "border border-border",
           // Animations
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -241,10 +241,10 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        // Dark mode only
-        "bg-zinc-900",
-        "text-foreground",
-        "border border-zinc-800",
+        // Dark mode only (tokens semânticos)
+        "bg-popover",
+        "text-popover-foreground",
+        "border border-border",
         // Animations
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

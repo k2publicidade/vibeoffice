@@ -16,10 +16,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { AlertCircle, LayoutGrid, List } from 'lucide-react'
+import { AlertCircle, LayoutGrid, List, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { Badge } from '@/components/ui/badge'
 
 export default function TicketsPage() {
   const {
@@ -45,6 +52,19 @@ export default function TicketsPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
+  // S-P1-21: sidebar de filtros vira Sheet em mobile/tablet
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  // Contagem de filtros ativos (para badge no botao mobile)
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (filters.status && filters.status.length > 0) n++
+    if (filters.priority) n++
+    if (filters.category) n++
+    if (filters.assignedTo) n++
+    if (filters.searchQuery) n++
+    return n
+  }, [filters])
 
   // Obter comentários do ticket selecionado
   const ticketComments = useMemo(() => {
@@ -115,7 +135,24 @@ export default function TicketsPage() {
               Gerencie solicitações e problemas reportados
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Botao Filtros (mobile/tablet only) — S-P1-21 */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="lg:hidden min-h-11 relative gap-2 border-zinc-700 hover:bg-zinc-800"
+              onClick={() => setFiltersOpen(true)}
+              aria-label="Abrir filtros"
+            >
+              <Filter className="h-4 w-4" />
+              <span className="hidden sm:inline">Filtros</span>
+              {activeFilterCount > 0 && (
+                <Badge className="ml-1 h-5 min-w-5 px-1.5 text-[10px] bg-orange-500 text-white border-none">
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+
             {/* View Toggle */}
             <div className="flex items-center bg-zinc-800/50 border border-zinc-700/50 rounded-full p-1 self-center">
               <button
@@ -166,8 +203,8 @@ export default function TicketsPage() {
 
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar de Filtros */}
-        <div className="lg:w-80 flex-shrink-0">
+        {/* Sidebar de Filtros — desktop only (S-P1-21) */}
+        <div className="hidden lg:block lg:w-80 flex-shrink-0">
           <TicketFilters filters={filters} onFiltersChange={setFilters} />
         </div>
 
@@ -207,6 +244,21 @@ export default function TicketsPage() {
           )}
         </div>
       </div>
+
+      {/* Sheet de filtros — mobile/tablet (S-P1-21) */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent
+          side="right"
+          className="w-[85vw] max-w-sm p-0 bg-zinc-950 border-zinc-800 lg:hidden"
+        >
+          <SheetHeader className="px-4 pt-6 pb-2">
+            <SheetTitle className="text-zinc-100">Filtros</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto h-[calc(100vh-5rem)] px-4 pb-6">
+            <TicketFilters filters={filters} onFiltersChange={setFilters} />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Ticket Detail Modal */}
       <TicketDetailModal

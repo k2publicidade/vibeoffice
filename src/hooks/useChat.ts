@@ -149,7 +149,7 @@ export function useChat(): UseChatReturn {
       sector: data.sector,
       role: data.role,
     }
-  }, [])
+  }, [supabase])
 
   // Obter informações do usuário de um DM
   const getDMUserInfo = useCallback(async (room: ChatRoom): Promise<ChatUser | null> => {
@@ -196,7 +196,7 @@ export function useChat(): UseChatReturn {
 
     setRooms(prev => [...prev, newRoom])
     return newRoom
-  }, [rooms, user])
+  }, [rooms, user, supabase])
 
   // Fetch mensagens + subscribe Realtime quando trocar de sala
   useEffect(() => {
@@ -273,7 +273,7 @@ export function useChat(): UseChatReturn {
         supabase.removeChannel(channel)
       }
     }
-  }, [currentRoom, user])
+  }, [currentRoom, user, supabase, isRoomArchived, unarchiveRoom])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!currentRoom || !content.trim() || !user) return
@@ -330,7 +330,7 @@ export function useChat(): UseChatReturn {
     } catch (error) {
       console.error('Error sending message:', error)
     }
-  }, [currentRoom, user])
+  }, [currentRoom, user, supabase])
 
   /**
    * Cria novo grupo de projeto

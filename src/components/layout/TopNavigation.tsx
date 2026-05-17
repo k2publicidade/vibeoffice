@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { UserMenu } from './UserMenu'
 import { NavBar } from '@/components/ui/tubelight-navbar'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { OnlineUsersPopover } from './OnlineUsersPopover'
 import { getNavForRole } from '@/lib/navigation'
 
 interface TopNavigationProps {
@@ -61,6 +62,7 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
 
         {/* Right: User Info */}
         <div className="flex items-center gap-2 md:gap-4">
+          <OnlineUsersPopover />
           <NotificationBell />
           {user && (
             <div className="hidden sm:flex items-center gap-2 md:gap-3">

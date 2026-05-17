@@ -140,7 +140,7 @@ export function useDrive(): UseDriveReturn {
 
     if (error) return null
     return { name: data.name, avatar: data.avatar || undefined, email: data.email }
-  }, [])
+  }, [supabase])
 
   // Folder da raiz é null
   const currentFolder = currentFolderId
@@ -295,7 +295,7 @@ export function useDrive(): UseDriveReturn {
     } finally {
       setIsUploading(false)
     }
-  }, [user])
+  }, [user, supabase])
 
   // Upload de múltiplos arquivos
   const uploadFiles = useCallback(async (files: File[], parentId?: string | null): Promise<DriveItem[]> => {
@@ -356,7 +356,7 @@ export function useDrive(): UseDriveReturn {
     await fetchItems()
 
     return newFolder
-  }, [user])
+  }, [user, supabase])
 
   // Deletar item
   const deleteItem = useCallback(async (itemId: string) => {
@@ -387,7 +387,7 @@ export function useDrive(): UseDriveReturn {
       console.error('Error deleting item:', error)
       throw error
     }
-  }, [items])
+  }, [items, supabase])
 
   // Renomear item
   const renameItem = useCallback(async (itemId: string, newName: string) => {
@@ -407,7 +407,7 @@ export function useDrive(): UseDriveReturn {
           : item
       )
     )
-  }, [])
+  }, [supabase])
 
   // Mover item para outra pasta (ou raiz se targetFolderId === null)
   const moveItem = useCallback(async (itemId: string, targetFolderId: string | null) => {
@@ -443,7 +443,7 @@ export function useDrive(): UseDriveReturn {
           : i
       )
     )
-  }, [items])
+  }, [items, supabase])
 
   // Compartilhar item com usuário
   const shareItem = useCallback(async (input: ShareItemInput) => {
@@ -486,7 +486,7 @@ export function useDrive(): UseDriveReturn {
 
     // Refetch items para atualizar UI
     await fetchItems()
-  }, [user, items])
+  }, [user, items, supabase])
 
   // Remover compartilhamento
   const unshareItem = useCallback(async (itemId: string, userId: string) => {
@@ -500,7 +500,7 @@ export function useDrive(): UseDriveReturn {
 
     // Refetch items para atualizar UI
     await fetchItems()
-  }, [])
+  }, [supabase])
 
   // Atualizar permissão de compartilhamento
   const updateShare = useCallback(async (itemId: string, userId: string, permission: SharePermission) => {
@@ -514,7 +514,7 @@ export function useDrive(): UseDriveReturn {
 
     // Refetch items para atualizar UI
     await fetchItems()
-  }, [])
+  }, [supabase])
 
   // Obter compartilhamentos de um item
   const getItemShares = useCallback((itemId: string): SharedAccess[] => {
@@ -566,7 +566,7 @@ export function useDrive(): UseDriveReturn {
           : item
       )
     )
-  }, [items])
+  }, [items, supabase])
 
   // Gerar link de compartilhamento
   const copyShareLink = useCallback((itemId: string): string => {
