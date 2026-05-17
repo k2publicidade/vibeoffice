@@ -78,15 +78,20 @@ export default function TicketsPage() {
     }
   }
 
-  const handleAddComment = (content: string, isInternal: boolean) => {
+  const handleAddComment = async (content: string, isInternal: boolean) => {
     if (!activeTicket) return
 
-    addComment({
-      ticketId: activeTicket.id,
-      content,
-      isInternal,
-    })
-    toast.success('Comentário adicionado!')
+    try {
+      await addComment({
+        ticketId: activeTicket.id,
+        content,
+        isInternal,
+      })
+      toast.success('Comentário adicionado!')
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error)
+      toast.error('Erro ao adicionar comentário')
+    }
   }
 
   const handleDeleteComment = (commentId: string) => {

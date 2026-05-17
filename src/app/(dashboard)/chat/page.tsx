@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useChat } from '@/hooks/useChat'
 import { ChatListPremium } from '@/components/chat/ChatListPremium'
 import { ChatRoomPremium } from '@/components/chat/ChatRoomPremium'
@@ -29,9 +29,11 @@ export default function ChatPage() {
   const [showNewConversationModal, setShowNewConversationModal] = useState(false)
 
   // Selecionar primeiro room automaticamente
-  if (!currentRoom && rooms.length > 0) {
-    setCurrentRoom(rooms[0])
-  }
+  useEffect(() => {
+    if (!currentRoom && rooms.length > 0) {
+      setCurrentRoom(rooms[0])
+    }
+  }, [rooms, currentRoom, setCurrentRoom])
 
   // Simular contagem de mensagens não lidas
   const unreadCounts: Record<string, number> = {

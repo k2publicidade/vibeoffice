@@ -140,6 +140,7 @@ export function useCourses() {
       }
     } catch (err) {
       console.error("Error updating progress", err);
+      toast.error('Não consegui salvar seu progresso. Tente novamente.')
       fetchUserProgress(); // Revert on error
     }
   };
