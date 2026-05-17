@@ -48,7 +48,7 @@ export function useCalendar(): UseCalendarReturn {
     if (!user) return
 
     fetchEvents()
-  }, [user])
+  }, [user, supabase])
 
   async function fetchEvents() {
     setIsLoading(true)
@@ -188,7 +188,7 @@ export function useCalendar(): UseCalendarReturn {
 
       setEvents((prev) => [...prev, newEvent])
     },
-    [user]
+    [user, supabase]
   )
 
   const updateEvent = useCallback(
@@ -234,7 +234,7 @@ export function useCalendar(): UseCalendarReturn {
         )
       )
     },
-    []
+    [supabase]
   )
 
   const deleteEvent = useCallback(async (id: string) => {
@@ -246,7 +246,7 @@ export function useCalendar(): UseCalendarReturn {
     if (error) throw error
 
     setEvents((prev) => prev.filter((event) => event.id !== id))
-  }, [])
+  }, [supabase])
 
   const duplicateEvent = useCallback(
     async (id: string) => {
@@ -296,7 +296,7 @@ export function useCalendar(): UseCalendarReturn {
 
       setEvents((prev) => [...prev, newEvent])
     },
-    [user, events]
+    [user, events, supabase]
   )
 
   const getEventsByType = useCallback(

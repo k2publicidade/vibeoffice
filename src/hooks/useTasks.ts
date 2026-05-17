@@ -138,7 +138,7 @@ export function useTasks(): UseTasksReturn {
     return () => {
       channel.unsubscribe()
     }
-  }, [user])
+  }, [user, supabase])
 
   async function fetchTasks() {
     setIsLoading(true)
@@ -418,7 +418,7 @@ export function useTasks(): UseTasksReturn {
       setTasks((prev) => [newTask, ...prev])
       return newTask
     },
-    [user]
+    [user, supabase]
   )
 
   // Função auxiliar para mapear TaskStatus → TicketStatus
@@ -615,7 +615,7 @@ export function useTasks(): UseTasksReturn {
     )
 
     return updatedTask
-  }, [tasks])
+  }, [tasks, supabase])
 
   // Deletar tarefa
   const deleteTask = useCallback(async (id: string) => {
@@ -639,7 +639,7 @@ export function useTasks(): UseTasksReturn {
     // 3. Atualizar state local
     setTasks((prev) => prev.filter((t) => t.id !== id))
     return true
-  }, [])
+  }, [supabase])
 
   // Obter tarefa por ID
   const getTaskById = useCallback((id: string) => {

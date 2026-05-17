@@ -134,7 +134,7 @@ export function useTickets(): UseTicketsReturn {
     return () => {
       channel.unsubscribe()
     }
-  }, [user])
+  }, [user, supabase])
 
   async function fetchTickets() {
     setIsLoading(true)
@@ -314,7 +314,7 @@ export function useTickets(): UseTicketsReturn {
 
       return newTicket
     },
-    [user]
+    [user, supabase]
   )
 
   // Atualizar ticket
@@ -454,7 +454,7 @@ export function useTickets(): UseTicketsReturn {
         return null
       }
     },
-    [user, tickets]
+    [user, tickets, supabase]
   )
 
   // Deletar ticket
@@ -467,7 +467,7 @@ export function useTickets(): UseTicketsReturn {
     // Comentários serão removidos automaticamente via CASCADE
     setComments(prev => prev.filter(c => c.ticketId !== id))
     return true
-  }, [])
+  }, [supabase])
 
   // Obter ticket por ID
   const getTicketById = useCallback((id: string) => {
@@ -524,7 +524,7 @@ export function useTickets(): UseTicketsReturn {
 
       return newComment
     },
-    [user]
+    [user, supabase]
   )
 
   // Deletar comentário
@@ -538,7 +538,7 @@ export function useTickets(): UseTicketsReturn {
 
     setComments(prev => prev.filter(c => c.id !== commentId))
     return true
-  }, [])
+  }, [supabase])
 
   // Atualizar comentário
   const updateComment = useCallback(
@@ -575,7 +575,7 @@ export function useTickets(): UseTicketsReturn {
 
       return updatedComment
     },
-    [user]
+    [user, supabase]
   )
 
   // Obter usuário por ID
@@ -589,7 +589,7 @@ export function useTickets(): UseTicketsReturn {
     if (error) return null
 
     return { name: data.name, avatar: data.avatar || undefined }
-  }, [])
+  }, [supabase])
 
   return {
     tickets,
