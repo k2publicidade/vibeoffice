@@ -13,8 +13,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
 import { Lesson, LessonMaterial } from '@/types/courses'
 import { uploadFile } from '@/lib/supabase/storage'
+import { videoEmbedUrl } from '@/lib/video'
 import {
     Bold,
     Heading2,
@@ -26,10 +34,10 @@ import {
     Paperclip,
     Pilcrow,
     PlayCircle,
-    Sparkles,
     Trash2,
     Upload,
     Video as VideoIcon,
+    Wand2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -57,35 +65,32 @@ const defaultState: FormState = {
     materials: [],
 }
 
-// Detecta provider de vídeo e gera embed URL (best-effort)
-function videoEmbedUrl(url: string): string | null {
-    if (!url) return null
-    try {
-        const u = new URL(url)
-        if (u.hostname.includes('youtube.com')) {
-            const id = u.searchParams.get('v')
-            if (id) return `https://www.youtube.com/embed/${id}`
-        }
-        if (u.hostname === 'youtu.be') {
-            return `https://www.youtube.com/embed/${u.pathname.replace('/', '')}`
-        }
-        if (u.hostname.includes('vimeo.com')) {
-            const id = u.pathname.split('/').filter(Boolean).pop()
-            if (id) return `https://player.vimeo.com/video/${id}`
-        }
-        return url
-    } catch {
-        return null
-    }
-}
-
 export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }: LessonEditorModalProps) {
     const [state, setState] = useState<FormState>(defaultState)
     const [loading, setLoading] = useState(false)
     const [uploadingMaterial, setUploadingMaterial] = useState(false)
     const [aiBusy, setAiBusy] = useState(false)
+    const [inputModal, setInputModal] = useState<{
+        open: boolean
+        title: string
+        placeholder: string
+        onConfirm: (value: string) => void
+    }>({ open: false, title: '', placeholder: '', onConfirm: () => {} })
+    const [inputValue, setInputValue] = useState('')
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const closeInputModal = () => {
+        setInputModal(prev => ({ ...prev, open: false }))
+        setInputValue('')
+    }
+
+    const confirmInputModal = () => {
+        const trimmed = inputValue.trim()
+        if (!trimmed) return
+        inputModal.onConfirm(trimmed)
+        closeInputModal()
+    }
 
     useEffect(() => {
         if (open) {
@@ -132,9 +137,15 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
     }
 
     const handleInsertImage = () => {
-        const url = prompt('URL da imagem:')
-        if (!url) return
-        insertAtCursor(`\n<img src="${url}" alt="" />\n`)
+        setInputValue('')
+        setInputModal({
+            open: true,
+            title: 'Inserir imagem',
+            placeholder: 'https://exemplo.com/imagem.jpg',
+            onConfirm: (url) => {
+                insertAtCursor(`\n<img src="${url}" alt="" />\n`)
+            },
+        })
     }
 
     // --- "Formatar com IA" — formatação local básica:
@@ -205,13 +216,25 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
     }
 
     const handleAddLink = () => {
-        const url = prompt('URL do link:')
-        if (!url) return
-        const name = prompt('Nome do link:') || url
-        setState(prev => ({
-            ...prev,
-            materials: [...prev.materials, { kind: 'link', name, url }],
-        }))
+        setInputValue('')
+        setInputModal({
+            open: true,
+            title: 'Inserir link',
+            placeholder: 'https://exemplo.com',
+            onConfirm: (url) => {
+                // Usa o hostname como nome amigável quando possível; fallback pra URL crua.
+                let name = url
+                try {
+                    name = new URL(url).hostname.replace(/^www\./, '') || url
+                } catch {
+                    // url não é parseável — mantém o valor cru
+                }
+                setState(prev => ({
+                    ...prev,
+                    materials: [...prev.materials, { kind: 'link', name, url }],
+                }))
+            },
+        })
     }
 
     const removeMaterial = (idx: number) => {
@@ -250,6 +273,7 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
     const previewEmbed = videoEmbedUrl(state.content_url)
 
     return (
+        <>
         <PremiumModal open={open} onClose={onClose} size="full" className="!max-w-5xl">
             <PremiumModalHeader>
                 <div className="flex items-center gap-3">
@@ -324,12 +348,14 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
                         <Button
                             type="button"
                             size="sm"
+                            variant="outline"
                             onClick={formatWithAI}
                             disabled={aiBusy}
-                            className="h-8 gap-1.5 bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-400 hover:to-fuchsia-400 text-white text-xs rounded-full"
+                            title="Reformata: '##' vira H2, '-' vira lista, etc."
+                            className="h-8 gap-1.5 text-xs rounded-full border-zinc-700 hover:bg-zinc-800"
                         >
-                            {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                            Formatar com IA
+                            {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                            Auto-formatar
                         </Button>
                     </div>
 
@@ -479,6 +505,53 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
                 </div>
             </PremiumModalFooter>
         </PremiumModal>
+
+        {/* Sub-modal para inserir URL (substitui window.prompt) */}
+        <Dialog
+            open={inputModal.open}
+            onOpenChange={(o) => {
+                if (!o) closeInputModal()
+            }}
+        >
+            <DialogContent className="max-w-md bg-zinc-900 border-zinc-800 z-[60]">
+                <DialogHeader>
+                    <DialogTitle>{inputModal.title}</DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                    <Input
+                        placeholder={inputModal.placeholder}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault()
+                                confirmInputModal()
+                            }
+                        }}
+                        className="bg-zinc-950 border-zinc-800 h-11"
+                    />
+                </div>
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={closeInputModal}
+                        className="border-zinc-700"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        type="button"
+                        disabled={!inputValue.trim()}
+                        onClick={confirmInputModal}
+                    >
+                        Inserir
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     )
 }
 
