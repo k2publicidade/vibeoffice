@@ -54,6 +54,12 @@ interface TaskDialogProps {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   defaultStatus?: TaskStatus
+  /**
+   * Quando true, oculta o botão trigger interno. Útil para usar o dialog
+   * em modo controlled (ex: edição via state externo) sem renderizar
+   * botão duplicado/órfão no DOM. Ver achado S-P1-15.
+   */
+  hideTrigger?: boolean
 }
 
 const sectors = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
@@ -79,6 +85,7 @@ export function TaskDialog({
   isOpen,
   onOpenChange,
   defaultStatus,
+  hideTrigger,
 }: TaskDialogProps) {
   const { users, isLoading: usersLoading } = useUsers()
   const [open, setOpen] = useState(isOpen || false)
@@ -132,27 +139,29 @@ export function TaskDialog({
 
   return (
     <>
-      <Button
-        onClick={() => handleOpenChange(true)}
-        className={cn(
-          "gap-2 h-11 min-w-[140px]",
-          task
-            ? "bg-zinc-800 hover:bg-zinc-700"
-            : "bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:from-[#ff0300] hover:to-[#fc7a67]"
-        )}
-      >
-        {task ? (
-          <>
-            <Edit2 className="h-4 w-4" />
-            Editar Tarefa
-          </>
-        ) : (
-          <>
-            <Sparkles className="h-4 w-4" />
-            Nova Tarefa
-          </>
-        )}
-      </Button>
+      {!hideTrigger && (
+        <Button
+          onClick={() => handleOpenChange(true)}
+          className={cn(
+            "gap-2 h-11 min-w-[140px]",
+            task
+              ? "bg-zinc-800 hover:bg-zinc-700"
+              : "bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:from-[#ff0300] hover:to-[#fc7a67]"
+          )}
+        >
+          {task ? (
+            <>
+              <Edit2 className="h-4 w-4" />
+              Editar Tarefa
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Nova Tarefa
+            </>
+          )}
+        </Button>
+      )}
 
       <PremiumModal open={open} onClose={() => handleOpenChange(false)} size="lg">
         <PremiumModalHeader>

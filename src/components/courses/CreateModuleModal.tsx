@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+    PremiumModal,
+    PremiumModalHeader,
+    PremiumModalTitle,
+    PremiumModalDescription,
+    PremiumModalBody,
+    PremiumModalFooter,
+} from '@/components/ui/premium-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,45 +44,58 @@ export function CreateModuleModal({ open, onClose, onSave, initialTitle = '' }: 
     }
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md bg-zinc-950 border border-white/10 text-white shadow-2xl">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Layers className="text-red-500" size={20} />
-                        {initialTitle ? 'Editar Módulo' : 'Novo Módulo'}
-                    </DialogTitle>
-                    <DialogDescription className="text-zinc-400">
-                        Organize suas aulas em módulos para melhor estrutura.
-                    </DialogDescription>
-                </DialogHeader>
+        <PremiumModal open={open} onClose={onClose} size="md">
+            <PremiumModalHeader>
+                <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center border border-red-500/20">
+                        <Layers className="h-5 w-5 text-red-400" />
+                    </div>
+                    <div>
+                        <PremiumModalTitle>
+                            {initialTitle ? 'Editar Módulo' : 'Novo Módulo'}
+                        </PremiumModalTitle>
+                        <PremiumModalDescription>
+                            Organize suas aulas em módulos para melhor estrutura.
+                        </PremiumModalDescription>
+                    </div>
+                </div>
+            </PremiumModalHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <form onSubmit={handleSubmit}>
+                <PremiumModalBody>
                     <div className="space-y-2">
                         <Label htmlFor="module-title" className="text-zinc-300">Título do Módulo</Label>
                         <Input
                             id="module-title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="bg-zinc-900 border-zinc-800 focus:border-red-500/50 focus:ring-red-500/20 text-white"
+                            className="bg-zinc-900 border-zinc-800 focus:border-red-500/50 focus:ring-red-500/20 text-white h-11"
                             placeholder="Ex: Introdução ao Curso"
                             autoFocus
                         />
                     </div>
+                </PremiumModalBody>
 
-                    <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={onClose} className="text-zinc-400 hover:text-white hover:bg-white/5">
+                <PremiumModalFooter>
+                    <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto sm:ml-auto">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                            className="w-full sm:w-auto min-w-[120px] h-11 rounded-full border-zinc-700"
+                        >
                             Cancelar
                         </Button>
                         <Button
                             type="submit"
                             disabled={loading || !title.trim()}
-                            className="bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/20"
+                            className="w-full sm:w-auto min-w-[140px] h-11 rounded-full bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white font-medium disabled:opacity-50"
                         >
                             {loading ? 'Salvando...' : 'Salvar Módulo'}
                         </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                    </div>
+                </PremiumModalFooter>
+            </form>
+        </PremiumModal>
     )
 }

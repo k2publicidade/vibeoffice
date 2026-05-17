@@ -15,25 +15,43 @@ export default function CoursesPage() {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Calculate stats
+  // Cursos visíveis: Admin vê tudo, outros só publicados
+  const visibleCourses = useMemo(() => {
+    if (user?.role === 'Admin') return courses
+    return courses.filter(c => c.is_published !== false)
+  }, [courses, user?.role])
+
+  // Helper: curso tem pelo menos uma aula?
+  const courseHasLessons = (c: typeof courses[number]) => {
+    const fromCount = (c as any).lessons_count ?? 0;
+    if (fromCount > 0) return true;
+    const fromModules = (c.modules || []).reduce(
+      (sum, m: any) => sum + ((m.lessons || []).length || 0),
+      0
+    );
+    return fromModules > 0;
+  }
+
+  // Calculate stats (somente cursos visíveis + com aulas para o total)
   const stats = useMemo(() => {
-    let total = courses.length;
+    const coursesWithLessons = visibleCourses.filter(courseHasLessons);
+    let total = coursesWithLessons.length;
     let inProgress = 0;
     let completed = 0;
 
-    courses.forEach(c => {
+    coursesWithLessons.forEach(c => {
       const p = getProgressStats(c.id).percentage;
       if (p === 100) completed++;
       else if (p > 0) inProgress++;
     });
 
     return { total, inProgress, completed };
-  }, [courses, getProgressStats]);
+  }, [visibleCourses, getProgressStats]);
 
   const filteredCourses = useMemo(() => {
-    if (!searchTerm) return courses;
-    return courses.filter(c => c.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [courses, searchTerm]);
+    if (!searchTerm) return visibleCourses;
+    return visibleCourses.filter(c => c.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [visibleCourses, searchTerm]);
 
   const handleCourseClick = (courseId: string) => {
     router.push(`/courses/${courseId}`)

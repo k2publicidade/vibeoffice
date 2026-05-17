@@ -53,7 +53,7 @@ export default function ProfilePage() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="w-[90%] mx-auto py-8 space-y-8"
+            className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8 space-y-8"
         >
             {/* Profile Header Card */}
             <motion.div variants={itemVariants}>

@@ -21,7 +21,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       {/* Main Content */}
-      <main className="mx-auto max-w-none px-4 py-4 md:px-6 md:py-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {children}
       </main>
 

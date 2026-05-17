@@ -1,17 +1,24 @@
 'use client'
 
 import { useTickets } from '@/hooks/useTickets'
-import { useAuth } from '@/hooks/useAuth'
 import { Ticket } from '@/types/tickets'
 import { TicketDetailModal } from '@/components/tickets/TicketDetailModal'
-import { CreateTicketModal } from '@/components/tickets/CreateTicketModal'
 import { TicketList } from '@/components/tickets/TicketList'
 import { TicketFilters } from '@/components/tickets/TicketFilters'
 import { Button } from '@/components/ui/button'
-import { Plus, AlertCircle, LayoutGrid, List } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { AlertCircle, LayoutGrid, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
-import { CreateTicketInput } from '@/lib/schemas'
 import { toast } from 'sonner'
 
 export default function TicketsPage() {
@@ -20,14 +27,12 @@ export default function TicketsPage() {
     filters,
     setFilters,
     getTicketsByStatus,
-    createTicket,
     getCommentsByTicketId,
     addComment,
     deleteComment,
     getUserById,
     tickets, // Destructure tickets for realtime updates
   } = useTickets()
-  const { user } = useAuth()
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
 
@@ -38,8 +43,8 @@ export default function TicketsPage() {
   }, [selectedTicket, tickets])
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
 
   // Obter comentários do ticket selecionado
   const ticketComments = useMemo(() => {
@@ -59,40 +64,37 @@ export default function TicketsPage() {
     }, 300)
   }
 
-  const handleCreateTicket = async (data: CreateTicketInput) => {
-    if (!user) {
-      toast.error('Usuário não autenticado')
-      return
-    }
-
-    try {
-      await createTicket({
-        ...data,
-        status: 'open',
-        requester: user.id,
-      })
-      toast.success('Ticket criado com sucesso!')
-    } catch (error) {
-      console.error('Erro ao criar ticket:', error)
-      toast.error('Erro ao criar ticket')
-    }
-  }
-
-  const handleAddComment = (content: string, isInternal: boolean) => {
+  const handleAddComment = async (content: string, isInternal: boolean) => {
     if (!activeTicket) return
 
-    addComment({
-      ticketId: activeTicket.id,
-      content,
-      isInternal,
-    })
-    toast.success('Comentário adicionado!')
+    try {
+      await addComment({
+        ticketId: activeTicket.id,
+        content,
+        isInternal,
+      })
+      toast.success('Comentário adicionado!')
+    } catch (error) {
+      console.error('Erro ao adicionar comentário:', error)
+      toast.error('Erro ao adicionar comentário')
+    }
   }
 
+  // Inicia fluxo de delete — abre AlertDialog (sem confirm nativo; ver S-P1-20)
   const handleDeleteComment = (commentId: string) => {
-    if (confirm('Tem certeza que deseja excluir este comentário?')) {
-      deleteComment(commentId)
+    setCommentToDelete(commentId)
+  }
+
+  const confirmDeleteComment = async () => {
+    if (!commentToDelete) return
+    try {
+      await deleteComment(commentToDelete)
       toast.success('Comentário excluído!')
+    } catch (error) {
+      console.error('Erro ao excluir comentário:', error)
+      toast.error('Erro ao excluir comentário')
+    } finally {
+      setCommentToDelete(null)
     }
   }
 
@@ -103,7 +105,7 @@ export default function TicketsPage() {
   const completedCount = getTicketsByStatus('completed').length
 
   return (
-    <div className="w-[95%] mx-auto py-6 md:py-8 space-y-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-8">
       {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -142,15 +144,7 @@ export default function TicketsPage() {
               </button>
             </div>
 
-            {/* Botão removido: tickets são criados automaticamente via tasks
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="gap-2 rounded-full px-6 h-11 bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] hover:from-[#ff0300] hover:to-[#cc0200] transition-all shadow-lg shadow-[#ff0300]/20 border-none"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Ticket
-            </Button>
-            */}
+            {/* Botão "Novo Ticket" removido: tickets são criados automaticamente via tasks */}
           </div>
         </div>
       </div>
@@ -225,12 +219,31 @@ export default function TicketsPage() {
         getUserById={getUserById}
       />
 
-      {/* Create Ticket Modal */}
-      <CreateTicketModal
-        open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreateTicket={handleCreateTicket}
-      />
+      {/* AlertDialog: confirmar exclusão de comentário */}
+      <AlertDialog
+        open={!!commentToDelete}
+        onOpenChange={(open) => {
+          if (!open) setCommentToDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir comentário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteComment}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

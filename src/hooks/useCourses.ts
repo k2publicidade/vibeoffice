@@ -61,6 +61,7 @@ export function useCourses() {
           difficulty: course.difficulty || 'beginner',
           tags: course.tags || [],
           updated_at: course.updated_at || course.created_at,
+          is_published: course.is_published ?? true,
           modules: courseModules,
           lessons_count: lessonsData.filter((l: any) => l.course_id === course.id).length
         } as Course;
@@ -139,6 +140,7 @@ export function useCourses() {
       }
     } catch (err) {
       console.error("Error updating progress", err);
+      toast.error('Não consegui salvar seu progresso. Tente novamente.')
       fetchUserProgress(); // Revert on error
     }
   };

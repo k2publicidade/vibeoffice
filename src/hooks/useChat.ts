@@ -53,7 +53,7 @@ export function useChat(): UseChatReturn {
   const [typingUsers, setTypingUsers] = useState<string[]>([])
   const { user } = useAuth()
   // [C05] Client criado por hook para evitar sessão stale
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const { isRoomArchived, unarchiveRoom } = useArchiveChat(user?.id)
 
   // Fetch inicial de salas e usuários

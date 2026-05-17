@@ -2,47 +2,23 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard,
-  MessageSquare,
-  HardDrive,
-  CheckSquare,
-  Ticket,
-  BookOpen,
-  Calendar,
-  X,
-  Mic2,
-  Disc3,
-} from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
+import { getNavForRole } from '@/lib/navigation'
 
 interface MobileDrawerProps {
   isOpen: boolean
   onClose: () => void
 }
 
-const baseNavItems = [
-  { href: '/', label: 'Início', icon: LayoutDashboard },
-  { href: '/chat', label: 'Chat', icon: MessageSquare },
-  { href: '/drive', label: 'Arquivos', icon: HardDrive },
-  { href: '/tickets', label: 'Solicitações', icon: Ticket },
-  { href: '/courses', label: 'Cursos', icon: BookOpen },
-  { href: '/calendar', label: 'Agenda', icon: Calendar },
-  { href: '/studio', label: 'Estúdio', icon: Mic2 },
-  { href: '/lancamentos', label: 'Lançamentos', icon: Disc3 },
-]
-
-const adminNavItem = { href: '/tasks', label: 'Tarefas', icon: CheckSquare }
-
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const pathname = usePathname()
   const { user } = useAuth()
 
-  const navItems = user?.role === 'Admin'
-    ? [...baseNavItems.slice(0, 3), adminNavItem, ...baseNavItems.slice(3)]
-    : baseNavItems
+  // Itens vêm de lib/navigation.ts (fonte única).
+  const navItems = getNavForRole(user?.role)
 
   const isActive = (href: string) => {
     if (href === '/') {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import type { CalendarEvent } from '@/types/calendar'
@@ -41,7 +41,7 @@ export function useCalendar(): UseCalendarReturn {
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
   // [C05] Client criado por hook para evitar sessão stale
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Fetch inicial de events
   useEffect(() => {

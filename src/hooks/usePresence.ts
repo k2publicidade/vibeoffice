@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 
@@ -13,7 +13,7 @@ export function usePresence() {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
   const { user } = useAuth()
   // [C05] Client criado por hook para evitar sessão stale
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     if (!user) return

@@ -69,7 +69,7 @@ export default function SettingsPage() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="w-[90%] mx-auto py-8"
+            className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8"
         >
             {/* Header */}
             <motion.div variants={contentVariants} className="mb-10">

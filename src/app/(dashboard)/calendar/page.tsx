@@ -152,6 +152,7 @@ export default function CalendarPage() {
   // Merged Create Event Handler
   const handleCreateEvent = async (eventData: {
     title: string
+    description?: string
     date: Date
     startTime: string
     endTime: string
@@ -178,13 +179,15 @@ export default function CalendarPage() {
       endTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0)
 
       // Debug logging
-      console.log('[CalendarPage] handleCreateEvent:', {
-        eventData,
-        baseDate: baseDate.toISOString(),
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        isEndAfterStart: endTime > startTime,
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CalendarPage] handleCreateEvent:', {
+          eventData,
+          baseDate: baseDate.toISOString(),
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          isEndAfterStart: endTime > startTime,
+        })
+      }
 
       // Validação extra antes de enviar
       if (endTime <= startTime) {
@@ -195,7 +198,7 @@ export default function CalendarPage() {
 
       await createEvent({
         title: eventData.title,
-        description: '',
+        description: eventData.description ?? '',
         startTime,
         endTime,
         type: eventData.type,

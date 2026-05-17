@@ -20,6 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { toast } from 'sonner'
 
 // Configuração de cores das colunas (Novo visual Premium)
 const columnColors: Record<TaskStatus, string> = {
@@ -84,10 +85,15 @@ export default function TasksPage() {
     [filteredTasks]
   )
 
-  const handleCreateTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    createTask(taskData)
-    setIsDialogOpen(false)
-    setPreselectedStatus(undefined)
+  const handleCreateTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      await createTask(taskData)
+      setIsDialogOpen(false)
+      setPreselectedStatus(undefined)
+      toast.success('Tarefa criada')
+    } catch (error) {
+      toast.error('Erro ao criar tarefa: ' + (error as Error).message)
+    }
   }
 
   const handleEditTask = (task: Task) => {
@@ -96,15 +102,21 @@ export default function TasksPage() {
     setIsDialogOpen(true)
   }
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (selectedTask) {
-      updateTask(selectedTask.id, taskData)
-      setSelectedTask(undefined)
-    } else {
-      createTask(taskData)
+  const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (selectedTask) {
+        await updateTask(selectedTask.id, taskData)
+        setSelectedTask(undefined)
+        toast.success('Tarefa atualizada')
+      } else {
+        await createTask(taskData)
+        toast.success('Tarefa criada')
+      }
+      setIsDialogOpen(false)
+      setPreselectedStatus(undefined)
+    } catch (error) {
+      toast.error('Erro ao salvar tarefa: ' + (error as Error).message)
     }
-    setIsDialogOpen(false)
-    setPreselectedStatus(undefined)
   }
 
   // Handler para iniciar processo de delete (usado no Kanban)
@@ -112,11 +124,11 @@ export default function TasksPage() {
     setTaskToDelete(task)
   }
 
-  // Handler para confirmar delete (usado no List view)
+  // Handler para iniciar delete via List view — abre o DeleteTaskDialog
+  // (substitui confirm() nativo; ver achado S-P1-16)
   const handleDeleteTaskById = (taskId: string) => {
-    if (confirm('Tem certeza que deseja deletar esta tarefa?')) {
-      deleteTask(taskId)
-    }
+    const task = filteredTasks.find(t => t.id === taskId)
+    if (task) setTaskToDelete(task)
   }
 
   // Handler para confirmar delete via dialog
@@ -295,9 +307,10 @@ export default function TasksPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog para edição de tarefa */}
+      {/* Dialog para edição de tarefa — hideTrigger pra evitar botão duplicado no DOM */}
       {selectedTask && (
         <TaskDialog
+          hideTrigger
           task={selectedTask}
           onSave={handleSaveTask}
           isOpen={isDialogOpen && !!selectedTask}
