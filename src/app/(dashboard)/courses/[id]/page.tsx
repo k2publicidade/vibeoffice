@@ -29,18 +29,18 @@ export default function CoursePlayerPage() {
         }
     }, [course, currentLessonId]);
 
-    if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500">Carregando curso...</div>;
-    if (!course) return <div className="min-h-screen bg-black flex items-center justify-center text-red-500">Curso não encontrado.</div>;
-
-    // Derived State
+    // Derived State (precisa estar ANTES dos early returns pra respeitar Rules of Hooks)
     const currentLesson = useMemo(() => {
-        if (!currentLessonId) return null;
+        if (!course || !currentLessonId) return null;
         for (const mod of course.modules || []) {
-            const lesson = mod.lessons.find(l => l.id === currentLessonId);
+            const lesson = (mod.lessons || []).find(l => l.id === currentLessonId);
             if (lesson) return lesson;
         }
         return null;
     }, [course, currentLessonId]);
+
+    if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500">Carregando curso...</div>;
+    if (!course) return <div className="min-h-screen bg-black flex items-center justify-center text-red-500">Curso não encontrado.</div>;
 
     const isCurrentCompleted = currentLessonId ? isLessonCompleted(course.id, currentLessonId) : false;
     const progress = getProgressStats(course.id);
