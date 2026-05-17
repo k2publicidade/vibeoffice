@@ -4,7 +4,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@/types/auth'
 import { useRouter } from 'next/navigation'
@@ -24,7 +24,7 @@ export function useAuth(): UseAuthReturn {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   // [C05] Client criado por hook para evitar sessão stale
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     // Obter sessão inicial

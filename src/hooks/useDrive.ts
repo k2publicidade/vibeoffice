@@ -63,7 +63,7 @@ export function useDrive(): UseDriveReturn {
   const [isUploading, setIsUploading] = useState(false)
   const { user } = useAuth()
   // [C05] Client criado por hook para evitar sessão stale
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Fetch inicial de items e usuários
   useEffect(() => {

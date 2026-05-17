@@ -60,7 +60,7 @@ export function useTickets(): UseTicketsReturn {
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
   // [C05] Client criado por hook para evitar sessão stale
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Fetch inicial de tickets
   useEffect(() => {

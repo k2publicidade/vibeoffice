@@ -178,13 +178,15 @@ export default function CalendarPage() {
       endTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0)
 
       // Debug logging
-      console.log('[CalendarPage] handleCreateEvent:', {
-        eventData,
-        baseDate: baseDate.toISOString(),
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        isEndAfterStart: endTime > startTime,
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CalendarPage] handleCreateEvent:', {
+          eventData,
+          baseDate: baseDate.toISOString(),
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          isEndAfterStart: endTime > startTime,
+        })
+      }
 
       // Validação extra antes de enviar
       if (endTime <= startTime) {
