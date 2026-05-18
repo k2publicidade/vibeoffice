@@ -83,7 +83,15 @@ export function TicketList({ tickets, onSelectTicket, view = 'grid' }: TicketLis
 
                 <div className="hidden md:flex flex-col items-center gap-1">
                   <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Data</span>
-                  <span className="text-xs font-medium text-zinc-400">03.01.26</span>
+                  <span className="text-xs font-medium text-zinc-400">
+                    {ticket.createdAt
+                      ? new Date(ticket.createdAt).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                        }).replace(/\//g, '.')
+                      : '—'}
+                  </span>
                 </div>
               </div>
             </div>
