@@ -1,5 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { useTasks } from '../useTasks'
+import { canCurrentUserSeeTask, useTasks } from '../useTasks'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '../useAuth'
 
@@ -7,13 +7,23 @@ import { useAuth } from '../useAuth'
 jest.mock('../useAuth')
 
 describe('useTasks', () => {
+  it('should only show unassigned tasks to Admin', () => {
+    const unassignedTask = { assignees: [] }
+    const assignedTask = { assignees: ['user-1'] }
+
+    expect(canCurrentUserSeeTask({ id: 'admin-1', role: 'Admin' }, unassignedTask)).toBe(true)
+    expect(canCurrentUserSeeTask({ id: 'user-1', role: 'Colaborador' }, unassignedTask)).toBe(false)
+    expect(canCurrentUserSeeTask({ id: 'user-1', role: 'Colaborador' }, assignedTask)).toBe(true)
+    expect(canCurrentUserSeeTask({ id: 'user-2', role: 'Colaborador' }, assignedTask)).toBe(false)
+  })
+
   const mockUser = {
     id: 'user-1',
     email: 'test@vibedistro.com',
     name: 'Test User',
     avatar: null,
     sector: 'TI/Suporte' as const,
-    role: 'colaborador' as const,
+    role: 'Admin' as const,
     createdAt: new Date(),
     updatedAt: new Date(),
   }

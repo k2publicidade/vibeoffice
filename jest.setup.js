@@ -1,8 +1,8 @@
 import '@testing-library/jest-dom'
 
 // Mock Supabase client
-jest.mock('@/lib/supabase/client', () => ({
-  supabase: {
+jest.mock('@/lib/supabase/client', () => {
+  const supabase = {
     auth: {
       getUser: jest.fn(),
       getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
@@ -37,11 +37,16 @@ jest.mock('@/lib/supabase/client', () => ({
     },
     channel: jest.fn(() => ({
       on: jest.fn().mockReturnThis(),
-      subscribe: jest.fn(),
-      unsubscribe: jest.fn(),
+      subscribe: jest.fn().mockReturnThis(),
+      unsubscribe: jest.fn().mockReturnThis(),
     })),
-  },
-}))
+  }
+
+  return {
+    supabase,
+    createClient: jest.fn(() => supabase),
+  }
+})
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({

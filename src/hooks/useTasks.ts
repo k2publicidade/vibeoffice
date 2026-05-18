@@ -57,6 +57,69 @@ export interface UseTasksReturn {
   isLoading: boolean
 }
 
+type TaskRow = {
+  id: string
+  title: string
+  description: string | null
+  status: Task['status']
+  priority: Task['priority']
+  due_date: string | null
+  task_assignees?: Array<{ user_id: string | null }>
+  assignees?: unknown
+  assigned_to?: unknown
+  sector: Task['sector']
+  created_by: string
+  tags: string[] | null
+  created_at: string
+  updated_at: string
+  linked_ticket_id?: string | null
+}
+
+function getAssigneeIds(task: TaskRow): string[] {
+  if (Array.isArray(task.task_assignees)) {
+    return task.task_assignees
+      .map((assignee) => assignee.user_id)
+      .filter((userId: unknown): userId is string => typeof userId === 'string')
+  }
+
+  if (Array.isArray(task.assignees)) {
+    return task.assignees.filter((userId: unknown): userId is string => typeof userId === 'string')
+  }
+
+  if (typeof task.assigned_to === 'string') {
+    return [task.assigned_to]
+  }
+
+  return []
+}
+
+export function canCurrentUserSeeTask(
+  currentUser: { id: string; role: string } | null | undefined,
+  task: { assignees: string[] }
+): boolean {
+  if (!currentUser) return false
+  if (currentUser.role === 'Admin') return true
+  return task.assignees.includes(currentUser.id)
+}
+
+function mapTaskRow(task: TaskRow): Task {
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description || '',
+    status: task.status,
+    priority: task.priority,
+    dueDate: task.due_date ? new Date(task.due_date) : undefined,
+    assignees: getAssigneeIds(task),
+    sector: task.sector,
+    createdBy: task.created_by,
+    tags: task.tags || [],
+    createdAt: new Date(task.created_at),
+    updatedAt: new Date(task.updated_at),
+    linkedTicketId: task.linked_ticket_id,
+  }
+}
+
 export function useTasks(): UseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>([])
   const [filters, setFilters] = useState<TaskFilters>({})
@@ -81,55 +144,11 @@ export function useTasks(): UseTasksReturn {
           schema: 'public',
           table: 'tasks',
         },
-        (payload) => {
-          if (process.env.NODE_ENV === 'development') console.log('[useTasks] Realtime event:', payload)
-
-          if (payload.eventType === 'INSERT') {
-            // New task created by another user
-            const newTask: Task = {
-              id: payload.new.id,
-              title: payload.new.title,
-              description: payload.new.description || '',
-              status: payload.new.status,
-              priority: payload.new.priority,
-              dueDate: payload.new.due_date ? new Date(payload.new.due_date) : undefined,
-              assignees: payload.new.assignees || [],
-              sector: payload.new.sector,
-              createdBy: payload.new.created_by,
-              tags: payload.new.tags || [],
-              createdAt: new Date(payload.new.created_at),
-              updatedAt: new Date(payload.new.updated_at),
-              linkedTicketId: payload.new.linked_ticket_id,
-            }
-
-            setTasks((prev) => {
-              // Avoid duplicates (in case user who created it also receives the event)
-              if (prev.some(t => t.id === newTask.id)) return prev
-              return [newTask, ...prev]
-            })
-          } else if (payload.eventType === 'UPDATE') {
-            // Task updated by another user
-            const updatedTask: Task = {
-              id: payload.new.id,
-              title: payload.new.title,
-              description: payload.new.description || '',
-              status: payload.new.status,
-              priority: payload.new.priority,
-              dueDate: payload.new.due_date ? new Date(payload.new.due_date) : undefined,
-              assignees: payload.new.assignees || [],
-              sector: payload.new.sector,
-              createdBy: payload.new.created_by,
-              tags: payload.new.tags || [],
-              createdAt: new Date(payload.new.created_at),
-              updatedAt: new Date(payload.new.updated_at),
-              linkedTicketId: payload.new.linked_ticket_id,
-            }
-
-            setTasks((prev) => prev.map(task => (task.id === updatedTask.id ? updatedTask : task)))
-          } else if (payload.eventType === 'DELETE') {
-            // Task deleted by another user
-            setTasks((prev) => prev.filter(task => task.id !== payload.old.id))
-          }
+        () => {
+          // O payload realtime de `tasks` não traz o join `task_assignees`.
+          // Rebuscar garante que colaboradores só recebam tarefas em que são responsáveis
+          // e que tarefas sem responsável continuem visíveis apenas para Admin.
+          fetchTasks()
         }
       )
       .subscribe()
@@ -141,40 +160,48 @@ export function useTasks(): UseTasksReturn {
   }, [user, supabase])
 
   async function fetchTasks() {
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
+
+    const currentUser = user
+
     setIsLoading(true)
     try {
 
 
-      const { data, error } = await (supabase
-        .from('tasks')
-        .select(`
+      const selectColumns = currentUser.role === 'Admin'
+        ? `
           *,
           task_assignees (
             user_id
           )
-        `) as any)
-        .order('created_at', { ascending: false })
+        `
+        : `
+          *,
+          task_assignees!inner (
+            user_id
+          )
+        `
+
+      let query = (supabase
+        .from('tasks')
+        .select(selectColumns) as any)
+
+      if (currentUser.role !== 'Admin') {
+        query = query.eq('task_assignees.user_id', currentUser.id)
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) throw error
 
+      const visibleTasks = (data || [])
+        .map(mapTaskRow)
+        .filter((task: Task) => canCurrentUserSeeTask(currentUser, task))
 
-      setTasks(
-        data.map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          description: t.description || '',
-          status: t.status,
-          priority: t.priority,
-          dueDate: t.due_date ? new Date(t.due_date) : undefined,
-          assignees: t.task_assignees?.map((ta: any) => ta.user_id) || [],
-          sector: t.sector,
-          createdBy: t.created_by,
-          tags: t.tags || [],
-          createdAt: new Date(t.created_at),
-          updatedAt: new Date(t.updated_at),
-          linkedTicketId: (t as any).linked_ticket_id,
-        }))
-      )
+      setTasks(visibleTasks)
     } catch (error) {
       console.error('Error fetching tasks:', error)
     } finally {
