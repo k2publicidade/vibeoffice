@@ -60,21 +60,33 @@ interface TaskDialogProps {
    * botão duplicado/órfão no DOM. Ver achado S-P1-15.
    */
   hideTrigger?: boolean
+  currentUser?: {
+    id: string
+    name: string
+    role: string
+    sector: Sector
+  } | null
 }
 
 const sectors = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
 
 
 // Função para criar o estado inicial do form
-function getInitialFormData(task?: Task, defaultStatus?: TaskStatus): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
+function getInitialFormData(
+  task?: Task,
+  defaultStatus?: TaskStatus,
+  currentUser?: TaskDialogProps['currentUser']
+): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
+  const isCollaborator = currentUser?.role === 'Colaborador'
+
   return {
     title: task?.title || '',
     description: task?.description || '',
     status: task?.status || defaultStatus || 'todo',
     priority: task?.priority || 'medium',
-    sector: task?.sector || 'A&R',
-    assignees: task?.assignees || [],
-    createdBy: task?.createdBy || 'user-001',
+    sector: task?.sector || currentUser?.sector || 'A&R',
+    assignees: isCollaborator && currentUser ? [currentUser.id] : (task?.assignees || []),
+    createdBy: task?.createdBy || currentUser?.id || 'user-001',
     dueDate: task?.dueDate || new Date(),
   }
 }
@@ -86,10 +98,12 @@ export function TaskDialog({
   onOpenChange,
   defaultStatus,
   hideTrigger,
+  currentUser,
 }: TaskDialogProps) {
   const { users, isLoading: usersLoading } = useUsers()
+  const isCollaborator = currentUser?.role === 'Colaborador'
   const [open, setOpen] = useState(isOpen || false)
-  const [formData, setFormData] = useState(() => getInitialFormData(task, defaultStatus))
+  const [formData, setFormData] = useState(() => getInitialFormData(task, defaultStatus, currentUser))
   const [assigneeSearch, setAssigneeSearch] = useState('')
 
   // Mapa id->user para renderizar badges com nome real (não UUID)
@@ -111,7 +125,10 @@ export function TaskDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.title.trim()) return
-    onSave(formData)
+    onSave(isCollaborator && currentUser
+      ? { ...formData, assignees: [currentUser.id], createdBy: currentUser.id, sector: formData.sector || currentUser.sector }
+      : formData
+    )
     setOpen(false)
     onOpenChange?.(false)
   }
@@ -119,7 +136,7 @@ export function TaskDialog({
   const handleOpenChange = (newOpen: boolean) => {
     // Resetar form quando abrir para nova tarefa
     if (newOpen && !task) {
-      setFormData(getInitialFormData(undefined, defaultStatus))
+      setFormData(getInitialFormData(undefined, defaultStatus, currentUser))
     }
     setOpen(newOpen)
     onOpenChange?.(newOpen)
@@ -285,102 +302,114 @@ export function TaskDialog({
             </div>
 
             {/* Responsáveis */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Users className="h-3.5 w-3.5 text-zinc-500" />
-                Responsáveis
-                {!!formData.assignees?.length && (
-                  <span className="text-xs text-zinc-500 font-normal">
-                    ({formData.assignees.length} selecionado{formData.assignees.length > 1 ? 's' : ''})
-                  </span>
-                )}
-              </Label>
-
-              <MultiSelect
-                value={formData.assignees || []}
-                onValueChange={(value) => setFormData({ ...formData, assignees: value })}
-                placeholder={
-                  usersLoading
-                    ? 'Carregando usuários...'
-                    : (users || []).length === 0
-                      ? 'Nenhum usuário cadastrado'
-                      : 'Selecione os responsáveis'
-                }
-                maxDisplayItems={4}
-                className="bg-zinc-800/50 border-zinc-700 min-h-11"
-                renderSelectedValues={(selected) => (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selected.slice(0, 4).map(id => {
-                      const u = userById[id]
-                      if (!u) return null
-                      return (
-                        <div
-                          key={id}
-                          className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-700"
-                        >
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={u.avatar || undefined} />
-                            <AvatarFallback className="text-[10px] bg-zinc-800 text-zinc-300">
-                              {getInitials(u.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-zinc-100">{u.name.split(' ')[0]}</span>
-                        </div>
-                      )
-                    })}
-                    {selected.length > 4 && (
-                      <span className="text-xs text-zinc-500 self-center">
-                        +{selected.length - 4}
-                      </span>
-                    )}
-                  </div>
-                )}
-              >
-                <MultiSelectContent>
-                  {/* Search */}
-                  <div className="sticky top-0 z-10 -m-1 mb-1 p-2 bg-zinc-900 border-b border-zinc-800">
-                    <Input
-                      placeholder="Buscar por nome ou setor..."
-                      value={assigneeSearch}
-                      onChange={(e) => setAssigneeSearch(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      className="h-8 bg-zinc-800/60 border-zinc-700 text-xs"
-                    />
-                  </div>
-
-                  {usersLoading ? (
-                    <div className="flex items-center justify-center py-6 text-sm text-zinc-500 gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Carregando usuários...
-                    </div>
-                  ) : filteredUsers.length === 0 ? (
-                    <div className="px-3 py-6 text-center text-sm text-zinc-500">
-                      {users && users.length === 0
-                        ? 'Nenhum usuário cadastrado ainda.'
-                        : 'Nenhum usuário encontrado.'}
-                    </div>
-                  ) : (
-                    filteredUsers.map((u) => (
-                      <MultiSelectItem key={u.id} value={u.id}>
-                        <div className="flex items-center gap-2.5 w-full">
-                          <Avatar className="h-7 w-7 shrink-0">
-                            <AvatarImage src={u.avatar || undefined} />
-                            <AvatarFallback className="text-[10px] bg-zinc-800 text-zinc-300">
-                              {getInitials(u.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col flex-1 min-w-0">
-                            <span className="text-sm text-zinc-100 truncate">{u.name}</span>
-                            <span className="text-[10px] text-zinc-500 truncate">{u.sector}</span>
-                          </div>
-                        </div>
-                      </MultiSelectItem>
-                    ))
+            {isCollaborator && currentUser ? (
+              <div className="rounded-xl border border-[#fc7a67]/25 bg-[#fc7a67]/10 p-4 text-sm text-zinc-200">
+                <div className="flex items-center gap-2 font-semibold text-[#fc7a67]">
+                  <Users className="h-4 w-4" />
+                  Demanda interna registrada por você
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                  Esta tarefa será automaticamente vinculada a {currentUser.name}. Colaboradores não podem selecionar outro responsável.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5 text-zinc-500" />
+                  Responsáveis
+                  {!!formData.assignees?.length && (
+                    <span className="text-xs text-zinc-500 font-normal">
+                      ({formData.assignees.length} selecionado{formData.assignees.length > 1 ? 's' : ''})
+                    </span>
                   )}
-                </MultiSelectContent>
-              </MultiSelect>
-            </div>
+                </Label>
+
+                <MultiSelect
+                  value={formData.assignees || []}
+                  onValueChange={(value) => setFormData({ ...formData, assignees: value })}
+                  placeholder={
+                    usersLoading
+                      ? 'Carregando usuários...'
+                      : (users || []).length === 0
+                        ? 'Nenhum usuário cadastrado'
+                        : 'Selecione os responsáveis'
+                  }
+                  maxDisplayItems={4}
+                  className="bg-zinc-800/50 border-zinc-700 min-h-11"
+                  renderSelectedValues={(selected) => (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selected.slice(0, 4).map(id => {
+                        const u = userById[id]
+                        if (!u) return null
+                        return (
+                          <div
+                            key={id}
+                            className="flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-700"
+                          >
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={u.avatar || undefined} />
+                              <AvatarFallback className="text-[10px] bg-zinc-800 text-zinc-300">
+                                {getInitials(u.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-zinc-100">{u.name.split(' ')[0]}</span>
+                          </div>
+                        )
+                      })}
+                      {selected.length > 4 && (
+                        <span className="text-xs text-zinc-500 self-center">
+                          +{selected.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                >
+                  <MultiSelectContent>
+                    {/* Search */}
+                    <div className="sticky top-0 z-10 -m-1 mb-1 p-2 bg-zinc-900 border-b border-zinc-800">
+                      <Input
+                        placeholder="Buscar por nome ou setor..."
+                        value={assigneeSearch}
+                        onChange={(e) => setAssigneeSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="h-8 bg-zinc-800/60 border-zinc-700 text-xs"
+                      />
+                    </div>
+
+                    {usersLoading ? (
+                      <div className="flex items-center justify-center py-6 text-sm text-zinc-500 gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando usuários...
+                      </div>
+                    ) : filteredUsers.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-sm text-zinc-500">
+                        {users && users.length === 0
+                          ? 'Nenhum usuário cadastrado ainda.'
+                          : 'Nenhum usuário encontrado.'}
+                      </div>
+                    ) : (
+                      filteredUsers.map((u) => (
+                        <MultiSelectItem key={u.id} value={u.id}>
+                          <div className="flex items-center gap-2.5 w-full">
+                            <Avatar className="h-7 w-7 shrink-0">
+                              <AvatarImage src={u.avatar || undefined} />
+                              <AvatarFallback className="text-[10px] bg-zinc-800 text-zinc-300">
+                                {getInitials(u.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="text-sm text-zinc-100 truncate">{u.name}</span>
+                              <span className="text-[10px] text-zinc-500 truncate">{u.sector}</span>
+                            </div>
+                          </div>
+                        </MultiSelectItem>
+                      ))
+                    )}
+                  </MultiSelectContent>
+                </MultiSelect>
+              </div>
+            )}
           </div>
 
           {/* Prioridade e Prazo */}

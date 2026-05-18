@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo } from 'react'
 import { useTasks } from '@/hooks/useTasks'
 import { useAuth } from '@/hooks/useAuth'
 import { Task, TaskStatus } from '@/types/tasks'
@@ -11,7 +10,7 @@ import { TaskList } from '@/components/tasks/TaskList'
 import { TaskFilters } from '@/components/tasks/TaskFilters'
 import { TaskDialog } from '@/components/tasks/TaskDialog'
 import { DeleteTaskDialog } from '@/components/tasks/DeleteTaskDialog'
-import { LayoutGrid, List, Filter, ListTodo, Clock, CheckCircle2, Lock } from 'lucide-react'
+import { LayoutGrid, List, Filter, ListTodo, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -54,14 +53,9 @@ function tasksToPremiumColumns(tasks: Task[]): KanbanColumnData[] {
 }
 
 export default function TasksPage() {
-  const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
+  const isCollaborator = user?.role === 'Colaborador'
 
-  useEffect(() => {
-    if (!authLoading && user && user.role !== 'Admin') {
-      router.replace('/')
-    }
-  }, [user, authLoading, router])
 
   const {
     filteredTasks,
@@ -182,17 +176,11 @@ export default function TasksPage() {
     setIsDialogOpen(true)
   }
 
-  // Guard visual enquanto carrega ou redireciona
-  if (authLoading || (user && user.role !== 'Admin')) {
+  // Guard visual enquanto carrega autenticação
+  if (authLoading) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-900 border border-white/5">
-          <Lock className="h-7 w-7 text-zinc-500" />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-2">Acesso restrito</h2>
-        <p className="text-sm text-zinc-400">
-          O módulo de Tarefas está disponível apenas para administradores.
-        </p>
+        <p className="text-sm text-zinc-400">Carregando tarefas...</p>
       </div>
     )
   }
@@ -203,10 +191,12 @@ export default function TasksPage() {
       <div className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-[#fc7a67] to-[#ef5907] bg-clip-text text-transparent">
-            Fluxo de Trabalho
+            {isCollaborator ? 'Minhas Demandas Internas' : 'Fluxo de Trabalho'}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Gerencie suas tarefas com o novo sistema Premium Kanban
+            {isCollaborator
+              ? 'Cadastre e acompanhe as demandas que você registrou para gestão interna.'
+              : 'Gerencie as tarefas e demandas internas com o sistema Premium Kanban'}
           </p>
         </div>
 
@@ -239,9 +229,22 @@ export default function TasksPage() {
               }
             }}
             defaultStatus={preselectedStatus}
+            currentUser={user}
           />
         </div>
       </div>
+
+      {isCollaborator && user && (
+        <div className="mb-8 rounded-2xl border border-[#fc7a67]/25 bg-[#fc7a67]/10 p-5 text-sm text-zinc-300">
+          <div className="flex items-center gap-3 text-[#fc7a67] font-semibold">
+            <ClipboardList className="h-5 w-5" />
+            Registro de demandas internas
+          </div>
+          <p className="mt-2 leading-relaxed text-zinc-400">
+            As tarefas criadas aqui representam demandas internas registradas por você. Cada nova tarefa fica automaticamente atrelada ao seu usuário ({user.name}) e será usada pelo Admin/Gerente para acompanhamento e relatórios semanais ou mensais.
+          </p>
+        </div>
+      )}
 
       {/* Tabs com Toolbar */}
       <Tabs value={view} onValueChange={(v) => setView(v as 'board' | 'list')} className="w-full">
@@ -314,6 +317,7 @@ export default function TasksPage() {
           task={selectedTask}
           onSave={handleSaveTask}
           isOpen={isDialogOpen && !!selectedTask}
+          currentUser={user}
           onOpenChange={(open: boolean) => {
             setIsDialogOpen(open)
             if (!open) setSelectedTask(undefined)

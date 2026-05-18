@@ -1,5 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { canCurrentUserSeeTask, useTasks } from '../useTasks'
+import { canCurrentUserSeeTask, getAllowedTaskAssigneesForWrite, useTasks } from '../useTasks'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '../useAuth'
 
@@ -15,6 +15,18 @@ describe('useTasks', () => {
     expect(canCurrentUserSeeTask({ id: 'user-1', role: 'Colaborador' }, unassignedTask)).toBe(false)
     expect(canCurrentUserSeeTask({ id: 'user-1', role: 'Colaborador' }, assignedTask)).toBe(true)
     expect(canCurrentUserSeeTask({ id: 'user-2', role: 'Colaborador' }, assignedTask)).toBe(false)
+  })
+
+  it('should force collaborator task writes to themselves', () => {
+    expect(getAllowedTaskAssigneesForWrite(
+      { id: 'collab-1', role: 'Colaborador' },
+      ['other-user']
+    )).toEqual(['collab-1'])
+
+    expect(getAllowedTaskAssigneesForWrite(
+      { id: 'admin-1', role: 'Admin' },
+      ['user-1', 'user-2']
+    )).toEqual(['user-1', 'user-2'])
   })
 
   const mockUser = {

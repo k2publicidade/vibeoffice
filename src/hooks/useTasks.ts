@@ -102,6 +102,19 @@ export function canCurrentUserSeeTask(
   return task.assignees.includes(currentUser.id)
 }
 
+export function getAllowedTaskAssigneesForWrite(
+  currentUser: { id: string; role: string } | null | undefined,
+  requestedAssignees: string[] | undefined
+): string[] {
+  if (!currentUser) return []
+
+  if (currentUser.role === 'Colaborador') {
+    return [currentUser.id]
+  }
+
+  return requestedAssignees ?? []
+}
+
 function mapTaskRow(task: TaskRow): Task {
   return {
     id: task.id,
@@ -302,8 +315,19 @@ export function useTasks(): UseTasksReturn {
     async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
       if (!user) throw new Error('User not authenticated')
 
+      const allowedAssignees = getAllowedTaskAssigneesForWrite(user, taskData.assignees)
+      const isCollaboratorDemand = user.role === 'Colaborador'
+      const normalizedTaskData = {
+        ...taskData,
+        assignees: allowedAssignees,
+        createdBy: user.id,
+        tags: isCollaboratorDemand
+          ? Array.from(new Set([...(taskData.tags || []), 'demanda-interna']))
+          : taskData.tags,
+      }
+
       // ✅ Validação com Zod antes de inserir no banco
-      const validation = CreateTaskSchema.safeParse(taskData)
+      const validation = CreateTaskSchema.safeParse(normalizedTaskData)
       if (!validation.success) {
         const errors = formatZodErrors(validation.error)
         throw new Error(`Dados inválidos: ${errors.join(', ')}`)
@@ -324,7 +348,7 @@ export function useTasks(): UseTasksReturn {
           sector: taskData.sector,
 
           created_by: user.id,
-          tags: taskData.tags || [],
+          tags: normalizedTaskData.tags || [],
         })
         .select()
         .single()
@@ -332,8 +356,8 @@ export function useTasks(): UseTasksReturn {
       if (taskError) throw taskError
 
       // 1.5 Inserir Assignees
-      if (taskData.assignees && taskData.assignees.length > 0) {
-        const assigneesInsert = taskData.assignees.map(userId => ({
+      if (allowedAssignees.length > 0) {
+        const assigneesInsert = allowedAssignees.map(userId => ({
           task_id: taskInserted.id,
           user_id: userId
         }))
@@ -359,7 +383,7 @@ export function useTasks(): UseTasksReturn {
           priority: taskInserted.priority,
           requester: user.id,
           created_by: user.id,
-          assigned_to: taskData.assignees?.[0], // Ticket só suporta um assignee, pegamos o primeiro
+          assigned_to: allowedAssignees[0], // Ticket só suporta um assignee, pegamos o primeiro
           linked_task_id: taskInserted.id,
         })
         .select()
@@ -414,7 +438,7 @@ export function useTasks(): UseTasksReturn {
         status: taskInserted.status,
         priority: taskInserted.priority,
         dueDate: taskInserted.due_date ? new Date(taskInserted.due_date) : undefined,
-        assignees: taskData.assignees || [],
+        assignees: allowedAssignees,
         sector: taskInserted.sector,
         createdBy: taskInserted.created_by,
         tags: taskInserted.tags || [],
@@ -424,10 +448,10 @@ export function useTasks(): UseTasksReturn {
       }
 
       // 6. Emitir evento de notificação
-      if (taskData.assignees && taskData.assignees.length > 0) {
+      if (allowedAssignees.length > 0) {
         EventBus.emit({
           type: 'task_assigned',
-          recipientIds: taskData.assignees,
+          recipientIds: allowedAssignees,
           priority: taskData.priority === 'high' ? 'high' : 'medium',
           entityType: 'task',
           entityId: newTask.id,
@@ -462,11 +486,24 @@ export function useTasks(): UseTasksReturn {
 
   // Atualizar tarefa
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
+    if (!user) throw new Error('User not authenticated')
+
+    const normalizedUpdates = user.role === 'Colaborador'
+      ? (() => {
+        // Colaboradores não podem trocar responsáveis. A criação já autoatribui
+        // a tarefa; em edições posteriores preservamos o vínculo existente para
+        // evitar que o usuário remova a si mesmo ou tente inserir outra pessoa.
+        const safeUpdates = { ...updates }
+        delete safeUpdates.assignees
+        return safeUpdates
+      })()
+      : updates
+
     // Guardar referência do oldTask ANTES do update
     const oldTask = tasks.find(t => t.id === id)
 
     // ✅ Validação com Zod antes de atualizar no banco
-    const validation = UpdateTaskSchema.safeParse(updates)
+    const validation = UpdateTaskSchema.safeParse(normalizedUpdates)
     if (!validation.success) {
       const errors = formatZodErrors(validation.error)
       throw new Error(`Dados inválidos: ${errors.join(', ')}`)
@@ -474,19 +511,19 @@ export function useTasks(): UseTasksReturn {
 
 
     // 1. Executar update (sem select para evitar erro 406)
-    if (process.env.NODE_ENV === 'development') console.log('[useTasks] updateTask Step 1: Updating DB...', { id, updates })
+    if (process.env.NODE_ENV === 'development') console.log('[useTasks] updateTask Step 1: Updating DB...', { id, updates: normalizedUpdates })
     const { error: updateError } = await supabase
       .from('tasks')
       .update({
-        title: updates.title,
-        description: updates.description,
-        status: updates.status,
-        priority: updates.priority,
-        due_date: updates.dueDate?.toISOString(),
+        title: normalizedUpdates.title,
+        description: normalizedUpdates.description,
+        status: normalizedUpdates.status,
+        priority: normalizedUpdates.priority,
+        due_date: normalizedUpdates.dueDate?.toISOString(),
         // assigned_to removido — fonte da verdade e task_assignees (M2M)
         // Ver achado S-P0-05 do diagnostico 2026-05-17
-        sector: updates.sector,
-        tags: updates.tags,
+        sector: normalizedUpdates.sector,
+        tags: normalizedUpdates.tags,
       })
       .eq('id', id)
 
@@ -497,12 +534,12 @@ export function useTasks(): UseTasksReturn {
     }
 
     // 1.5 Atualizar Assignees se fornecido
-    if (updates.assignees !== undefined) {
+    if (normalizedUpdates.assignees !== undefined) {
       // Remove old
       await supabase.from('task_assignees' as any).delete().eq('task_id', id)
       // Insert new
-      if (updates.assignees.length > 0) {
-        const assigneesInsert = updates.assignees.map(userId => ({
+      if (normalizedUpdates.assignees.length > 0) {
+        const assigneesInsert = normalizedUpdates.assignees.map(userId => ({
           task_id: id,
           user_id: userId
         }))
@@ -547,10 +584,10 @@ export function useTasks(): UseTasksReturn {
 
     // NOVO: Sincronizar status com ticket vinculado
     // Atualizado para buscar pelo linked_task_id para maior robustez (caso o link reverso falhe)
-    if (updates.status && oldTask && updates.status !== oldTask.status) {
-      const ticketStatus = mapTaskStatusToTicketStatus(updates.status)
+    if (normalizedUpdates.status && oldTask && normalizedUpdates.status !== oldTask.status) {
+      const ticketStatus = mapTaskStatusToTicketStatus(normalizedUpdates.status)
 
-      if (process.env.NODE_ENV === 'development') console.log(`[useTasks] Syncing Ticket. Task: ${id}, Status: ${updates.status} -> ${ticketStatus}`)
+      if (process.env.NODE_ENV === 'development') console.log(`[useTasks] Syncing Ticket. Task: ${id}, Status: ${normalizedUpdates.status} -> ${ticketStatus}`)
 
       try {
         // PRIORIDADE 1: Atualizar pelo FK na tabela de tickets (mais confiável)
@@ -608,7 +645,7 @@ export function useTasks(): UseTasksReturn {
 
     // NOVO: Emitir evento se status mudou
     // Executar em background para não bloquear o fluxo principal ou causar erros visíveis se RLS falhar
-    if (updates.status && oldTask && updates.status !== oldTask.status) {
+    if (normalizedUpdates.status && oldTask && normalizedUpdates.status !== oldTask.status) {
       setTimeout(() => {
         // Notificações desabilitadas temporariamente para debug de RLS/403
         /*
@@ -642,7 +679,7 @@ export function useTasks(): UseTasksReturn {
     )
 
     return updatedTask
-  }, [tasks, supabase])
+  }, [tasks, supabase, user])
 
   // Deletar tarefa
   const deleteTask = useCallback(async (id: string) => {

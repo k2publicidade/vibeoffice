@@ -35,7 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Início', href: '/', icon: LayoutDashboard },
   { label: 'Chat', href: '/chat', icon: MessageCircle },
   { label: 'Agenda', href: '/calendar', icon: Calendar },
-  { label: 'Tarefas', href: '/tasks', icon: ListTodo, roles: ['Admin'] },
+  { label: 'Tarefas', href: '/tasks', icon: ListTodo },
   { label: 'Solicitações', href: '/tickets', icon: Ticket },
   { label: 'Capas', href: '/vibecanvas', icon: Image },
   { label: 'Drive', href: '/drive', icon: Folder },

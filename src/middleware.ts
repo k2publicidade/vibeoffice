@@ -77,10 +77,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Rotas restritas a Admin (Tarefas + Configurações de Cursos)
+  // Rotas restritas a Admin (Configurações de Cursos)
   const isAdminOnlyRoute =
-    request.nextUrl.pathname === '/tasks' ||
-    request.nextUrl.pathname.startsWith('/tasks/') ||
     request.nextUrl.pathname.startsWith('/courses/manage')
 
   if (isAdminOnlyRoute && user) {
