@@ -7,6 +7,59 @@ import { Ticket, TicketComment } from '@/types/tickets'
 import { CreateTicketSchema, UpdateTicketSchema, CreateTicketCommentSchema, formatZodErrors } from '@/lib/validation-schemas'
 import { EventBus } from '@/lib/notifications/eventBus'
 
+type TicketRow = {
+  id: string
+  title: string
+  description: string | null
+  category: string
+  status: Ticket['status']
+  priority: Ticket['priority']
+  requester: string
+  created_by: string | null
+  assigned_to: string | null
+  created_at: string
+  updated_at: string
+  linked_task_id?: string | null
+  tasks?: {
+    task_assignees?: Array<{ user_id: string | null }>
+  } | null
+}
+
+function getLinkedTaskAssigneeIds(ticket: TicketRow): string[] {
+  if (!ticket.tasks || !Array.isArray(ticket.tasks.task_assignees)) return []
+
+  return ticket.tasks.task_assignees
+    .map((assignee) => assignee.user_id)
+    .filter((userId): userId is string => Boolean(userId))
+}
+
+export function canCurrentUserSeeTicket(
+  ticket: Pick<Ticket, 'linkedTaskAssigneeIds'>,
+  user: { id: string; role: string }
+): boolean {
+  if (user.role === 'Admin') return true
+
+  return ticket.linkedTaskAssigneeIds?.includes(user.id) ?? false
+}
+
+function mapTicketRow(ticket: TicketRow): Ticket {
+  return {
+    id: ticket.id,
+    title: ticket.title,
+    description: ticket.description ?? '',
+    category: ticket.category,
+    status: ticket.status,
+    priority: ticket.priority,
+    requester: ticket.requester,
+    createdBy: ticket.created_by ?? undefined,
+    assignedTo: ticket.assigned_to ?? undefined,
+    createdAt: new Date(ticket.created_at),
+    updatedAt: new Date(ticket.updated_at),
+    linkedTaskId: ticket.linked_task_id ?? undefined,
+    linkedTaskAssigneeIds: getLinkedTaskAssigneeIds(ticket),
+  }
+}
+
 export interface TicketFilters {
   status?: string[]  // Suporta multi-seleção
   priority?: string
@@ -79,53 +132,11 @@ export function useTickets(): UseTicketsReturn {
           schema: 'public',
           table: 'tickets',
         },
-        (payload) => {
-          if (process.env.NODE_ENV === 'development') console.log('[useTickets] Realtime event:', payload)
-
-          if (payload.eventType === 'INSERT') {
-            // New ticket created by another user
-            const newTicket: Ticket = {
-              id: payload.new.id,
-              title: payload.new.title,
-              description: payload.new.description,
-              category: payload.new.category,
-              status: payload.new.status,
-              priority: payload.new.priority,
-              requester: payload.new.requester,
-              createdBy: payload.new.created_by ?? undefined,
-              assignedTo: payload.new.assigned_to ?? undefined,
-              createdAt: new Date(payload.new.created_at),
-              updatedAt: new Date(payload.new.updated_at),
-              linkedTaskId: payload.new.linked_task_id,
-            }
-
-            setTickets((prev) => {
-              // Avoid duplicates
-              if (prev.some(t => t.id === newTicket.id)) return prev
-              return [newTicket, ...prev]
-            })
-          } else if (payload.eventType === 'UPDATE') {
-            // Ticket updated by another user
-            const updatedTicket: Ticket = {
-              id: payload.new.id,
-              title: payload.new.title,
-              description: payload.new.description,
-              category: payload.new.category,
-              status: payload.new.status,
-              priority: payload.new.priority,
-              requester: payload.new.requester,
-              createdBy: payload.new.created_by ?? undefined,
-              assignedTo: payload.new.assigned_to ?? undefined,
-              createdAt: new Date(payload.new.created_at),
-              updatedAt: new Date(payload.new.updated_at),
-              linkedTaskId: payload.new.linked_task_id,
-            }
-
-            setTickets((prev) => prev.map(ticket => (ticket.id === updatedTicket.id ? updatedTicket : ticket)))
-          } else if (payload.eventType === 'DELETE') {
-            // Ticket deleted by another user
-            setTickets((prev) => prev.filter(ticket => ticket.id !== payload.old.id))
-          }
+        () => {
+          // Tickets são espelhos das tarefas do Kanban. Como o payload realtime
+          // não traz a task vinculada nem seus responsáveis, rebuscamos para
+          // manter a regra: colaborador só vê ticket cuja task está atribuída a ele.
+          fetchTickets()
         }
       )
       .subscribe()
@@ -137,31 +148,49 @@ export function useTickets(): UseTicketsReturn {
   }, [user, supabase])
 
   async function fetchTickets() {
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
+
+    const currentUser = user
+
     setIsLoading(true)
     try {
-      const { data, error } = await supabase
+      const selectColumns = currentUser.role === 'Admin'
+        ? `
+          *,
+          tasks!tickets_linked_task_id_fkey (
+            task_assignees (
+              user_id
+            )
+          )
+        `
+        : `
+          *,
+          tasks!tickets_linked_task_id_fkey!inner (
+            task_assignees!inner (
+              user_id
+            )
+          )
+        `
+
+      const query = supabase
         .from('tickets')
-        .select('*')
+        .select(selectColumns)
         .order('created_at', { ascending: false })
+
+      const { data, error } = await (currentUser.role === 'Admin'
+        ? query
+        : query.eq('tasks.task_assignees.user_id', currentUser.id))
 
       if (error) throw error
 
-      setTickets(
-        data.map((t) => ({
-          id: t.id,
-          title: t.title,
-          description: t.description,
-          category: t.category,
-          status: t.status,
-          priority: t.priority,
-          requester: t.requester,
-          createdBy: t.created_by ?? undefined,
-          assignedTo: t.assigned_to ?? undefined,
-          createdAt: new Date(t.created_at),
-          updatedAt: new Date(t.updated_at),
-          linkedTaskId: (t as any).linked_task_id,
-        }))
-      )
+      const visibleTickets = ((data ?? []) as TicketRow[])
+        .map(mapTicketRow)
+        .filter((ticket) => canCurrentUserSeeTicket(ticket, currentUser))
+
+      setTickets(visibleTickets)
     } catch (error) {
       console.error('Error fetching tickets:', error)
     } finally {
@@ -261,6 +290,7 @@ export function useTickets(): UseTicketsReturn {
 
       if (error) throw error
 
+      const insertedTicket = data as TicketRow
       const newTicket: Ticket = {
         id: data.id,
         title: data.title,
@@ -273,6 +303,8 @@ export function useTickets(): UseTicketsReturn {
         assignedTo: data.assigned_to ?? undefined,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
+        linkedTaskId: insertedTicket.linked_task_id ?? undefined,
+        linkedTaskAssigneeIds: [],
       }
 
       setTickets(prev => [newTicket, ...prev])
@@ -355,6 +387,7 @@ export function useTickets(): UseTicketsReturn {
         if (error) throw error
 
         // Mapear resultado
+        const updatedTicketRow = data as TicketRow
         const updatedTicket: Ticket = {
           id: data.id,
           title: data.title,
@@ -367,6 +400,8 @@ export function useTickets(): UseTicketsReturn {
           assignedTo: data.assigned_to ?? undefined,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
+          linkedTaskId: updatedTicketRow.linked_task_id ?? undefined,
+          linkedTaskAssigneeIds: oldTicket.linkedTaskAssigneeIds,
         }
 
         // Atualizar estado local

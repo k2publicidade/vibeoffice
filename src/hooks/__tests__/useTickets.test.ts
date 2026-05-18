@@ -1,18 +1,29 @@
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { useTickets } from '../useTickets'
+import { canCurrentUserSeeTicket, useTickets } from '../useTickets'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '../useAuth'
 
 jest.mock('../useAuth')
 
 describe('useTickets', () => {
+  it('should only show tickets to collaborators when the linked kanban task is assigned to them', () => {
+    const assignedTicket = { linkedTaskAssigneeIds: ['user-1'] }
+    const unassignedTicket = { linkedTaskAssigneeIds: [] }
+    const otherUserTicket = { linkedTaskAssigneeIds: ['user-2'] }
+
+    expect(canCurrentUserSeeTicket(assignedTicket, { id: 'user-1', role: 'Colaborador' })).toBe(true)
+    expect(canCurrentUserSeeTicket(unassignedTicket, { id: 'user-1', role: 'Colaborador' })).toBe(false)
+    expect(canCurrentUserSeeTicket(otherUserTicket, { id: 'user-1', role: 'Colaborador' })).toBe(false)
+    expect(canCurrentUserSeeTicket(unassignedTicket, { id: 'admin-1', role: 'Admin' })).toBe(true)
+  })
+
   const mockUser = {
     id: 'user-1',
     email: 'test@vibedistro.com',
     name: 'Test User',
     avatar: null,
     sector: 'TI/Suporte' as const,
-    role: 'colaborador' as const,
+    role: 'Admin' as const,
     createdAt: new Date(),
     updatedAt: new Date(),
   }

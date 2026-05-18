@@ -19,6 +19,7 @@ export interface Ticket {
   createdAt: Date
   updatedAt: Date
   linkedTaskId?: string // UUID da task vinculada (sincronização 1:1)
+  linkedTaskAssigneeIds?: string[] // Responsáveis da task vinculada (fonte da verdade do Kanban)
 }
 
 export interface TicketHistory {

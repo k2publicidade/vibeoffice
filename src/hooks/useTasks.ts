@@ -116,7 +116,7 @@ function mapTaskRow(task: TaskRow): Task {
     tags: task.tags || [],
     createdAt: new Date(task.created_at),
     updatedAt: new Date(task.updated_at),
-    linkedTicketId: task.linked_ticket_id,
+    linkedTicketId: task.linked_ticket_id ?? undefined,
   }
 }
 
