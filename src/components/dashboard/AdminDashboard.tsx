@@ -28,7 +28,7 @@ import { useTasks } from '@/hooks/useTasks'
 import { useTickets } from '@/hooks/useTickets'
 import { useCalendar } from '@/hooks/useCalendar'
 import { cn } from '@/lib/utils'
-import { differenceInHours, format, startOfDay } from 'date-fns'
+import { addDays, differenceInHours, endOfWeek, format, isSameDay, isWithinInterval, startOfDay, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 const containerVariants = {
@@ -107,6 +107,114 @@ function KpiCard({
   )
 }
 
+type CollaboratorPerformance = {
+  id: string
+  name: string
+  role: string
+  sector: string
+  avatar?: string | null
+  completionRate: number
+  completed: number
+  total: number
+  active: number
+  sectorShare: number
+  completedDays: boolean[]
+}
+
+function CollaboratorPerformanceCard({ collaborator }: { collaborator: CollaboratorPerformance }) {
+  const circumference = 2 * Math.PI * 54
+  const progressOffset = circumference * (1 - collaborator.completionRate / 100)
+  const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+
+  return (
+    <Card className="overflow-hidden rounded-3xl border-[#262626] bg-[#1d1d1d] shadow-2xl">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9 border border-[#fc7a67]/30">
+                <AvatarImage src={collaborator.avatar ?? undefined} />
+                <AvatarFallback className="bg-[#fc7a67] text-black text-xs font-bold">
+                  {initials(collaborator.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate text-base font-bold text-white">{collaborator.name}</p>
+                <p className="truncate text-xs text-gray-500">{collaborator.role} • {collaborator.sector}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-2">
+              <span className="text-5xl font-black leading-none tracking-tight text-white">{collaborator.completionRate}%</span>
+              <span className="text-sm font-medium text-gray-500">semana</span>
+            </div>
+          </div>
+
+          <div className="relative h-36 w-36 shrink-0">
+            <svg className="h-full w-full -rotate-90 drop-shadow-2xl" viewBox="0 0 140 140" aria-label={`Desempenho semanal de ${collaborator.name}: ${collaborator.completionRate}%`}>
+              <circle cx="70" cy="70" r="54" stroke="#2a2a2a" strokeWidth="14" fill="none" />
+              <circle
+                cx="70"
+                cy="70"
+                r="54"
+                stroke="#fc7a67"
+                strokeWidth="14"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={progressOffset}
+                className="transition-all duration-700"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-black text-white">{collaborator.completed}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">concluídas</span>
+              <div className="mt-2 h-1 w-8 rounded-full bg-[#2a2a2a]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-xl font-black text-white" aria-label={`${collaborator.completed} de ${collaborator.total} tarefas concluídas`}>{collaborator.completed}<span className="text-base text-gray-600">/{collaborator.total}</span></p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Concluídas</p>
+          </div>
+          <div>
+            <p className="text-xl font-black text-white">{collaborator.active}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Ativas</p>
+          </div>
+          <div>
+            <p className="text-xl font-black text-white">{collaborator.sectorShare}%</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Do setor</p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex gap-2">
+          {weekDays.map((day, index) => (
+            <div key={`${day}-${index}`} className="flex flex-1 flex-col items-center gap-2">
+              <div className={cn('h-2 w-full rounded-full transition-colors', collaborator.completedDays[index] ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.35)]' : 'bg-[#2a2a2a]')} />
+              <span className={cn('text-[10px] font-bold', collaborator.completedDays[index] ? 'text-white' : 'text-gray-600')}>{day}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 border-t border-[#2a2a2a] pt-4">
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+            <span className="flex min-w-0 items-center gap-2 text-gray-300">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#fc7a67]" />
+              <span className="truncate">{collaborator.sector}</span>
+            </span>
+            <span className="font-bold text-white">{collaborator.total} tarefas</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-[#121212]">
+            <div className="h-full rounded-full bg-[#fc7a67]" style={{ width: `${collaborator.completionRate}%` }} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function AdminDashboard({ userName }: AdminDashboardProps) {
   const { users, isLoading: usersLoading } = useUsers()
   const { tasks, isLoading: tasksLoading } = useTasks()
@@ -114,7 +222,6 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
   const { events, isLoading: eventsLoading } = useCalendar()
 
   const isLoading = usersLoading || tasksLoading || ticketsLoading || eventsLoading
-  const userById = useMemo(() => new Map((users ?? []).map((user) => [user.id, user])), [users])
 
   const dashboard = useMemo(() => {
     const now = new Date()
@@ -131,6 +238,13 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
     const upcomingEvents = events
       .filter((event) => new Date(event.startTime) >= now)
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+    const weekStart = startOfWeek(now, { weekStartsOn: 0 })
+    const weekEnd = endOfWeek(now, { weekStartsOn: 0 })
+    const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+    const isThisWeekDate = (date?: Date | string | null) => {
+      if (!date) return false
+      return isWithinInterval(new Date(date), { start: weekStart, end: weekEnd })
+    }
 
     const usersBySector = activeUsers.reduce((acc, user) => {
       acc[user.sector] = (acc[user.sector] || 0) + 1
@@ -214,6 +328,33 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
       { label: 'Concluídos', count: tickets.filter((ticket) => ticket.status === 'completed').length, color: 'bg-green-500' },
     ]
 
+    const collaborators = activeUsers.filter((user) => user.role.toLowerCase() !== 'admin')
+    const collaboratorPerformance = collaborators.map((collaborator) => {
+      const assignedTasks = tasks.filter((task) => task.assignees.includes(collaborator.id))
+      const weeklyTasks = assignedTasks.filter(
+        (task) => isThisWeekDate(task.dueDate) || isThisWeekDate(task.updatedAt) || isThisWeekDate(task.createdAt)
+      )
+      const completedWeeklyTasks = weeklyTasks.filter((task) => task.status === 'done')
+      const activeWeeklyTasks = weeklyTasks.filter((task) => task.status !== 'done')
+      const sectorWeeklyTotal = tasks.filter(
+        (task) => task.sector === collaborator.sector && (isThisWeekDate(task.dueDate) || isThisWeekDate(task.updatedAt) || isThisWeekDate(task.createdAt))
+      ).length
+
+      return {
+        id: collaborator.id,
+        name: collaborator.name,
+        role: collaborator.role,
+        sector: collaborator.sector,
+        avatar: collaborator.avatar,
+        completionRate: weeklyTasks.length > 0 ? Math.round((completedWeeklyTasks.length / weeklyTasks.length) * 100) : 0,
+        completed: completedWeeklyTasks.length,
+        total: weeklyTasks.length,
+        active: activeWeeklyTasks.length,
+        sectorShare: sectorWeeklyTotal > 0 ? Math.round((weeklyTasks.length / sectorWeeklyTotal) * 100) : 0,
+        completedDays: weekDays.map((day) => completedWeeklyTasks.some((task) => isSameDay(new Date(task.updatedAt ?? now), day))),
+      }
+    }).sort((a, b) => b.completionRate - a.completionRate || b.completed - a.completed || b.total - a.total)
+
     const completionRate = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0
     const operationalHealth = Math.max(0, Math.min(100, completionRate + 10 - overdueTasks.length * 3 - highPriorityTickets.length * 2 + upcomingEvents.slice(0, 7).length))
 
@@ -234,6 +375,7 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
       criticalItems,
       activityFeed,
       ticketFunnel,
+      collaboratorPerformance,
       operationalHealth,
     }
   }, [users, tasks, tickets, events])
@@ -276,6 +418,34 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
         <KpiCard title="Conclusão" value={`${dashboard.completionRate}%`} detail={`${dashboard.activeTasks} tarefas ativas`} icon={Target} tone="green" />
         <KpiCard title="Tickets" value={dashboard.totalTickets} detail={`${dashboard.openTickets.length} abertos • ${dashboard.highPriorityTickets.length} alta prioridade`} icon={Ticket} tone="yellow" />
         <KpiCard title="Atrasos" value={dashboard.overdueTasks.length} detail={`${dashboard.highPriorityTasks.length} tarefas críticas`} icon={ShieldAlert} tone="red" />
+      </motion.div>
+
+      <motion.div variants={itemVariants} className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#fc7a67]">Colaboradores</p>
+            <h2 className="text-xl font-bold text-white md:text-2xl">Desempenho semanal</h2>
+            <p className="text-sm text-gray-500">Cards com gráfico circular de conclusão, atividade e tarefas da semana por colaborador.</p>
+          </div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/tasks" className="text-gray-400 hover:text-white">
+              Ver tarefas <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
+          </Button>
+        </div>
+        <div className="grid gap-5 xl:grid-cols-2">
+          {dashboard.collaboratorPerformance.slice(0, 6).map((collaborator) => (
+            <CollaboratorPerformanceCard key={collaborator.id} collaborator={collaborator} />
+          ))}
+          {dashboard.collaboratorPerformance.length === 0 && (
+            <Card className="border-[#262626] bg-[#0a0a0a]">
+              <CardContent className="py-10 text-center">
+                <Users className="mx-auto mb-3 h-8 w-8 text-gray-600" />
+                <p className="text-sm text-gray-500">Nenhum colaborador com tarefas nesta semana.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-3">

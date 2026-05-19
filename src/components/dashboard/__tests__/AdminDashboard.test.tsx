@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { AdminDashboard } from '../AdminDashboard'
 
+const now = new Date()
+
 // Mock dos hooks
 jest.mock('@/hooks/useUsers', () => ({
   useUsers: () => ({
@@ -16,9 +18,9 @@ jest.mock('@/hooks/useUsers', () => ({
 jest.mock('@/hooks/useTasks', () => ({
   useTasks: () => ({
     tasks: [
-      { id: '1', title: 'Task 1', status: 'done', sector: 'TI/Suporte', priority: 'high', assignees: ['1'] },
-      { id: '2', title: 'Task 2', status: 'in_progress', sector: 'Marketing', priority: 'medium', assignees: ['2'] },
-      { id: '3', title: 'Task 3', status: 'todo', sector: 'TI/Suporte', priority: 'low', assignees: ['1'] },
+      { id: '1', title: 'Task 1', status: 'done', sector: 'TI/Suporte', priority: 'high', assignees: ['1'], dueDate: now, createdAt: now, updatedAt: now },
+      { id: '2', title: 'Task 2', status: 'in_progress', sector: 'Marketing', priority: 'medium', assignees: ['2'], dueDate: now, createdAt: now, updatedAt: now },
+      { id: '3', title: 'Task 3', status: 'todo', sector: 'TI/Suporte', priority: 'low', assignees: ['1'], dueDate: now, createdAt: now, updatedAt: now },
     ],
     isLoading: false,
   }),
@@ -113,8 +115,18 @@ describe('AdminDashboard', () => {
 
     // Verifica presença de seções principais
     expect(screen.getByText(/Total Usuários/i)).toBeInTheDocument()
+    expect(screen.getByText(/Desempenho semanal/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Tarefas/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Tickets/i).length).toBeGreaterThan(0)
+  })
+
+  it('should render collaborator weekly performance cards with donut charts', () => {
+    render(<AdminDashboard userName="Test User" />)
+
+    expect(screen.getAllByText('Test User 1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Test User 2').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText(/Desempenho semanal de Test User 1: 50%/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/1 de 2 tarefas concluídas/i)).toBeInTheDocument()
   })
 
   it('should calculate task completion rate correctly', () => {
