@@ -15,7 +15,7 @@ import { toast } from 'sonner'
 export interface UseAnnouncementsReturn {
   /** Avisos ativos e não expirados (filtrados por setor do usuário) */
   announcements: AnnouncementWithAuthor[]
-  /** Todos os avisos (para página admin) */
+  /** Todos os avisos visíveis para o usuário atual (para página admin) */
   allAnnouncements: AnnouncementWithAuthor[]
   /** Estado de carregamento */
   isLoading: boolean
@@ -33,18 +33,103 @@ export interface UseAnnouncementsReturn {
   refetch: () => Promise<void>
 }
 
+type AnnouncementRow = Announcement & {
+  author?: {
+    id: string
+    name: string
+    avatar: string | null
+    sector: AnnouncementWithAuthor['author']['sector']
+  } | null
+}
+
+const ANNOUNCEMENT_CHANGED_EVENT = 'vibeoffice:announcements-changed'
+
+function mapAnnouncement(a: AnnouncementRow): AnnouncementWithAuthor {
+  return {
+    id: a.id,
+    title: a.title,
+    message: a.message,
+    priority: a.priority as AnnouncementPriority,
+    created_by: a.created_by,
+    target_sectors: a.target_sectors || [],
+    expires_at: a.expires_at,
+    active: a.active,
+    metadata: a.metadata || {},
+    created_at: a.created_at,
+    updated_at: a.updated_at,
+    author: a.author || {
+      id: a.created_by,
+      name: 'Usuário Desconhecido',
+      avatar: null,
+      sector: 'Administrativo',
+    },
+  }
+}
+
+function notifyAnnouncementChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(ANNOUNCEMENT_CHANGED_EVENT))
+  }
+}
+
 export function useAnnouncements(): UseAnnouncementsReturn {
   const [allAnnouncements, setAllAnnouncements] = useState<AnnouncementWithAuthor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
-  // [C05] Client criado por hook para evitar sessão stale
+  // Client criado por hook para evitar sessão stale
   const supabase = createClient()
 
-  // Fetch inicial de avisos + Realtime subscription
+  const fetchAnnouncements = useCallback(async () => {
+    if (!user) {
+      setAllAnnouncements([])
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Buscar avisos com informações do autor (JOIN)
+      const { data, error } = await supabase
+        .from('company_announcements')
+        .select(`
+          *,
+          author:users!company_announcements_created_by_fkey (
+            id,
+            name,
+            avatar,
+            sector
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      const mapped = ((data ?? []) as AnnouncementRow[]).map(mapAnnouncement)
+      setAllAnnouncements(mapped)
+    } catch (error) {
+      console.error('[useAnnouncements] Error fetching:', error)
+      toast.error('Erro ao carregar avisos')
+      setAllAnnouncements([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [supabase, user])
+
+  // Fetch inicial de avisos + Realtime subscription + sincronização entre instâncias do hook
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setAllAnnouncements([])
+      setIsLoading(false)
+      return
+    }
 
     fetchAnnouncements()
+
+    const handleLocalChange = () => {
+      void fetchAnnouncements()
+    }
+
+    window.addEventListener(ANNOUNCEMENT_CHANGED_EVENT, handleLocalChange)
 
     // Setup Realtime subscription
     const channel = supabase
@@ -62,7 +147,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             // Fetch completo para pegar dados do autor
             // (Realtime só traz os dados da tabela, não joins)
-            fetchAnnouncements()
+            void fetchAnnouncements()
           } else if (payload.eventType === 'DELETE') {
             // Remove deleted announcement
             setAllAnnouncements((prev) => prev.filter(a => a.id !== payload.old.id))
@@ -73,65 +158,10 @@ export function useAnnouncements(): UseAnnouncementsReturn {
 
     // Cleanup subscription on unmount
     return () => {
+      window.removeEventListener(ANNOUNCEMENT_CHANGED_EVENT, handleLocalChange)
       channel.unsubscribe()
     }
-  }, [user])
-
-  async function fetchAnnouncements() {
-    setIsLoading(true)
-    try {
-      // FIXME: Tabela 'company_announcements' não existe nos types do Supabase
-      // TODO: Criar migration ou atualizar types antes de habilitar
-      // Retornando array vazio temporariamente
-      const data: any[] = []
-
-      /* COMENTADO TEMPORARIAMENTE
-      // Buscar avisos com informações do autor (JOIN)
-      const { data, error } = await supabase
-        .from('company_announcements')
-        .select(`
-          *,
-          author:users!created_by (
-            id,
-            name,
-            avatar,
-            sector
-          )
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      */
-
-      // Mapear para AnnouncementWithAuthor
-      const mapped: AnnouncementWithAuthor[] = data.map((a: any) => ({
-        id: a.id,
-        title: a.title,
-        message: a.message,
-        priority: a.priority as AnnouncementPriority,
-        created_by: a.created_by,
-        target_sectors: a.target_sectors || [],
-        expires_at: a.expires_at,
-        active: a.active,
-        metadata: a.metadata || {},
-        created_at: a.created_at,
-        updated_at: a.updated_at,
-        author: a.author || {
-          id: a.created_by,
-          name: 'Usuário Desconhecido',
-          avatar: null,
-          sector: 'Administrativo' as any,
-        },
-      }))
-
-      setAllAnnouncements(mapped)
-    } catch (error) {
-      console.error('[useAnnouncements] Error fetching:', error)
-      toast.error('Erro ao carregar avisos')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [fetchAnnouncements, supabase, user])
 
   // Avisos filtrados para o usuário atual
   // Mostra apenas avisos ativos, não expirados, do setor do usuário ou gerais
@@ -183,23 +213,6 @@ export function useAnnouncements(): UseAnnouncementsReturn {
       }
 
       try {
-        // REMOVIDO: Agora todos os cargos podem criar avisos
-        // if (user.role !== 'Admin' && user.role !== 'Gerente') {
-        //   toast.error('Apenas Admin ou Gerente podem criar avisos')
-        //   return null
-        // }
-
-        // REMOVIDO: Restrição de setor para Gerentes
-        // if (user.role === 'Gerente') {
-        //   const isGeneral = data.target_sectors.length === 0
-        //   const includesOwnSector = data.target_sectors.includes(user.sector)
-        //
-        //   if (!isGeneral && !includesOwnSector) {
-        //     toast.error('Gerentes só podem criar avisos para seu setor')
-        //     return null
-        //   }
-        // }
-
         // Preparar dados para insert
         const insertData = {
           title: data.title.trim(),
@@ -214,11 +227,6 @@ export function useAnnouncements(): UseAnnouncementsReturn {
           metadata: data.metadata || {},
         }
 
-        // FIXME: Tabela company_announcements não existe
-        toast.error('Funcionalidade temporariamente desabilitada')
-        return null
-
-        /* COMENTADO TEMPORARIAMENTE
         const { data: newAnnouncement, error } = await supabase
           .from('company_announcements')
           .insert(insertData)
@@ -229,18 +237,17 @@ export function useAnnouncements(): UseAnnouncementsReturn {
 
         toast.success('Aviso criado com sucesso!')
 
-        // Fetch completo para atualizar lista com autor
         await fetchAnnouncements()
+        notifyAnnouncementChanged()
 
         return newAnnouncement as Announcement
-        */
       } catch (error) {
         console.error('[useAnnouncements] Error creating:', error)
         toast.error('Erro ao criar aviso')
         return null
       }
     },
-    [user]
+    [fetchAnnouncements, supabase, user]
   )
 
   // Atualizar aviso
@@ -253,7 +260,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
 
       try {
         // Preparar apenas campos fornecidos
-        const updateData: any = {}
+        const updateData: Partial<Announcement> = {}
 
         if (data.title !== undefined) updateData.title = data.title.trim()
         if (data.message !== undefined) updateData.message = data.message.trim()
@@ -267,11 +274,6 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         if (data.active !== undefined) updateData.active = data.active
         if (data.metadata !== undefined) updateData.metadata = data.metadata
 
-        // FIXME: Tabela company_announcements não existe
-        toast.error('Funcionalidade temporariamente desabilitada')
-        return null
-
-        /* COMENTADO TEMPORARIAMENTE
         const { data: updatedAnnouncement, error } = await supabase
           .from('company_announcements')
           .update(updateData)
@@ -283,18 +285,17 @@ export function useAnnouncements(): UseAnnouncementsReturn {
 
         toast.success('Aviso atualizado com sucesso!')
 
-        // Fetch completo para atualizar lista
         await fetchAnnouncements()
+        notifyAnnouncementChanged()
 
         return updatedAnnouncement as Announcement
-        */
       } catch (error) {
         console.error('[useAnnouncements] Error updating:', error)
         toast.error('Erro ao atualizar aviso')
         return null
       }
     },
-    [user]
+    [fetchAnnouncements, supabase, user]
   )
 
   // Arquivar aviso (active = false)
@@ -306,11 +307,6 @@ export function useAnnouncements(): UseAnnouncementsReturn {
       }
 
       try {
-        // FIXME: Tabela company_announcements não existe
-        toast.error('Funcionalidade temporariamente desabilitada')
-        return false
-
-        /* COMENTADO TEMPORARIAMENTE
         const { error } = await supabase
           .from('company_announcements')
           .update({ active: false })
@@ -324,16 +320,16 @@ export function useAnnouncements(): UseAnnouncementsReturn {
         setAllAnnouncements((prev) =>
           prev.map(a => a.id === id ? { ...a, active: false } : a)
         )
+        notifyAnnouncementChanged()
 
         return true
-        */
       } catch (error) {
         console.error('[useAnnouncements] Error archiving:', error)
         toast.error('Erro ao arquivar aviso')
         return false
       }
     },
-    [user]
+    [supabase, user]
   )
 
   // Deletar aviso permanentemente
@@ -345,11 +341,6 @@ export function useAnnouncements(): UseAnnouncementsReturn {
       }
 
       try {
-        // FIXME: Tabela company_announcements não existe
-        toast.error('Funcionalidade temporariamente desabilitada')
-        return false
-
-        /* COMENTADO TEMPORARIAMENTE
         const { error } = await supabase
           .from('company_announcements')
           .delete()
@@ -361,16 +352,16 @@ export function useAnnouncements(): UseAnnouncementsReturn {
 
         // Atualizar estado local
         setAllAnnouncements((prev) => prev.filter(a => a.id !== id))
+        notifyAnnouncementChanged()
 
         return true
-        */
       } catch (error) {
         console.error('[useAnnouncements] Error deleting:', error)
         toast.error('Erro ao deletar aviso')
         return false
       }
     },
-    [user]
+    [supabase, user]
   )
 
   // Buscar aviso por ID
@@ -384,7 +375,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
   // Refetch manual
   const refetch = useCallback(async () => {
     await fetchAnnouncements()
-  }, [])
+  }, [fetchAnnouncements])
 
   return {
     announcements,

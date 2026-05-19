@@ -125,6 +125,56 @@ export type Database = {
         }
         Relationships: []
       }
+      company_announcements: {
+        Row: {
+          id: string
+          title: string
+          message: string
+          priority: Database["public"]["Enums"]["announcement_priority"]
+          created_by: string
+          target_sectors: Database["public"]["Enums"]["sector_type"][]
+          expires_at: string
+          active: boolean
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          message: string
+          priority?: Database["public"]["Enums"]["announcement_priority"]
+          created_by: string
+          target_sectors?: Database["public"]["Enums"]["sector_type"][]
+          expires_at: string
+          active?: boolean
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          message?: string
+          priority?: Database["public"]["Enums"]["announcement_priority"]
+          created_by?: string
+          target_sectors?: Database["public"]["Enums"]["sector_type"][]
+          expires_at?: string
+          active?: boolean
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       course_progress: {
         Row: {
           id: string
@@ -937,6 +987,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      announcement_priority: "info" | "warning" | "urgent"
       entity_type: "task" | "ticket" | "message"
       event_type: "personal" | "sector" | "company"
       item_type: "file" | "folder"

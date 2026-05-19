@@ -16,7 +16,7 @@ import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { useAnnouncements } from '@/hooks/useAnnouncements'
-import type { AnnouncementPriority, CreateAnnouncementData, AnnouncementWithAuthor } from '@/types/announcements'
+import type { AnnouncementPriority, CreateAnnouncementData, UpdateAnnouncementData } from '@/types/announcements'
 import type { Sector } from '@/types/auth'
 import { toast } from 'sonner'
 
@@ -145,13 +145,16 @@ export function CreateAnnouncementModal({
         },
       }
 
+      let saved = null
       if (editingId) {
-        await updateAnnouncement(editingId, data)
+        saved = await updateAnnouncement(editingId, data as UpdateAnnouncementData)
       } else {
-        await createAnnouncement(data)
+        saved = await createAnnouncement(data)
       }
 
-      onClose()
+      if (saved) {
+        onClose()
+      }
     } catch (error) {
       console.error('Error submitting announcement:', error)
     } finally {
