@@ -16,8 +16,12 @@ import { AdminDashboard } from '@/components/dashboard/AdminDashboard'
 import { ManagerDashboard } from '@/components/dashboard/ManagerDashboard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useUsers } from '@/hooks/useUsers'
+import { useTasks } from '@/hooks/useTasks'
+import { useTickets } from '@/hooks/useTickets'
+import { useCalendar } from '@/hooks/useCalendar'
 import { motion } from 'framer-motion'
-import { addDays, format } from 'date-fns'
+import { differenceInMinutes, format, isSameDay, startOfDay, startOfWeek } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { AnnouncementsCarousel } from '@/components/announcements/AnnouncementsCarousel'
 import { CreateAnnouncementModal } from '@/components/announcements/CreateAnnouncementModal'
 
@@ -43,6 +47,29 @@ const itemVariants = {
   },
 }
 
+const eventColors = ['#fc7a67', '#ff0300', '#f97316', '#22c55e', '#3b82f6']
+
+function formatDuration(start: Date, end: Date) {
+  const minutes = Math.max(differenceInMinutes(end, start), 0)
+  if (minutes < 60) return `${minutes} min`
+
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  return remaining > 0 ? `${hours}h ${remaining}min` : `${hours}h`
+}
+
+function formatStartsIn(date: Date) {
+  const minutes = differenceInMinutes(date, new Date())
+  if (minutes <= 0) return 'Agora'
+  if (minutes < 60) return `Em ${minutes} min`
+
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  if (hours < 24) return remaining > 0 ? `Em ${hours}h ${remaining}min` : `Em ${hours}h`
+
+  return format(date, "d 'de' MMM", { locale: ptBR })
+}
+
 export default function DashboardPage() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
@@ -50,7 +77,10 @@ export default function DashboardPage() {
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false)
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false)
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | undefined>()
-  const { users } = useUsers()
+  const { users, isLoading: usersLoading } = useUsers()
+  const { tasks, isLoading: tasksLoading } = useTasks()
+  const { tickets, isLoading: ticketsLoading } = useTickets()
+  const { events, isLoading: eventsLoading } = useCalendar()
 
   useEffect(() => {
     if (!user && !isLoading) {
@@ -65,7 +95,7 @@ export default function DashboardPage() {
     description?: string
   }) => {
     console.log('Nova solicitação:', request)
-    // TODO: Integrar com API real
+    // TODO: Integrar com API real de solicitações quando a tabela existir.
   }
 
   const handleSaveMeeting = (meeting: {
@@ -79,7 +109,7 @@ export default function DashboardPage() {
     agenda?: string
   }) => {
     console.log('Nova reunião:', meeting)
-    // TODO: Integrar com API real
+    // TODO: Integrar com API real de calendário quando o modal enviar payload completo.
   }
 
   const handleCreateAnnouncement = () => {
@@ -92,144 +122,165 @@ export default function DashboardPage() {
     setIsAnnouncementModalOpen(true)
   }
 
-  // Mock data for the dashboard
-  const dashboardData = useMemo(() => {
+  const userById = useMemo(() => {
+    return new Map((users ?? []).map((user) => [user.id, user]))
+  }, [users])
+
+  const collaboratorDashboardData = useMemo(() => {
     const now = new Date()
-    const today = format(now, 'yyyy-MM-dd')
-    const tomorrow = format(addDays(now, 1), 'yyyy-MM-dd')
+    const weekStart = startOfWeek(now, { weekStartsOn: 0 })
+    const upcomingEvents = events
+      .filter((event) => new Date(event.startTime) >= now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
-    // Upcoming meeting (happening soon)
-    const nextMeeting = {
-      title: 'Reunião mensal de retrospectiva',
-      startsIn: 'Em 19 min',
-      time: '10:00',
-      duration: '35 min',
-      attendees: users?.slice(0, 4).map((u) => ({
-        id: u.id,
-        name: u.name,
-        avatar: u.avatar ?? undefined,
-      })) || [],
+    const toAttendee = (id: string) => {
+      const attendee = userById.get(id)
+      return {
+        id,
+        name: attendee?.name ?? 'Participante',
+        avatar: attendee?.avatar ?? undefined,
+      }
     }
 
-    // Efficiency data
-    const efficiency = {
-      efficiency: 78,
-      hoursWorked: 32,
-      totalHours: 40,
-      activity: 58,
-      projectCount: 3,
-      projects: [
-        { name: 'Projeto WeBuild', hours: 16.5, color: 'hsl(218, 100%, 52%)' },
-        { name: 'Tarefas de Marketing', hours: 12.5, color: 'hsl(22, 94%, 48%)' },
-        { name: 'Reuniões', hours: 3, color: 'hsl(0, 0%, 0%)' },
-      ],
-    }
+    const nextEvent = upcomingEvents[0]
+    const nextMeeting = nextEvent
+      ? {
+          title: nextEvent.title,
+          startsIn: formatStartsIn(new Date(nextEvent.startTime)),
+          time: format(new Date(nextEvent.startTime), 'HH:mm'),
+          duration: formatDuration(new Date(nextEvent.startTime), new Date(nextEvent.endTime)),
+          attendees: (nextEvent.attendees ?? []).map(toAttendee),
+        }
+      : {
+          title: 'Nenhuma reunião agendada',
+          startsIn: 'Sem eventos próximos',
+          time: '--:--',
+          duration: '0 min',
+          attendees: [],
+        }
 
-    // Upcoming events grouped by date
-    const eventGroups = [
-      {
-        date: today,
-        events: [
-          {
-            id: '1',
-            title: 'Reunião semanal',
-            time: '10:00',
-            duration: '60 min',
-            date: now,
-            attendees: users?.slice(0, 3).map((u) => ({
-              id: u.id,
-              name: u.name,
-              avatar: u.avatar ?? undefined,
-            })) || [],
-          },
-          {
-            id: '2',
-            title: 'Treinamento de Design',
-            time: '15:30',
-            duration: '30 min',
-            date: now,
-            attendees: users?.slice(2, 5).map((u) => ({
-              id: u.id,
-              name: u.name,
-              avatar: u.avatar ?? undefined,
-            })) || [],
-          },
-        ],
-      },
-      {
-        date: tomorrow,
-        events: [
-          {
-            id: '3',
-            title: 'Treinamento de Design',
-            time: '15:30',
-            duration: '30 min',
-            date: addDays(now, 1),
-            attendees: users?.slice(1, 3).map((u) => ({
-              id: u.id,
-              name: u.name,
-              avatar: u.avatar ?? undefined,
-            })) || [],
-          },
-        ],
-      },
-    ]
+    const totalTasks = tasks.length
+    const completedTasks = tasks.filter((task) => task.status === 'done').length
+    const activeTasks = tasks.filter((task) => task.status !== 'done').length
+    const inProgressTasks = tasks.filter((task) => task.status === 'in_progress').length
+    const overdueTasks = tasks.filter((task) => {
+      if (!task.dueDate || task.status === 'done') return false
+      return startOfDay(new Date(task.dueDate)) < startOfDay(now)
+    }).length
 
-    // Requests
-    const requests = [
-      {
-        id: '1',
-        startDate: new Date('2024-03-16'),
-        endDate: new Date('2024-03-26'),
-        type: 'Férias',
-        status: 'processing' as const,
-        assignedTo: users?.[0] ? {
-          id: users[0].id,
-          name: users[0].name,
-          avatar: users[0].avatar ?? undefined,
-        } : { id: '', name: 'Não atribuído', avatar: undefined },
-      },
-      {
-        id: '2',
-        startDate: new Date('2024-03-16'),
-        endDate: new Date('2024-03-26'),
-        type: 'Atestado',
-        status: 'processing' as const,
-        assignedTo: users?.[1] ? {
-          id: users[1].id,
-          name: users[1].name,
-          avatar: users[1].avatar ?? undefined,
-        } : { id: '', name: 'Não atribuído', avatar: undefined },
-      },
-    ]
+    const tasksBySector = tasks.reduce((acc, task) => {
+      acc[task.sector] = (acc[task.sector] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
 
-    // Leave stats
-    const leaveStats = {
-      dayoff: { current: 0, total: 6 },
-      vacation: { current: 12, total: 28 },
-      sick: { current: 10 },
-    }
+    const projects = Object.entries(tasksBySector)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, count], index) => ({
+        name,
+        hours: count,
+        color: eventColors[index % eventColors.length],
+      }))
 
-    // News
-    const news = {
-      title: 'Atualizações no time de Devs & Designers',
-      description:
-        'Compilamos uma lista das principais mudanças que aconteceram em março.',
-      imageUrl: '/images/office-meeting.jpg',
-      href: '/chat',
-    }
+    const completedDays = Array.from({ length: 7 }, (_, index) => {
+      const day = new Date(weekStart)
+      day.setDate(weekStart.getDate() + index)
+      return tasks.some(
+        (task) => task.status === 'done' && isSameDay(new Date(task.updatedAt), day)
+      )
+    })
+
+    const eventGroups = upcomingEvents.slice(0, 6).reduce((groups, event) => {
+      const dateKey = format(new Date(event.startTime), 'yyyy-MM-dd')
+      const existing = groups.find((group) => group.date === dateKey)
+      const mappedEvent = {
+        id: event.id,
+        title: event.title,
+        time: format(new Date(event.startTime), 'HH:mm'),
+        duration: formatDuration(new Date(event.startTime), new Date(event.endTime)),
+        date: new Date(event.startTime),
+        attendees: (event.attendees ?? []).map(toAttendee),
+      }
+
+      if (existing) {
+        existing.events.push(mappedEvent)
+      } else {
+        groups.push({ date: dateKey, events: [mappedEvent] })
+      }
+
+      return groups
+    }, [] as Array<{ date: string; events: Array<{ id: string; title: string; time: string; duration: string; date: Date; attendees: Array<{ id: string; name: string; avatar?: string }> }> }>)
+
+    const requestTickets = tickets.filter((ticket) => ticket.status !== 'completed')
+    const requests = requestTickets.slice(0, 5).map((ticket) => {
+      const responsible = userById.get(ticket.assignedTo ?? ticket.requester)
+      return {
+        id: ticket.id,
+        startDate: new Date(ticket.createdAt),
+        endDate: new Date(ticket.updatedAt),
+        type: ticket.category || ticket.title,
+        status: ticket.status === 'open' ? ('pending' as const) : ('processing' as const),
+        assignedTo: {
+          id: responsible?.id ?? ticket.requester,
+          name: responsible?.name ?? 'Não atribuído',
+          avatar: responsible?.avatar ?? undefined,
+        },
+      }
+    })
+
+    const lowerTicketText = (ticket: { title: string; category: string; description: string }) =>
+      `${ticket.title} ${ticket.category} ${ticket.description}`.toLowerCase()
+
+    const countMatchingTickets = (patterns: string[]) =>
+      tickets.filter((ticket) => patterns.some((pattern) => lowerTicketText(ticket).includes(pattern)))
+
+    const dayoffRequests = countMatchingTickets(['day off', 'dayoff', 'folga'])
+    const vacationRequests = countMatchingTickets(['férias', 'ferias', 'vacation'])
+    const sickRequests = countMatchingTickets(['atestado', 'médico', 'medico', 'sick'])
+
+    const latestTicket = [...tickets].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )[0]
 
     return {
       nextMeeting,
-      efficiency,
+      efficiency: {
+        efficiency: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+        hoursWorked: completedTasks,
+        totalHours: Math.max(totalTasks, 1),
+        activity: totalTasks > 0 ? Math.round(((completedTasks + inProgressTasks) / totalTasks) * 100) : 0,
+        projectCount: Object.keys(tasksBySector).length,
+        projects: projects.length > 0 ? projects : [{ name: 'Sem tarefas vinculadas', hours: 0, color: '#52525b' }],
+        period: 'Tarefas reais',
+        primaryMetricLabel: 'Concluídas',
+        activityLabel: 'Ativas',
+        projectCountLabel: 'Setores',
+        projectValueSuffix: 'tarefas',
+        completedDays,
+      },
       eventGroups,
+      newEventsCount: upcomingEvents.filter((event) => differenceInMinutes(new Date(event.startTime), now) <= 24 * 60).length,
       requests,
-      leaveStats,
-      news,
+      leaveStats: {
+        dayoff: { current: dayoffRequests.filter((ticket) => ticket.status !== 'completed').length, total: dayoffRequests.length },
+        vacation: { current: vacationRequests.filter((ticket) => ticket.status !== 'completed').length, total: vacationRequests.length },
+        sick: { current: sickRequests.filter((ticket) => ticket.status !== 'completed').length },
+      },
+      news: latestTicket
+        ? {
+            title: latestTicket.title,
+            description: latestTicket.description || `Status: ${latestTicket.status} • Prioridade: ${latestTicket.priority}`,
+            href: '/tickets',
+          }
+        : {
+            title: 'Sem atualizações recentes',
+            description: activeTasks > 0 ? `${activeTasks} tarefas ativas e ${overdueTasks} atrasadas.` : 'Quando houver tickets ou tarefas, os dados aparecerão aqui.',
+            href: '/tasks',
+          },
     }
-  }, [users])
+  }, [events, tasks, tickets, userById])
 
-  if (isLoading) {
+  if (isLoading || usersLoading || tasksLoading || ticketsLoading || eventsLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-12 w-96" />
@@ -248,12 +299,10 @@ export default function DashboardPage() {
 
   if (!user) return null
 
-  // Obter role e sector do usuário
   const userRole = user.role || 'Colaborador'
   const userSector = user.sector || 'Administrativo'
   const userName = user.name || 'Usuário'
 
-  // Renderizar dashboard baseado no role
   if (userRole === 'Admin') {
     return <AdminDashboard userName={userName} />
   }
@@ -262,7 +311,6 @@ export default function DashboardPage() {
     return <ManagerDashboard userName={userName} userSector={userSector} />
   }
 
-  // Dashboard do Colaborador (padrão)
   return (
     <motion.div
       variants={containerVariants}
@@ -270,7 +318,6 @@ export default function DashboardPage() {
       animate="visible"
       className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-6 md:space-y-8"
     >
-      {/* Welcome Header */}
       <motion.div variants={itemVariants}>
         <WelcomeHeader
           onNewRequest={() => setIsRequestModalOpen(true)}
@@ -278,7 +325,6 @@ export default function DashboardPage() {
         />
       </motion.div>
 
-      {/* Quadro de Avisos */}
       <motion.div variants={itemVariants}>
         <AnnouncementsCarousel
           onCreateClick={handleCreateAnnouncement}
@@ -286,7 +332,6 @@ export default function DashboardPage() {
         />
       </motion.div>
 
-      {/* Modals */}
       <NewRequestModal
         open={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
@@ -311,34 +356,31 @@ export default function DashboardPage() {
         editingId={editingAnnouncementId}
       />
 
-      {/* Row 1: Meeting Card + Efficiency */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
         <MeetingCard
-          title={dashboardData.nextMeeting.title}
-          startsIn={dashboardData.nextMeeting.startsIn}
-          time={dashboardData.nextMeeting.time}
-          duration={dashboardData.nextMeeting.duration}
-          attendees={dashboardData.nextMeeting.attendees}
+          title={collaboratorDashboardData.nextMeeting.title}
+          startsIn={collaboratorDashboardData.nextMeeting.startsIn}
+          time={collaboratorDashboardData.nextMeeting.time}
+          duration={collaboratorDashboardData.nextMeeting.duration}
+          attendees={collaboratorDashboardData.nextMeeting.attendees}
           onJoin={() => console.log('Join meeting')}
         />
         <div className="lg:col-span-2">
-          <EfficiencyCard {...dashboardData.efficiency} />
+          <EfficiencyCard {...collaboratorDashboardData.efficiency} />
         </div>
       </motion.div>
 
-      {/* Row 2: Upcoming Events + Requests + News */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-3">
         <UpcomingEvents
-          eventGroups={dashboardData.eventGroups}
-          newCount={2}
+          eventGroups={collaboratorDashboardData.eventGroups}
+          newCount={collaboratorDashboardData.newEventsCount}
         />
-        <RequestsTable requests={dashboardData.requests} />
-        <NewsCard {...dashboardData.news} />
+        <RequestsTable requests={collaboratorDashboardData.requests} />
+        <NewsCard {...collaboratorDashboardData.news} />
       </motion.div>
 
-      {/* Row 3: Leave Stats */}
       <motion.div variants={itemVariants}>
-        <LeaveStats {...dashboardData.leaveStats} />
+        <LeaveStats {...collaboratorDashboardData.leaveStats} />
       </motion.div>
     </motion.div>
   )

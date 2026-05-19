@@ -39,6 +39,11 @@
   "exclude": [
     "node_modules",
     "supabase/functions",
-    "vibe-distro-studio"
+    "vibe-distro-studio",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

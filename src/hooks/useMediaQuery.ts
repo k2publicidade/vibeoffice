@@ -1,39 +1,27 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 
 /**
- * Hook para detectar media queries de forma reativa
- * @param query - Media query string (ex: '(min-width: 768px)')
- * @returns boolean indicando se a query corresponde
+ * Hook para detectar media queries de forma reativa.
+ * Usa useSyncExternalStore — sem setState em effect, sem cascading renders.
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
+  const subscribe = (callback: () => void) => {
+    if (typeof window === 'undefined') return () => {}
+    const mql = window.matchMedia(query)
+    mql.addEventListener('change', callback)
+    return () => mql.removeEventListener('change', callback)
+  }
 
-  useEffect(() => {
-    // Verificar se estamos no browser
-    if (typeof window === 'undefined') return
+  const getSnapshot = () => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia(query).matches
+  }
 
-    const mediaQuery = window.matchMedia(query)
+  const getServerSnapshot = () => false
 
-    // Definir valor inicial
-    setMatches(mediaQuery.matches)
-
-    // Handler para mudanças
-    const handleChange = (event: MediaQueryListEvent) => {
-      setMatches(event.matches)
-    }
-
-    // Adicionar listener
-    mediaQuery.addEventListener('change', handleChange)
-
-    // Cleanup
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange)
-    }
-  }, [query])
-
-  return matches
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
 
 /**

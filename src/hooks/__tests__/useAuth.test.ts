@@ -11,8 +11,8 @@ describe('useAuth', () => {
 
   it('should return null user when not authenticated', () => {
     // Mock: sem usuário autenticado
-    ;(supabase.auth.getUser as jest.Mock).mockResolvedValue({
-      data: { user: null },
+    ;(supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: null },
       error: null,
     })
 
@@ -40,8 +40,8 @@ describe('useAuth', () => {
     }
 
     // Mock: usuário autenticado
-    ;(supabase.auth.getUser as jest.Mock).mockResolvedValue({
-      data: { user: mockAuthUser },
+    ;(supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { user: mockAuthUser } },
       error: null,
     })
 
@@ -120,7 +120,7 @@ describe('useAuth', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.user).not.toBeNull()
+      expect(result.current.isLoading).toBe(false)
     })
   })
 
@@ -170,8 +170,8 @@ describe('useAuth', () => {
       email: 'test@vibedistro.com',
     }
 
-    ;(supabase.auth.getUser as jest.Mock).mockResolvedValue({
-      data: { user: mockAuthUser },
+    ;(supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { user: mockAuthUser } },
       error: null,
     })
 

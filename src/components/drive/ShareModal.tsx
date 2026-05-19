@@ -95,11 +95,10 @@ export function ShareModal({
   const [linkCopied, setLinkCopied] = useState(false)
   const [showUserList, setShowUserList] = useState(false)
 
-  if (!item) return null
-
   // Filtrar usuários disponíveis (não compartilhados ainda)
-  const sharedUserIds = shares.map(s => s.userId)
   const filteredUsers = useMemo(() => {
+    const sharedUserIds = shares.map(s => s.userId)
+
     return availableUsers
       .filter(u => !sharedUserIds.includes(u.id))
       .filter(u =>
@@ -108,7 +107,9 @@ export function ShareModal({
             u.email.toLowerCase().includes(searchQuery.toLowerCase())
           : true
       )
-  }, [availableUsers, sharedUserIds, searchQuery])
+  }, [availableUsers, shares, searchQuery])
+
+  if (!item) return null
 
   const handleCopyLink = () => {
     const link = onCopyLink()

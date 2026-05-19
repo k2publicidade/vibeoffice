@@ -1,5 +1,6 @@
 
 import React, { useRef } from 'react';
+import Image from 'next/image';
 import { VisualStyle, MusicGenre, FontStyle, TextEffect, GenerationConfig, AlbumMood, VISUAL_STYLE_CATEGORIES } from '@/types/vibecanvas';
 import { Palette, Music, Type, Upload, X, Image as ImageIcon, ChevronDown, Plus, Heart } from 'lucide-react';
 
@@ -171,10 +172,12 @@ const Controls: React.FC<ControlsProps> = ({ config, setConfig, className = "" }
                 >
                     {config.referenceImage ? (
                         <>
-                            <img
+                            <Image
                                 src={config.referenceImage}
                                 alt="Referência"
-                                className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                                fill
+                                unoptimized
+                                className="object-cover opacity-60 group-hover:opacity-40 transition-opacity"
                             />
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <button

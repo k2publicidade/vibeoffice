@@ -3,34 +3,25 @@ import { canCurrentUserSeeTask, getAllowedTaskAssigneesForWrite, useTasks } from
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '../useAuth'
 
-// Mock useAuth
 jest.mock('../useAuth')
+jest.mock('@/lib/notifications/eventBus', () => ({
+  EventBus: { emit: jest.fn(() => Promise.resolve()) },
+}))
 
 describe('useTasks', () => {
-  it('should only show unassigned tasks to Admin', () => {
-    const unassignedTask = { assignees: [] }
-    const assignedTask = { assignees: ['user-1'] }
+  const userId = '11111111-1111-4111-8111-111111111111'
+  const user2Id = '22222222-2222-4222-8222-222222222222'
 
-    expect(canCurrentUserSeeTask({ id: 'admin-1', role: 'Admin' }, unassignedTask)).toBe(true)
-    expect(canCurrentUserSeeTask({ id: 'user-1', role: 'Colaborador' }, unassignedTask)).toBe(false)
-    expect(canCurrentUserSeeTask({ id: 'user-1', role: 'Colaborador' }, assignedTask)).toBe(true)
-    expect(canCurrentUserSeeTask({ id: 'user-2', role: 'Colaborador' }, assignedTask)).toBe(false)
-  })
-
-  it('should force collaborator task writes to themselves', () => {
-    expect(getAllowedTaskAssigneesForWrite(
-      { id: 'collab-1', role: 'Colaborador' },
-      ['other-user']
-    )).toEqual(['collab-1'])
-
-    expect(getAllowedTaskAssigneesForWrite(
-      { id: 'admin-1', role: 'Admin' },
-      ['user-1', 'user-2']
-    )).toEqual(['user-1', 'user-2'])
-  })
+  function mockTaskFetch(data: unknown[], error: unknown = null) {
+    const query = {
+      select: jest.fn(() => query),
+      order: jest.fn().mockResolvedValue({ data, error }),
+    }
+    ;(supabase.from as jest.Mock).mockReturnValueOnce(query)
+  }
 
   const mockUser = {
-    id: 'user-1',
+    id: userId,
     email: 'test@vibedistro.com',
     name: 'Test User',
     avatar: null,
@@ -47,9 +38,11 @@ describe('useTasks', () => {
     status: 'todo',
     priority: 'medium',
     sector: 'TI/Suporte',
-    assigned_to: 'user-1',
-    created_by: 'user-1',
-    due_date: new Date().toISOString(),
+    task_assignees: [{ user_id: userId }],
+    created_by: userId,
+    tags: [],
+    due_date: null,
+    linked_ticket_id: 'ticket-1',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
@@ -59,22 +52,37 @@ describe('useTasks', () => {
     ;(useAuth as jest.Mock).mockReturnValue({ user: mockUser })
   })
 
-  it('should fetch tasks from Supabase when user is authenticated', async () => {
-    const mockTasks = [mockTaskData]
+  it('should only show unassigned tasks to Admin', () => {
+    const unassignedTask = { assignees: [] }
+    const assignedTask = { assignees: [userId] }
 
-    ;(supabase.from as jest.Mock).mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: mockTasks,
-        error: null,
-      }),
-    })
+    expect(canCurrentUserSeeTask({ id: 'admin-1', role: 'Admin' }, unassignedTask)).toBe(true)
+    expect(canCurrentUserSeeTask({ id: userId, role: 'Colaborador' }, unassignedTask)).toBe(false)
+    expect(canCurrentUserSeeTask({ id: userId, role: 'Colaborador' }, assignedTask)).toBe(true)
+    expect(canCurrentUserSeeTask({ id: user2Id, role: 'Colaborador' }, assignedTask)).toBe(false)
+  })
+
+  it('should force collaborator task writes to themselves', () => {
+    expect(getAllowedTaskAssigneesForWrite(
+      { id: userId, role: 'Colaborador' },
+      [user2Id]
+    )).toEqual([userId])
+
+    expect(getAllowedTaskAssigneesForWrite(
+      { id: 'admin-1', role: 'Admin' },
+      [userId, user2Id]
+    )).toEqual([userId, user2Id])
+  })
+
+  it('should fetch tasks from Supabase when user is authenticated', async () => {
+    mockTaskFetch([mockTaskData])
 
     const { result } = renderHook(() => useTasks())
 
     await waitFor(() => {
       expect(result.current.tasks).toHaveLength(1)
       expect(result.current.tasks[0].title).toBe('Test Task')
+      expect(result.current.tasks[0].assignees).toEqual([userId])
       expect(result.current.isLoading).toBe(false)
     })
   })
@@ -95,66 +103,71 @@ describe('useTasks', () => {
       status: 'todo' as const,
       priority: 'high' as const,
       sector: 'TI/Suporte' as const,
-      assignedTo: 'user-1',
-      dueDate: new Date(),
+      assignees: [userId],
     }
 
-    // Mock: fetch inicial vazio
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({ data: [], error: null }),
-    })
-
+    mockTaskFetch([])
     const { result } = renderHook(() => useTasks())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    // Mock: insert da nova task
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      insert: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({
-        data: { ...mockTaskData, ...newTaskInput },
-        error: null,
-      }),
-    })
+    const insertedTask = {
+      ...mockTaskData,
+      id: 'task-new',
+      title: 'New Task',
+      description: 'New Description',
+      priority: 'high',
+      created_by: userId,
+      linked_ticket_id: null,
+    }
+
+    ;(supabase.from as jest.Mock)
+      .mockReturnValueOnce({
+        insert: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: insertedTask, error: null }),
+      })
+      .mockReturnValueOnce({ insert: jest.fn().mockResolvedValue({ error: null }) })
+      .mockReturnValueOnce({
+        insert: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: { id: 'ticket-new' }, error: null }),
+      })
+      .mockReturnValueOnce({
+        update: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockResolvedValue({ error: null }),
+      })
 
     await act(async () => {
       await result.current.createTask(newTaskInput)
     })
 
     expect(result.current.tasks).toHaveLength(1)
-    expect(result.current.tasks[0].title).toBe('New Task')
+    expect(result.current.tasks[0]).toMatchObject({
+      id: 'task-new',
+      title: 'New Task',
+      assignees: [userId],
+      linkedTicketId: 'ticket-new',
+    })
   })
 
   it('should update task successfully', async () => {
-    // Mock: fetch inicial
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: [mockTaskData],
-        error: null,
-      }),
-    })
-
+    mockTaskFetch([mockTaskData])
     const { result } = renderHook(() => useTasks())
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(1))
 
-    // Mock: update
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({
-        data: { ...mockTaskData, title: 'Updated Task' },
-        error: null,
-      }),
-    })
+    const updatedRow = { ...mockTaskData, title: 'Updated Task' }
+    ;(supabase.from as jest.Mock)
+      .mockReturnValueOnce({
+        update: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockResolvedValue({ error: null }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: updatedRow, error: null }),
+      })
 
     await act(async () => {
       await result.current.updateTask('task-1', { title: 'Updated Task' })
@@ -164,28 +177,20 @@ describe('useTasks', () => {
   })
 
   it('should delete task successfully', async () => {
-    // Mock: fetch inicial
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: [mockTaskData],
-        error: null,
-      }),
-    })
-
+    mockTaskFetch([mockTaskData])
     const { result } = renderHook(() => useTasks())
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(1))
 
-    // Mock: delete
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({
-        error: null,
-      }),
-    })
+    ;(supabase.from as jest.Mock)
+      .mockReturnValueOnce({
+        delete: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      })
+      .mockReturnValueOnce({
+        delete: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockResolvedValue({ error: null }),
+      })
 
     await act(async () => {
       await result.current.deleteTask('task-1')
@@ -195,78 +200,45 @@ describe('useTasks', () => {
   })
 
   it('should filter tasks by status', async () => {
-    const mockMultipleTasks = [
+    mockTaskFetch([
       { ...mockTaskData, id: 'task-1', status: 'todo' },
       { ...mockTaskData, id: 'task-2', status: 'in_progress' },
       { ...mockTaskData, id: 'task-3', status: 'done' },
-    ]
-
-    ;(supabase.from as jest.Mock).mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: mockMultipleTasks,
-        error: null,
-      }),
-    })
+    ])
 
     const { result } = renderHook(() => useTasks())
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(3)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
 
-    const todoTasks = result.current.tasks.filter(t => t.status === 'todo')
-    expect(todoTasks).toHaveLength(1)
-
-    const doneTasks = result.current.tasks.filter(t => t.status === 'done')
-    expect(doneTasks).toHaveLength(1)
+    expect(result.current.tasks.filter(t => t.status === 'todo')).toHaveLength(1)
+    expect(result.current.tasks.filter(t => t.status === 'done')).toHaveLength(1)
   })
 
   it('should filter tasks by assigned user', async () => {
-    const mockMultipleTasks = [
-      { ...mockTaskData, id: 'task-1', assigned_to: 'user-1' },
-      { ...mockTaskData, id: 'task-2', assigned_to: 'user-2' },
-      { ...mockTaskData, id: 'task-3', assigned_to: 'user-1' },
-    ]
-
-    ;(supabase.from as jest.Mock).mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: mockMultipleTasks,
-        error: null,
-      }),
-    })
+    mockTaskFetch([
+      { ...mockTaskData, id: 'task-1', task_assignees: [{ user_id: userId }] },
+      { ...mockTaskData, id: 'task-2', task_assignees: [{ user_id: user2Id }] },
+      { ...mockTaskData, id: 'task-3', task_assignees: [{ user_id: userId }, { user_id: user2Id }] },
+    ])
 
     const { result } = renderHook(() => useTasks())
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(3)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
 
-    const myTasks = result.current.tasks.filter(t => t.assignedTo === 'user-1')
+    const myTasks = result.current.tasks.filter(t => t.assignees.includes(userId))
     expect(myTasks).toHaveLength(2)
   })
 
   it('should filter tasks by sector', async () => {
-    const mockMultipleTasks = [
+    mockTaskFetch([
       { ...mockTaskData, id: 'task-1', sector: 'TI/Suporte' },
       { ...mockTaskData, id: 'task-2', sector: 'Marketing' },
       { ...mockTaskData, id: 'task-3', sector: 'TI/Suporte' },
-    ]
-
-    ;(supabase.from as jest.Mock).mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: mockMultipleTasks,
-        error: null,
-      }),
-    })
+    ])
 
     const { result } = renderHook(() => useTasks())
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(3)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
 
     const tiTasks = result.current.tasks.filter(t => t.sector === 'TI/Suporte')
     expect(tiTasks).toHaveLength(2)
@@ -274,14 +246,7 @@ describe('useTasks', () => {
 
   it('should handle fetch error gracefully', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
-
-    ;(supabase.from as jest.Mock).mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Database error' },
-      }),
-    })
+    mockTaskFetch([], { message: 'Database error' })
 
     const { result } = renderHook(() => useTasks())
 
@@ -298,16 +263,10 @@ describe('useTasks', () => {
   })
 
   it('should handle create error by throwing', async () => {
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockResolvedValue({ data: [], error: null }),
-    })
-
+    mockTaskFetch([])
     const { result } = renderHook(() => useTasks())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     ;(supabase.from as jest.Mock).mockReturnValueOnce({
       insert: jest.fn().mockReturnThis(),
@@ -325,7 +284,8 @@ describe('useTasks', () => {
         status: 'todo',
         priority: 'medium',
         sector: 'TI/Suporte',
+        assignees: [],
       })
-    ).rejects.toThrow()
+    ).rejects.toEqual(expect.objectContaining({ message: 'Insert failed' }))
   })
 })

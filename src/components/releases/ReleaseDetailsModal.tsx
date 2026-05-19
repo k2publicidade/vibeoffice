@@ -50,9 +50,7 @@ export function ReleaseDetailsModal({
   onDuplicate,
   onDelete,
 }: ReleaseDetailsModalProps) {
-  if (!release) return null
-
-  const linkItems = (release.platformLinks || []).filter(l => l.url || l.platform)
+  const linkItems = (release?.platformLinks || []).filter(l => l.url || l.platform)
 
   const handleDownload = useCallback(async () => {
     if (!release) return
@@ -201,6 +199,8 @@ export function ReleaseDetailsModal({
       document.body.removeChild(container)
     }
   }, [release, linkItems])
+
+  if (!release) return null
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)

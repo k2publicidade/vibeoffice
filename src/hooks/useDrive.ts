@@ -65,15 +65,7 @@ export function useDrive(): UseDriveReturn {
   // [C05] Client criado por hook para evitar sessão stale
   const supabase = useMemo(() => createClient(), [])
 
-  // Fetch inicial de items e usuários
-  useEffect(() => {
-    if (!user) return
-
-    fetchItems()
-    fetchUsers()
-  }, [user])
-
-  async function fetchItems() {
+  const fetchItems = useCallback(async () => {
     setIsLoading(true)
     try {
       const { data, error } = await supabase
@@ -104,14 +96,15 @@ export function useDrive(): UseDriveReturn {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [supabase])
 
-  async function fetchUsers() {
+  const fetchUsers = useCallback(async () => {
+    if (!user) return
     try {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email, avatar, sector')
-        .neq('id', user!.id) // Exclui o usuário atual
+        .neq('id', user.id)
         .order('name')
 
       if (error) throw error
@@ -128,7 +121,15 @@ export function useDrive(): UseDriveReturn {
     } catch (error) {
       console.error('Error fetching users:', error)
     }
-  }
+  }, [supabase, user])
+
+  // Fetch inicial de items e usuários
+  useEffect(() => {
+    if (!user) return
+
+    fetchItems()
+    fetchUsers()
+  }, [user, fetchItems, fetchUsers])
 
   // Obter usuário por ID
   const getUserById = useCallback(async (userId: string) => {
@@ -356,7 +357,7 @@ export function useDrive(): UseDriveReturn {
     await fetchItems()
 
     return newFolder
-  }, [user, supabase])
+  }, [user, supabase, fetchItems])
 
   // Deletar item
   const deleteItem = useCallback(async (itemId: string) => {
@@ -387,7 +388,7 @@ export function useDrive(): UseDriveReturn {
       console.error('Error deleting item:', error)
       throw error
     }
-  }, [items, supabase])
+  }, [items, supabase, fetchItems])
 
   // Renomear item
   const renameItem = useCallback(async (itemId: string, newName: string) => {
@@ -486,7 +487,7 @@ export function useDrive(): UseDriveReturn {
 
     // Refetch items para atualizar UI
     await fetchItems()
-  }, [user, items, supabase])
+  }, [user, items, supabase, fetchItems])
 
   // Remover compartilhamento
   const unshareItem = useCallback(async (itemId: string, userId: string) => {
@@ -500,7 +501,7 @@ export function useDrive(): UseDriveReturn {
 
     // Refetch items para atualizar UI
     await fetchItems()
-  }, [supabase])
+  }, [supabase, fetchItems])
 
   // Atualizar permissão de compartilhamento
   const updateShare = useCallback(async (itemId: string, userId: string, permission: SharePermission) => {
@@ -514,7 +515,7 @@ export function useDrive(): UseDriveReturn {
 
     // Refetch items para atualizar UI
     await fetchItems()
-  }, [supabase])
+  }, [supabase, fetchItems])
 
   // Obter compartilhamentos de um item
   const getItemShares = useCallback((itemId: string): SharedAccess[] => {

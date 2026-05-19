@@ -19,23 +19,28 @@ interface EfficiencyCardProps {
   projectCount?: number;
   projects?: Project[];
   period?: string;
+  primaryMetricLabel?: string;
+  activityLabel?: string;
+  projectCountLabel?: string;
+  projectValueSuffix?: string;
+  completedDays?: boolean[];
 }
 
 export function EfficiencyCard({
-  efficiency = 78,
-  hoursWorked = 32,
-  totalHours = 40,
-  activity = 58,
-  projectCount = 3,
-  projects = [
-    { name: 'Projeto WeBuild', hours: 16.5, color: '#fc7a67' },
-    { name: 'Tarefas de Marketing', hours: 12.5, color: '#ff0300' },
-    { name: 'Reuniões', hours: 3, color: '#666' },
-  ],
-  period = 'Esta semana',
+  efficiency = 0,
+  hoursWorked = 0,
+  totalHours = 0,
+  activity = 0,
+  projectCount = 0,
+  projects = [],
+  period = 'Dados reais',
+  primaryMetricLabel = 'Horas',
+  activityLabel = 'Atividade',
+  projectCountLabel = 'Projetos',
+  projectValueSuffix = 'hr',
+  completedDays = [false, false, false, false, false, false, false],
 }: EfficiencyCardProps) {
   const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-  const completedDays = [true, true, true, true, false, false, false]; // Mock based on the image
 
   return (
     <div className="rounded-3xl bg-[#1a1a1a] border border-zinc-800 p-6 h-full transition-all hover:bg-[#1f1f1f] shadow-2xl">
@@ -84,15 +89,15 @@ export function EfficiencyCard({
                 <span className="text-2xl font-black text-white">{hoursWorked}</span>
                 <span className="text-xl font-medium text-gray-600">/{totalHours}</span>
               </div>
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Horas</p>
+              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">{primaryMetricLabel}</p>
             </div>
             <div className="space-y-1">
               <div className="text-2xl font-black text-white">{activity}%</div>
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Atividade</p>
+              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">{activityLabel}</p>
             </div>
             <div className="space-y-1">
               <div className="text-2xl font-black text-white">{projectCount}</div>
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Projetos</p>
+              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">{projectCountLabel}</p>
             </div>
           </div>
 
@@ -108,7 +113,7 @@ export function EfficiencyCard({
                     />
                     <span className="text-gray-400 group-hover:text-white transition-colors text-sm font-semibold">{project.name}</span>
                   </div>
-                  <span className="text-white font-black text-sm">{project.hours} hr</span>
+                  <span className="text-white font-black text-sm">{project.hours} {projectValueSuffix}</span>
                 </div>
                 {/* Horizontal Progress Bar */}
                 {/* 
@@ -119,7 +124,7 @@ export function EfficiencyCard({
                   <div
                     className="h-full rounded-full transition-all duration-700 ease-out"
                     style={{
-                      width: `${(project.hours / totalHours) * 100}%`,
+                      width: `${totalHours > 0 ? (project.hours / totalHours) * 100 : 0}%`,
                       backgroundColor: project.color,
                       boxShadow: `0 0 10px ${project.color}40`
                     }}
@@ -160,7 +165,7 @@ export function EfficiencyCard({
                 strokeWidth="16"
                 fill="none"
                 strokeDasharray={`${2 * Math.PI * 72}`}
-                strokeDashoffset={`${2 * Math.PI * 72 * (1 - (projects[0].hours / totalHours))}`}
+                strokeDashoffset={`${2 * Math.PI * 72 * (1 - ((projects[0]?.hours ?? 0) / Math.max(totalHours, 1)))}`}
                 strokeLinecap="round"
                 className="transition-all duration-1000 ease-in-out"
               />
@@ -169,7 +174,8 @@ export function EfficiencyCard({
             </svg>
 
             <div className="absolute inset-0 flex items-center justify-center flex-col">
-              <span className="text-4xl font-black text-white leading-none">{hoursWorked}hr</span>
+              <span className="text-4xl font-black text-white leading-none">{hoursWorked}</span>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">{primaryMetricLabel}</span>
               <div className="w-8 h-1 bg-[#2a2a2a] rounded-full mt-2" />
             </div>
           </div>

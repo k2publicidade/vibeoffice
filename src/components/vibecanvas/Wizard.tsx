@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { GenerationConfig, MusicGenre, AlbumMood, VISUAL_STYLE_CATEGORIES, VisualStyle, FontStyle, TextEffect } from '@/types/vibecanvas';
 import { ChevronRight, ChevronLeft, Flag, Info, Camera, Image as ImageIcon, Music, Palette, Type, Check, Sparkles, Upload, X } from 'lucide-react';
 
@@ -362,10 +363,12 @@ const Wizard: React.FC<WizardProps> = ({ config, setConfig, onComplete }) => {
                                 >
                                     {config.referenceImage ? (
                                         <>
-                                            <img
+                                            <Image
                                                 src={config.referenceImage}
                                                 alt="Referência"
-                                                className="w-full h-full object-cover opacity-60"
+                                                fill
+                                                unoptimized
+                                                className="object-cover opacity-60"
                                             />
                                             <button
                                                 onClick={clearReferenceImage}

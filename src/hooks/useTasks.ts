@@ -141,38 +141,7 @@ export function useTasks(): UseTasksReturn {
   // [C05] Client criado por hook para evitar sessão stale
   const supabase = useMemo(() => createClient(), [])
 
-  // Fetch inicial de tarefas + Realtime subscription
-  useEffect(() => {
-    if (!user) return
-
-    fetchTasks()
-
-    // Setup Realtime subscription
-    const channel = supabase
-      .channel('tasks-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'tasks',
-        },
-        () => {
-          // O payload realtime de `tasks` não traz o join `task_assignees`.
-          // Rebuscar garante que colaboradores só recebam tarefas em que são responsáveis
-          // e que tarefas sem responsável continuem visíveis apenas para Admin.
-          fetchTasks()
-        }
-      )
-      .subscribe()
-
-    // Cleanup subscription on unmount
-    return () => {
-      channel.unsubscribe()
-    }
-  }, [user, supabase])
-
-  async function fetchTasks() {
+  const fetchTasks = useCallback(async () => {
     if (!user) {
       setIsLoading(false)
       return
@@ -182,8 +151,6 @@ export function useTasks(): UseTasksReturn {
 
     setIsLoading(true)
     try {
-
-
       const selectColumns = currentUser.role === 'Admin'
         ? `
           *,
@@ -220,7 +187,38 @@ export function useTasks(): UseTasksReturn {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, supabase])
+
+  // Fetch inicial de tarefas + Realtime subscription
+  useEffect(() => {
+    if (!user) return
+
+    fetchTasks()
+
+    // Setup Realtime subscription
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'tasks',
+        },
+        () => {
+          // O payload realtime de `tasks` não traz o join `task_assignees`.
+          // Rebuscar garante que colaboradores só recebam tarefas em que são responsáveis
+          // e que tarefas sem responsável continuem visíveis apenas para Admin.
+          fetchTasks()
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [user, supabase, fetchTasks])
 
   // Função auxiliar para verificar se tarefa está atrasada
   const isOverdue = useCallback((task: Task): boolean => {

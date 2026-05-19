@@ -10,6 +10,14 @@ import { User } from '@/types/auth'
 import { useRouter } from 'next/navigation'
 import { getDashboardRoute } from '@/lib/auth-utils'
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message)
+  }
+  return 'Erro desconhecido'
+}
+
 export interface UseAuthReturn {
   user: User | null
   isLoading: boolean
@@ -99,8 +107,7 @@ export function useAuth(): UseAuthReturn {
         }
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erro desconhecido'
-      throw new Error(message)
+      throw new Error(getErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -136,8 +143,7 @@ export function useAuth(): UseAuthReturn {
       await signIn(email, password)
 
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erro desconhecido'
-      throw new Error(message)
+      throw new Error(getErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -146,8 +152,12 @@ export function useAuth(): UseAuthReturn {
   async function signOut() {
     setIsLoading(true)
     try {
-      await supabase.auth.signOut()
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      setUser(null)
       router.push('/login')
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -161,8 +171,7 @@ export function useAuth(): UseAuthReturn {
       })
       if (error) throw error
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erro desconhecido'
-      throw new Error(message)
+      throw new Error(getErrorMessage(error))
     } finally {
       setIsLoading(false)
     }

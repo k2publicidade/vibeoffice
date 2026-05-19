@@ -8,18 +8,19 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
-  Users,
-  Ticket,
-  CheckSquare,
-  TrendingUp,
-  TrendingDown,
-  Building2,
+  Activity,
   AlertTriangle,
-  Clock,
   ArrowRight,
   BarChart3,
-  Activity,
+  Building2,
+  Calendar,
+  CheckSquare,
+  Clock,
   Loader2,
+  ShieldAlert,
+  Target,
+  Ticket,
+  Users,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useUsers } from '@/hooks/useUsers'
@@ -27,7 +28,7 @@ import { useTasks } from '@/hooks/useTasks'
 import { useTickets } from '@/hooks/useTickets'
 import { useCalendar } from '@/hooks/useCalendar'
 import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
+import { differenceInHours, format, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 const containerVariants = {
@@ -43,8 +44,67 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 }
 
+const statusLabels = {
+  todo: 'A fazer',
+  in_progress: 'Em progresso',
+  done: 'Concluída',
+  open: 'Aberto',
+  analyzing: 'Em análise',
+  completed: 'Concluído',
+}
+
 interface AdminDashboardProps {
   userName: string
+}
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function KpiCard({
+  title,
+  value,
+  detail,
+  icon: Icon,
+  tone,
+}: {
+  title: string
+  value: string | number
+  detail: string
+  icon: typeof Users
+  tone: 'orange' | 'blue' | 'green' | 'yellow' | 'red'
+}) {
+  const tones = {
+    orange: 'from-[#fc7a67]/15 to-[#ff0300]/5 border-[#fc7a67]/25 text-[#fc7a67] bg-[#fc7a67]/15',
+    blue: 'from-blue-500/10 to-blue-600/5 border-blue-500/20 text-blue-400 bg-blue-500/20',
+    green: 'from-green-500/10 to-green-600/5 border-green-500/20 text-green-400 bg-green-500/20',
+    yellow: 'from-yellow-500/10 to-yellow-600/5 border-yellow-500/20 text-yellow-400 bg-yellow-500/20',
+    red: 'from-red-500/10 to-red-600/5 border-red-500/20 text-red-400 bg-red-500/20',
+  }[tone]
+  const [gradient, text, bg] = [tones.split(' ').slice(0, 3).join(' '), tones.split(' ')[3], tones.split(' ')[4]]
+
+  return (
+    <Card className={cn('bg-gradient-to-br', gradient)}>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className={cn('text-sm', text)}>{title}</p>
+            <p className="text-3xl font-bold text-white mt-1">{value}</p>
+            <p className="text-xs text-gray-500 mt-1">{detail}</p>
+          </div>
+          <div className={cn('h-12 w-12 rounded-xl flex items-center justify-center', bg)}>
+            <Icon className={cn('h-6 w-6', text)} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 export function AdminDashboard({ userName }: AdminDashboardProps) {
@@ -54,121 +114,130 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
   const { events, isLoading: eventsLoading } = useCalendar()
 
   const isLoading = usersLoading || tasksLoading || ticketsLoading || eventsLoading
+  const userById = useMemo(() => new Map((users ?? []).map((user) => [user.id, user])), [users])
 
-  const stats = useMemo(() => {
-    if (!users || !tasks || !tickets || !events) {
-      return {
-        totalUsers: 0,
-        usersBySector: {},
-        usersByRole: {},
-        totalTasks: 0,
-        completedTasks: 0,
-        overdueTasks: 0,
-        taskCompletionRate: 0,
-        totalTickets: 0,
-        openTickets: 0,
-        highPriorityTickets: 0,
-        upcomingEvents: 0,
-      }
-    }
+  const dashboard = useMemo(() => {
+    const now = new Date()
+    const activeUsers = users ?? []
+    const completedTasks = tasks.filter((task) => task.status === 'done')
+    const activeTasks = tasks.filter((task) => task.status !== 'done')
+    const overdueTasks = tasks.filter((task) => {
+      if (!task.dueDate || task.status === 'done') return false
+      return startOfDay(new Date(task.dueDate)) < startOfDay(now)
+    })
+    const highPriorityTasks = tasks.filter((task) => task.priority === 'high' && task.status !== 'done')
+    const openTickets = tickets.filter((ticket) => ticket.status !== 'completed')
+    const highPriorityTickets = tickets.filter((ticket) => ticket.priority === 'high' && ticket.status !== 'completed')
+    const upcomingEvents = events
+      .filter((event) => new Date(event.startTime) >= now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
-    // Contagem de usuários por setor
-    const usersBySector = users.reduce((acc, user) => {
+    const usersBySector = activeUsers.reduce((acc, user) => {
       acc[user.sector] = (acc[user.sector] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
-    // Contagem de usuários por role
-    const usersByRole = users.reduce((acc, user) => {
+    const usersByRole = activeUsers.reduce((acc, user) => {
       acc[user.role] = (acc[user.role] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
-    // Tasks
-    const totalTasks = tasks.length
-    const completedTasks = tasks.filter(t => t.status === 'done').length
-    const overdueTasks = tasks.filter(t => {
-      if (!t.dueDate || t.status === 'done') return false
-      return new Date(t.dueDate) < new Date()
-    }).length
+    const sectorStats = Object.entries(usersBySector).map(([sector, memberCount]) => {
+      const sectorMembers = activeUsers.filter((user) => user.sector === sector)
+      const sectorMemberIds = new Set(sectorMembers.map((user) => user.id))
+      const sectorTasks = tasks.filter(
+        (task) => task.sector === sector || task.assignees.some((id) => sectorMemberIds.has(id))
+      )
+      const sectorTickets = tickets.filter(
+        (ticket) => ticket.category === sector || sectorMemberIds.has(ticket.requester) || Boolean(ticket.assignedTo && sectorMemberIds.has(ticket.assignedTo))
+      )
+      const sectorCompleted = sectorTasks.filter((task) => task.status === 'done').length
+      const sectorOpenTickets = sectorTickets.filter((ticket) => ticket.status !== 'completed').length
+      const completionRate = sectorTasks.length > 0 ? Math.round((sectorCompleted / sectorTasks.length) * 100) : 0
 
-    // Tickets
-    const totalTickets = tickets.length
-    const openTickets = tickets.filter(t => t.status === 'open').length
-    const highPriorityTickets = tickets.filter(t => t.priority === 'high' && t.status !== 'completed').length
+      return {
+        sector,
+        memberCount,
+        taskCount: sectorTasks.length,
+        completed: sectorCompleted,
+        openTickets: sectorOpenTickets,
+        completionRate,
+      }
+    }).sort((a, b) => b.taskCount + b.openTickets - (a.taskCount + a.openTickets))
 
-    // Eventos
-    const upcomingEvents = events.filter(e => new Date(e.startTime) > new Date()).length
+    const recentUsers = [...activeUsers]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6)
+
+    const criticalItems = [
+      ...overdueTasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        kind: 'Tarefa atrasada',
+        detail: task.dueDate ? format(new Date(task.dueDate), 'dd/MM', { locale: ptBR }) : 'Sem prazo',
+        tone: 'text-red-400',
+        href: '/tasks',
+      })),
+      ...highPriorityTickets.map((ticket) => ({
+        id: ticket.id,
+        title: ticket.title,
+        kind: 'Ticket crítico',
+        detail: ticket.category,
+        tone: 'text-yellow-400',
+        href: '/tickets',
+      })),
+    ].slice(0, 6)
+
+    const activityFeed = [
+      ...tasks.slice(0, 5).map((task) => ({
+        id: `task-${task.id}`,
+        title: task.title,
+        meta: `${statusLabels[task.status]} • ${task.sector}`,
+        date: new Date(task.updatedAt ?? task.createdAt ?? now),
+        href: '/tasks',
+      })),
+      ...tickets.slice(0, 5).map((ticket) => ({
+        id: `ticket-${ticket.id}`,
+        title: ticket.title,
+        meta: `${statusLabels[ticket.status]} • ${ticket.category}`,
+        date: new Date(ticket.updatedAt ?? ticket.createdAt ?? now),
+        href: '/tickets',
+      })),
+    ]
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 6)
+
+    const ticketFunnel = [
+      { label: 'Abertos', count: tickets.filter((ticket) => ticket.status === 'open').length, color: 'bg-blue-500' },
+      { label: 'Em análise', count: tickets.filter((ticket) => ticket.status === 'analyzing').length, color: 'bg-yellow-500' },
+      { label: 'Em progresso', count: tickets.filter((ticket) => ticket.status === 'in_progress').length, color: 'bg-orange-500' },
+      { label: 'Concluídos', count: tickets.filter((ticket) => ticket.status === 'completed').length, color: 'bg-green-500' },
+    ]
+
+    const completionRate = tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0
+    const operationalHealth = Math.max(0, Math.min(100, completionRate + 10 - overdueTasks.length * 3 - highPriorityTickets.length * 2 + upcomingEvents.slice(0, 7).length))
 
     return {
-      totalUsers: users.length,
-      usersBySector,
-      usersByRole,
-      totalTasks,
-      completedTasks,
+      totalUsers: activeUsers.length,
+      managers: (usersByRole.Gerente || 0) + (usersByRole.gerente || 0),
+      admins: (usersByRole.Admin || 0) + (usersByRole.admin || 0),
+      completionRate,
+      activeTasks: activeTasks.length,
       overdueTasks,
-      taskCompletionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-      totalTickets,
+      highPriorityTasks,
       openTickets,
+      totalTickets: tickets.length,
       highPriorityTickets,
       upcomingEvents,
+      sectorStats,
+      recentUsers,
+      criticalItems,
+      activityFeed,
+      ticketFunnel,
+      operationalHealth,
     }
   }, [users, tasks, tickets, events])
 
-  // Top 5 setores com mais tarefas pendentes
-  const sectorPerformance = useMemo(() => {
-    if (!users || !tasks) return []
-
-    const sectorStats = users.reduce((acc, user) => {
-      if (!acc[user.sector]) {
-        acc[user.sector] = { users: 0, tasks: 0, completed: 0 }
-      }
-      acc[user.sector].users++
-      return acc
-    }, {} as Record<string, { users: number; tasks: number; completed: number }>)
-
-    tasks.forEach(task => {
-      const user = users.find(u => task.assignees?.includes(u.id))
-      if (user && sectorStats[user.sector]) {
-        sectorStats[user.sector].tasks++
-        if (task.status === 'done') {
-          sectorStats[user.sector].completed++
-        }
-      }
-    })
-
-    return Object.entries(sectorStats)
-      .map(([sector, data]) => ({
-        sector,
-        ...data,
-        rate: data.tasks > 0 ? Math.round((data.completed / data.tasks) * 100) : 0,
-      }))
-      .sort((a, b) => b.tasks - a.tasks)
-      .slice(0, 5)
-  }, [users, tasks])
-
-  // Tickets recentes de alta prioridade
-  const urgentTickets = useMemo(() => {
-    if (!tickets) return []
-
-    return tickets
-      .filter(t => t.priority === 'high' && t.status !== 'completed')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 4)
-  }, [tickets])
-
-  // Novos usuários (últimos 30 dias)
-  const recentUsers = useMemo(() => {
-    if (!users) return []
-
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    return users
-      .filter(u => new Date(u.createdAt) > thirtyDaysAgo)
-      .slice(0, 5)
-  }, [users])
-
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -184,104 +253,38 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
       animate="visible"
       className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8 space-y-6 md:space-y-8"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
+      <motion.div variants={itemVariants} className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white md:text-3xl">
-            Painel Administrativo
-          </h1>
+          <h1 className="text-2xl font-bold text-white md:text-3xl">Painel Administrativo</h1>
           <p className="text-sm md:text-base text-gray-400">
-            Bem-vindo, {userName}. Visão geral de toda a empresa.
+            Bem-vindo, {userName}. Dados reais de equipe, tarefas, tickets e agenda da empresa.
           </p>
         </div>
-        <Badge className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white border-0 px-4 py-1">
-          <Building2 className="h-3 w-3 mr-1" />
-          Admin
-        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white border-0 px-4 py-1">
+            <Building2 className="h-3 w-3 mr-1" /> Admin
+          </Badge>
+          <Button asChild size="sm" className="bg-white text-black hover:bg-white/90">
+            <Link href="/admin/avisos">Gerenciar avisos</Link>
+          </Button>
+        </div>
       </motion.div>
 
-      {/* Quick Stats */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-400">Total Usuários</p>
-                <p className="text-3xl font-bold text-white mt-1">{stats.totalUsers}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {stats.usersByRole['Gerente'] || 0} gerentes
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Users className="h-6 w-6 text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-400">Taxa de Conclusão</p>
-                <p className="text-3xl font-bold text-white mt-1">{stats.taskCompletionRate}%</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <TrendingUp className="h-3 w-3 text-green-500" />
-                  <span className="text-xs text-green-500">+5% vs mês anterior</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <CheckSquare className="h-6 w-6 text-green-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-500/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-yellow-400">Tickets Abertos</p>
-                <p className="text-3xl font-bold text-white mt-1">{stats.openTickets}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {stats.highPriorityTickets} alta prioridade
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
-                <Ticket className="h-6 w-6 text-yellow-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-red-400">Tarefas Atrasadas</p>
-                <p className="text-3xl font-bold text-white mt-1">{stats.overdueTasks}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <AlertTriangle className="h-3 w-3 text-red-500" />
-                  <span className="text-xs text-red-500">Requer atenção</span>
-                </div>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-red-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <KpiCard title="Total Usuários" value={dashboard.totalUsers} detail={`${dashboard.managers} gerentes • ${dashboard.admins} admins`} icon={Users} tone="blue" />
+        <KpiCard title="Saúde operacional" value={`${dashboard.operationalHealth}%`} detail="conclusão, atrasos e críticos" icon={Activity} tone="orange" />
+        <KpiCard title="Conclusão" value={`${dashboard.completionRate}%`} detail={`${dashboard.activeTasks} tarefas ativas`} icon={Target} tone="green" />
+        <KpiCard title="Tickets" value={dashboard.totalTickets} detail={`${dashboard.openTickets.length} abertos • ${dashboard.highPriorityTickets.length} alta prioridade`} icon={Ticket} tone="yellow" />
+        <KpiCard title="Atrasos" value={dashboard.overdueTasks.length} detail={`${dashboard.highPriorityTasks.length} tarefas críticas`} icon={ShieldAlert} tone="red" />
       </motion.div>
 
-      {/* Main Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Desempenho por Setor */}
         <motion.div variants={itemVariants} className="lg:col-span-2">
-          <Card className="bg-[#0a0a0a] border-[#262626]">
+          <Card className="bg-[#0a0a0a] border-[#262626] h-full">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-white">
                 <BarChart3 className="h-5 w-5 text-[#fc7a67]" />
-                Desempenho por Setor
+                Operação por setor
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/tasks" className="text-gray-400 hover:text-white">
@@ -290,168 +293,199 @@ export function AdminDashboard({ userName }: AdminDashboardProps) {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {sectorPerformance.map((sector, index) => (
+              <div className="space-y-5">
+                {dashboard.sectorStats.map((sector) => (
                   <div key={sector.sector} className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-white">{sector.sector}</span>
                         <Badge variant="outline" className="text-xs border-[#262626] text-gray-400">
-                          {sector.users} membros
+                          {sector.memberCount} membros
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-400">
-                          {sector.completed}/{sector.tasks} tarefas
-                        </span>
-                        <span className={cn(
-                          "text-sm font-medium",
-                          sector.rate >= 70 ? "text-green-500" :
-                          sector.rate >= 40 ? "text-yellow-500" : "text-red-500"
-                        )}>
-                          {sector.rate}%
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span>{sector.completed}/{sector.taskCount} tarefas</span>
+                        <span>{sector.openTickets} tickets</span>
+                        <span className={cn('font-semibold', sector.completionRate >= 70 ? 'text-green-400' : sector.completionRate >= 40 ? 'text-yellow-400' : 'text-red-400')}>
+                          {sector.completionRate}%
                         </span>
                       </div>
                     </div>
                     <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${sector.rate}%` }}
-                        transition={{ delay: index * 0.1, duration: 0.5 }}
-                        className={cn(
-                          "h-full rounded-full",
-                          sector.rate >= 70 ? "bg-green-500" :
-                          sector.rate >= 40 ? "bg-yellow-500" : "bg-red-500"
-                        )}
+                      <div
+                        className={cn('h-full rounded-full', sector.completionRate >= 70 ? 'bg-green-500' : sector.completionRate >= 40 ? 'bg-yellow-500' : 'bg-red-500')}
+                        style={{ width: `${sector.completionRate}%` }}
                       />
                     </div>
                   </div>
                 ))}
+                {dashboard.sectorStats.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-6">Nenhum setor com dados ainda.</p>
+                )}
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Tickets Urgentes */}
         <motion.div variants={itemVariants}>
           <Card className="bg-[#0a0a0a] border-[#262626] h-full">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
                 <AlertTriangle className="h-5 w-5 text-red-500" />
-                Tickets Urgentes
+                Atenção imediata
               </CardTitle>
-              <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
-                {urgentTickets.length}
-              </Badge>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[240px]">
+              <ScrollArea className="h-[320px] pr-3">
                 <div className="space-y-3">
-                  {urgentTickets.length > 0 ? (
-                    urgentTickets.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        className="p-3 rounded-lg bg-[#1a1a1a] border border-red-500/20 hover:border-red-500/40 transition-colors"
-                      >
-                        <p className="text-sm font-medium text-white truncate">
-                          {ticket.title}
-                        </p>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-500">{ticket.category}</span>
-                          <span className="text-xs text-gray-500">
-                            {format(new Date(ticket.createdAt), 'dd/MM', { locale: ptBR })}
-                          </span>
-                        </div>
+                  {dashboard.criticalItems.map((item) => (
+                    <Link key={item.id} href={item.href} className="block p-3 rounded-lg bg-[#1a1a1a] border border-[#262626] hover:border-[#fc7a67]/40 transition-colors">
+                      <p className="text-sm font-medium text-white truncate">{item.title}</p>
+                      <div className="mt-2 flex items-center justify-between text-xs">
+                        <span className={item.tone}>{item.kind}</span>
+                        <span className="text-gray-500">{item.detail}</span>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
+                    </Link>
+                  ))}
+                  {dashboard.criticalItems.length === 0 && (
+                    <div className="text-center py-10">
                       <CheckSquare className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">Nenhum ticket urgente</p>
+                      <p className="text-sm text-gray-500">Nenhum item crítico</p>
                     </div>
                   )}
                 </div>
               </ScrollArea>
-              <Button variant="outline" className="w-full mt-4 border-[#262626]" asChild>
-                <Link href="/tickets">Ver todos os tickets</Link>
-              </Button>
             </CardContent>
           </Card>
         </motion.div>
       </div>
 
-      {/* Bottom Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Usuários por Setor */}
+      <div className="grid gap-6 lg:grid-cols-3">
         <motion.div variants={itemVariants}>
-          <Card className="bg-[#0a0a0a] border-[#262626]">
+          <Card className="bg-[#0a0a0a] border-[#262626] h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
-                <Activity className="h-5 w-5 text-[#fc7a67]" />
-                Distribuição de Equipe
+                <Ticket className="h-5 w-5 text-[#fc7a67]" />
+                Funil de tickets
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {dashboard.ticketFunnel.map((stage) => {
+                const max = Math.max(...dashboard.ticketFunnel.map((item) => item.count), 1)
+                return (
+                  <div key={stage.label} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-300">{stage.label}</span>
+                      <span className="font-semibold text-white">{stage.count}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-[#1a1a1a] overflow-hidden">
+                      <div className={cn('h-full rounded-full', stage.color)} style={{ width: `${(stage.count / max) * 100}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+              <Button variant="outline" className="w-full border-[#262626]" asChild>
+                <Link href="/tickets">Abrir tickets</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Card className="bg-[#0a0a0a] border-[#262626] h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Calendar className="h-5 w-5 text-[#fc7a67]" />
+                Agenda da empresa
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {Object.entries(stats.usersBySector).map(([sector, count]) => (
-                  <div
-                    key={sector}
-                    className="p-3 rounded-lg bg-[#1a1a1a] border border-[#262626]"
-                  >
-                    <p className="text-xs text-gray-500 truncate">{sector}</p>
-                    <p className="text-xl font-bold text-white mt-1">{count}</p>
+              <div className="space-y-3">
+                {dashboard.upcomingEvents.slice(0, 5).map((event) => (
+                  <div key={event.id} className="p-3 rounded-lg bg-[#1a1a1a] border border-[#262626]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{event.title}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {format(new Date(event.startTime), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="border-[#262626] text-gray-400 text-xs shrink-0">
+                        {differenceInHours(new Date(event.startTime), new Date()) < 24 ? 'Hoje' : event.type}
+                      </Badge>
+                    </div>
                   </div>
                 ))}
+                {dashboard.upcomingEvents.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-8">Nenhum evento futuro.</p>
+                )}
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Novos Membros */}
         <motion.div variants={itemVariants}>
-          <Card className="bg-[#0a0a0a] border-[#262626]">
+          <Card className="bg-[#0a0a0a] border-[#262626] h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
-                <Users className="h-5 w-5 text-[#fc7a67]" />
-                Novos Membros
-                <Badge variant="outline" className="ml-auto border-[#262626] text-gray-400">
-                  Últimos 30 dias
-                </Badge>
+                <Clock className="h-5 w-5 text-[#fc7a67]" />
+                Atividade recente
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentUsers.length > 0 ? (
-                  recentUsers.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#1a1a1a] transition-colors"
-                    >
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={user.avatar ?? undefined} />
-                        <AvatarFallback className="bg-[#fc7a67] text-black">
-                          {user.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                        <p className="text-xs text-gray-500">{user.sector}</p>
-                      </div>
-                      <Badge variant="outline" className="border-[#262626] text-gray-400 text-xs">
-                        {user.role}
-                      </Badge>
+                {dashboard.activityFeed.map((item) => (
+                  <Link key={item.id} href={item.href} className="block p-3 rounded-lg hover:bg-[#1a1a1a] transition-colors">
+                    <p className="text-sm font-medium text-white truncate">{item.title}</p>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500">
+                      <span className="truncate">{item.meta}</span>
+                      <span>{format(item.date, 'dd/MM')}</span>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    Nenhum novo membro
-                  </p>
+                  </Link>
+                ))}
+                {dashboard.activityFeed.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-8">Sem movimentações ainda.</p>
                 )}
               </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
+
+      <motion.div variants={itemVariants}>
+        <Card className="bg-[#0a0a0a] border-[#262626]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Users className="h-5 w-5 text-[#fc7a67]" />
+              Membros recentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {dashboard.recentUsers.map((member) => (
+                <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#1a1a1a] border border-[#262626]">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={member.avatar ?? undefined} />
+                    <AvatarFallback className="bg-[#fc7a67] text-black font-semibold">
+                      {initials(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">{member.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{member.sector}</p>
+                  </div>
+                  <Badge variant="outline" className="border-[#262626] text-gray-400 text-xs">
+                    {member.role}
+                  </Badge>
+                </div>
+              ))}
+              {dashboard.recentUsers.length === 0 && (
+                <p className="text-sm text-gray-500">Nenhum usuário cadastrado.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   )
 }
