@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { User } from '@/types/auth'
+import { Role, Sector, User } from '@/types/auth'
 import { useRouter } from 'next/navigation'
 import { getDashboardRoute } from '@/lib/auth-utils'
 
@@ -25,6 +25,7 @@ export interface UseAuthReturn {
   signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  updateProfile: (updates: { name: string; sector: Sector; avatar?: string | null }) => Promise<void>
 }
 
 export function useAuth(): UseAuthReturn {
@@ -177,6 +178,48 @@ export function useAuth(): UseAuthReturn {
     }
   }
 
+  async function updateProfile(updates: { name: string; sector: Sector; avatar?: string | null }) {
+    if (!user) throw new Error('Usuário não autenticado')
+
+    const normalizedName = updates.name.trim()
+    if (!normalizedName) throw new Error('Nome é obrigatório')
+
+    setIsLoading(true)
+    try {
+      const payload = {
+        name: normalizedName,
+        sector: updates.sector,
+        avatar: updates.avatar?.trim() || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .update(payload)
+        .eq('id', user.id)
+        .select('*')
+        .single()
+
+      if (error) throw error
+      if (!data) throw new Error('Perfil não encontrado no banco de dados')
+
+      setUser({
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        avatar: data.avatar,
+        sector: data.sector as Sector,
+        role: data.role as Role,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      })
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return {
     user,
     isLoading,
@@ -184,5 +227,6 @@ export function useAuth(): UseAuthReturn {
     signUp,
     signOut,
     resetPassword,
+    updateProfile,
   }
 }
