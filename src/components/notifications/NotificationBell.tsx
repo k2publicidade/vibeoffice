@@ -12,7 +12,8 @@ import { useNotifications } from '@/hooks/useNotifications'
 import { NotificationList } from './NotificationList'
 
 export function NotificationBell() {
-  const { unreadCount } = useNotifications()
+  const notificationState = useNotifications()
+  const { unreadCount } = notificationState
 
   return (
     <Popover>
@@ -22,6 +23,7 @@ export function NotificationBell() {
           size="icon"
           className="relative"
           data-testid="notification-bell"
+          aria-label="Notificações"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
@@ -40,7 +42,7 @@ export function NotificationBell() {
         align="end"
         data-testid="notification-popover"
       >
-        <NotificationList />
+        <NotificationList state={notificationState} />
       </PopoverContent>
     </Popover>
   )

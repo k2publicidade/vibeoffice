@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NotificationPreferences } from '@/components/settings/NotificationPreferences'
 import { createDefaultPreferences } from '@/lib/notifications/defaults'
+import { NOTIFICATION_METADATA } from '@/lib/notifications/metadata'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -33,19 +34,20 @@ export default async function NotificationsSettingsPage() {
     .eq('user_id', user.id)
 
   if (error) {
-    console.error('[NotificationsPage] Error loading preferences:', error)
+    throw error
   }
 
   // If user has no preferences, create defaults
-  if (!preferences || preferences.length === 0) {
+  if (!preferences || preferences.length < Object.keys(NOTIFICATION_METADATA).length) {
     console.log('[NotificationsPage] Creating default preferences for user:', user.id)
     await createDefaultPreferences(user.id)
 
     // Reload preferences
-    const { data: newPreferences } = await supabase
+    const { data: newPreferences, error: initializationError } = await supabase
       .from('notification_preferences')
       .select('*')
       .eq('user_id', user.id)
+    if (initializationError) throw initializationError
 
     return (
       <div className="container mx-auto py-8 px-4">

@@ -13,7 +13,11 @@ export async function POST(request: Request) {
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
   const { data: notification, error } = await admin.from('notifications').select('*').eq('id', parsed.data.id).single()
   if (error) return NextResponse.json({ error: 'Notification not found' }, { status: 404 })
-  const { data: preferences } = await admin.from('notification_preferences').select('*').eq('user_id', notification.user_id).eq('notification_type', notification.type).maybeSingle()
+  const { data: recipient, error: recipientError } = await admin.from('users').select('email,active').eq('id', notification.user_id).maybeSingle()
+  if (recipientError) return NextResponse.json({ error: 'Recipient lookup failed' }, { status: 503 })
+  if (notification.archived || !recipient?.active) return NextResponse.json({ delivered: false, skipped: 'inactive_or_archived' })
+  const { data: preferences, error: preferenceError } = await admin.from('notification_preferences').select('*').eq('user_id', notification.user_id).eq('notification_type', notification.type).maybeSingle()
+  if (preferenceError) return NextResponse.json({ error: 'Preference lookup failed' }, { status: 503 })
   const updates: Record<string, string> = {}
   const failures: string[] = []
   const raw = notification as unknown as { push_sent_at?: string; email_sent_at?: string }
@@ -21,7 +25,8 @@ export async function POST(request: Request) {
   const path = notification.entity_type === 'task' ? '/tasks' : notification.entity_type === 'ticket' ? '/tickets' : notification.entity_type === 'message' ? '/chat' : '/'
   if (preferences?.enable_push && !raw.push_sent_at && process.env.VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails('mailto:admin@vibedistro.com.br', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY)
-    const { data: subscriptions } = await admin.from('push_subscriptions' as never).select('*').eq('user_id', notification.user_id)
+    const { data: subscriptions, error: subscriptionError } = await admin.from('push_subscriptions' as never).select('*').eq('user_id', notification.user_id)
+    if (subscriptionError) return NextResponse.json({ error: 'Subscription lookup failed' }, { status: 503 })
     for (const sub of (subscriptions || []) as { id: string; endpoint: string; keys: { p256dh: string; auth: string } }[]) {
       const endpoint = new URL(sub.endpoint)
       if (endpoint.protocol !== 'https:' || !/^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[^.]+\.notify\.windows\.com|web\.push\.apple\.com)$/.test(endpoint.hostname) || endpoint.username || endpoint.password || (endpoint.port && endpoint.port !== '443')) { failures.push('push'); continue }
@@ -31,12 +36,12 @@ export async function POST(request: Request) {
     if (!failures.includes('push')) updates.push_sent_at = new Date().toISOString()
   }
   if (preferences?.enable_email && !raw.email_sent_at && process.env.RESEND_API_KEY && process.env.EMAIL_FROM && notification.type !== 'message_received' && notification.type !== 'mentioned_in_chat') {
-    const { data: user } = await admin.from('users').select('email').eq('id', notification.user_id).single()
-    if (user) {
-      const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': `office-${notification.id}` }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: user.email, subject: notification.title, text: `${notification.message}\n\nhttps://office.vibedistro.com${path}` }) })
+      const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': `office-${notification.id}` }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: recipient.email, subject: notification.title, text: `${notification.message}\n\nhttps://office.vibedistro.com${path}` }) })
       if (response.ok) updates.email_sent_at = new Date().toISOString(); else failures.push('email')
-    }
   }
-  if (Object.keys(updates).length) await admin.from('notifications').update(updates).eq('id', notification.id)
+  if (Object.keys(updates).length) {
+    const { error: updateError } = await admin.from('notifications').update(updates).eq('id', notification.id)
+    if (updateError) return NextResponse.json({ error: 'Delivery status update failed' }, { status: 503 })
+  }
   return NextResponse.json({ delivered: !failures.length, failedChannels: failures }, { status: failures.length ? 502 : 200 })
 }

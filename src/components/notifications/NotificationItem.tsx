@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useNotifications, type Notification } from '@/hooks/useNotifications'
+import type { Notification } from '@/hooks/useNotifications'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -19,6 +19,7 @@ import {
 
 interface NotificationItemProps {
   notification: Notification
+  onMarkAsRead: (id: string) => Promise<void>
 }
 
 // Mapa de ícones por tipo de notificação
@@ -59,8 +60,7 @@ function getNotificationLink(notif: Notification): string | null {
   }
 }
 
-export function NotificationItem({ notification }: NotificationItemProps) {
-  const { markAsRead } = useNotifications()
+export function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
   const router = useRouter()
   const [isRemoving, setIsRemoving] = useState(false)
 
@@ -71,14 +71,9 @@ export function NotificationItem({ notification }: NotificationItemProps) {
     try {
       if (!notification.read) {
         setIsRemoving(true)
-        await markAsRead(notification.id)
-        // Aguardar animação antes de redirecionar
-        setTimeout(() => {
-          const link = getNotificationLink(notification)
-          if (link) {
-            router.push(link)
-          }
-        }, 300) // Match animation duration
+        await onMarkAsRead(notification.id)
+        const link = getNotificationLink(notification)
+        if (link) router.push(link)
       } else {
         const link = getNotificationLink(notification)
         if (link) {
@@ -86,9 +81,8 @@ export function NotificationItem({ notification }: NotificationItemProps) {
         }
       }
     } catch (error) {
-      setIsRemoving(false)
       console.error('Failed to mark notification as read:', error)
-    }
+    } finally { setIsRemoving(false) }
   }
 
   const timeAgo = formatDistanceToNow(new Date(notification.created_at), {
@@ -99,10 +93,11 @@ export function NotificationItem({ notification }: NotificationItemProps) {
   return (
     <motion.button
       initial={{ opacity: 1, x: 0 }}
-      animate={isRemoving ? { opacity: 0, x: -20 } : { opacity: 1, x: 0 }}
+      animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
       onClick={handleClick}
+      disabled={isRemoving}
       className={cn(
         "w-full p-4 text-left hover:bg-muted/50 transition-colors flex gap-3",
         !notification.read && "bg-muted/30"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useNotifications } from '@/hooks/useNotifications'
+import type { UseNotificationsReturn } from '@/hooks/useNotifications'
 import { NotificationItem } from './NotificationItem'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -8,13 +8,14 @@ import { Loader2, Bell } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 
-export function NotificationList() {
+export function NotificationList({ state }: { state: UseNotificationsReturn }) {
   const {
     notifications,
     loading,
     error,
     markAllAsRead,
-  } = useNotifications()
+    markAsRead,
+  } = state
 
   return (
     <div className="w-full max-w-[380px]">
@@ -57,6 +58,7 @@ export function NotificationList() {
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
+                  onMarkAsRead={markAsRead}
                 />
               ))}
             </AnimatePresence>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useAuth } from './useAuth'
@@ -13,7 +13,7 @@ export type { Notification } from '@/types/notifications'
 // Type from Supabase (raw)
 type NotificationRow = Tables<'notifications'>
 
-interface UseNotificationsReturn {
+export interface UseNotificationsReturn {
   notifications: Notification[]
   unreadCount: number
   loading: boolean
@@ -29,7 +29,7 @@ export function useNotifications(): UseNotificationsReturn {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Carregar notificações
   const loadNotifications = useCallback(async () => {
@@ -68,7 +68,8 @@ export function useNotifications(): UseNotificationsReturn {
         created_at: row.created_at,
       }))
 
-      const { data: preferences } = await supabase.from('notification_preferences').select('notification_type, enable_in_app').eq('user_id', user.id)
+      const { data: preferences, error: preferenceError } = await supabase.from('notification_preferences').select('notification_type, enable_in_app').eq('user_id', user.id)
+      if (preferenceError) throw preferenceError
       const disabled = new Set((preferences || []).filter(pref => !pref.enable_in_app).map(pref => pref.notification_type))
       setNotifications(transformedData.filter(notification => !disabled.has(notification.type)))
     } catch (err) {
@@ -85,8 +86,10 @@ export function useNotifications(): UseNotificationsReturn {
     try {
       const { error: updateError } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ read: true, read_at: new Date().toISOString() })
         .eq('id', id)
+        .select('id')
+        .single()
 
       if (updateError) throw updateError
 
@@ -98,6 +101,7 @@ export function useNotifications(): UseNotificationsReturn {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao marcar como lida'
       toast.error(message)
+      throw err
     }
   }, [supabase])
 
@@ -108,7 +112,7 @@ export function useNotifications(): UseNotificationsReturn {
     try {
       const { error: updateError } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ read: true, read_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .eq('read', false)
 
@@ -132,6 +136,8 @@ export function useNotifications(): UseNotificationsReturn {
         .from('notifications')
         .update({ archived: true })
         .eq('id', id)
+        .select('id')
+        .single()
 
       if (updateError) throw updateError
 
@@ -140,6 +146,7 @@ export function useNotifications(): UseNotificationsReturn {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao arquivar notificação'
       toast.error(message)
+      throw err
     }
   }, [supabase])
 
@@ -159,7 +166,7 @@ export function useNotifications(): UseNotificationsReturn {
     if (!user) return
 
     const channel = supabase
-      .channel('notifications')
+      .channel(`notifications:${user.id}:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
@@ -182,14 +189,7 @@ export function useNotifications(): UseNotificationsReturn {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`
         },
-        (payload) => {
-          const updatedNotification = payload.new as Notification
-          setNotifications(prev =>
-            prev.map(notif =>
-              notif.id === updatedNotification.id ? updatedNotification : notif
-            )
-          )
-        }
+        () => { void loadNotifications() }
       )
       .on(
         'postgres_changes',
@@ -197,13 +197,13 @@ export function useNotifications(): UseNotificationsReturn {
           event: 'DELETE',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${user.id}`
         },
         (payload) => {
           const deletedId = payload.old.id
           setNotifications(prev => prev.filter(notif => notif.id !== deletedId))
         }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_preferences', filter: `user_id=eq.${user.id}` }, () => { void loadNotifications() })
       .subscribe()
 
     return () => {

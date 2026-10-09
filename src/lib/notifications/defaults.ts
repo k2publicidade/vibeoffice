@@ -19,7 +19,7 @@ export async function createDefaultPreferences(userId: string) {
     enable_email: meta.channels.email.enabled,
   }))
 
-  const { error } = await supabase.from('notification_preferences').insert(preferences)
+  const { error } = await supabase.from('notification_preferences').upsert(preferences, { onConflict: 'user_id,notification_type', ignoreDuplicates: true })
 
   if (error) {
     console.error('[createDefaultPreferences] Error creating defaults:', error)
@@ -45,7 +45,7 @@ export async function createDefaultPreferencesClient(userId: string) {
     enable_email: meta.channels.email.enabled,
   }))
 
-  const { error } = await supabase.from('notification_preferences').insert(preferences)
+  const { error } = await supabase.from('notification_preferences').upsert(preferences, { onConflict: 'user_id,notification_type', ignoreDuplicates: true })
 
   if (error) {
     console.error('[createDefaultPreferencesClient] Error creating defaults:', error)
