@@ -2,10 +2,12 @@
  * Next.js Proxy (antigo Middleware) - Proteção de rotas com Supabase Auth
  */
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  // Server-to-server webhook authenticates with its own secret in the route.
+  if (request.nextUrl.pathname === '/api/notifications/deliver' || request.nextUrl.pathname === '/office-sw.js') return NextResponse.next()
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -17,42 +19,13 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         },
       },
     }
@@ -61,48 +34,59 @@ export async function proxy(request: NextRequest) {
   // [M14] Trocado getSession() (deprecated) por getUser() — valida JWT no servidor
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+  const isAuthRoute = request.nextUrl.pathname === '/login'
   const isPublicRoute =
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/auth') ||
-    request.nextUrl.pathname.startsWith('/update-password')
+    isAuthRoute ||
+    request.nextUrl.pathname.startsWith('/auth/') ||
+    request.nextUrl.pathname === '/update-password'
+
+  function redirect(url: URL) {
+    const redirectResponse = NextResponse.redirect(url)
+    response.cookies.getAll().forEach(cookie => redirectResponse.cookies.set(cookie))
+    return redirectResponse
+  }
 
   const isProtectedRoute = !isPublicRoute
 
   if (isProtectedRoute && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return redirect(new URL('/login', request.url))
+  }
+
+  if (user && request.nextUrl.pathname !== '/auth/mfa' && !request.nextUrl.pathname.startsWith('/auth/callback')) {
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') {
+      return redirect(new URL('/auth/mfa', request.url))
+    }
   }
 
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return redirect(new URL('/', request.url))
+  }
+
+  if (isProtectedRoute && user) {
+    const { data: profile } = await supabase.from('users').select('role, active').eq('id', user.id).single()
+    if (!profile || !(profile as { active: boolean }).active) {
+      await supabase.auth.signOut()
+      return redirect(new URL('/login', request.url))
+    }
   }
 
   // Rotas restritas a Admin (Configurações de Cursos)
   const isAdminOnlyRoute =
-    request.nextUrl.pathname.startsWith('/courses/manage')
+    request.nextUrl.pathname.startsWith('/courses/manage') ||
+    request.nextUrl.pathname.startsWith('/admin/')
 
   if (isAdminOnlyRoute && user) {
-    // TODO: rodada futura — popular app_metadata.role via trigger no signup ou função RPC
-    // pra eliminar o fallback de DB query. Ver achado S-P0-02 do diagnostico.
-    // Preferir role do JWT custom claim (sem query no banco)
-    let role: string | undefined =
-      (user.app_metadata?.role as string | undefined) ??
-      (user.user_metadata?.role as string | undefined)
-
-    // Fallback: se app_metadata ainda não estiver populado (migration de role no JWT pendente)
-    if (!role) {
-      const { data } = await supabase
+    // A autorização vem do banco. user_metadata é editável pelo próprio usuário.
+    const { data } = await supabase
         .from('users')
         .select('role')
         .eq('id', user.id)
         .single()
-      role = data?.role ?? undefined
-    }
-
-    if (role !== 'Admin') {
+    if (data?.role !== 'Admin') {
       const redirectUrl = new URL('/', request.url)
       redirectUrl.searchParams.set('access', 'denied')
-      return NextResponse.redirect(redirectUrl)
+      return redirect(redirectUrl)
     }
   }
 

@@ -25,6 +25,7 @@ export interface Message {
   roomId: string
   userId: string // Who sent it
   content: string
+  type?: 'text' | 'image' | 'file'
   timestamp: Date
   edited?: boolean
   editedAt?: Date

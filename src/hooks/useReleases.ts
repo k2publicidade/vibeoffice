@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { toast } from 'sonner'
+import { resolveStorageUrl, storageReference } from '@/lib/supabase/storage'
 import type { Release, ReleaseStatus, CreateReleaseInput, ReleaseFilters } from '@/types/releases'
 import type { CreateEventInput } from './useCalendar'
 
@@ -69,11 +70,9 @@ export function useReleases(options?: UseReleasesOptions) {
         { event: '*', schema: 'public', table: 'releases' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setReleases(prev => [...prev, mapDbToRelease(payload.new)])
+            fetchReleases()
           } else if (payload.eventType === 'UPDATE') {
-            setReleases(prev =>
-              prev.map(r => r.id === payload.new.id ? mapDbToRelease(payload.new) : r)
-            )
+            void fetchReleases()
           } else if (payload.eventType === 'DELETE') {
             setReleases(prev => prev.filter(r => r.id !== payload.old.id))
           }
@@ -96,7 +95,7 @@ export function useReleases(options?: UseReleasesOptions) {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setReleases(data.map(mapDbToRelease))
+      setReleases(await Promise.all(data.map(async row => ({ ...mapDbToRelease(row), coverUrl: await resolveStorageUrl(row.cover_url), wavUrl: await resolveStorageUrl((row as unknown as { wav_url?: string }).wav_url) }))))
     } catch (error) {
       console.error('Error fetching releases:', error)
     } finally {
@@ -129,16 +128,16 @@ export function useReleases(options?: UseReleasesOptions) {
       .insert({
         title: input.title,
         artist: input.artist,
-        artists: input.artists && input.artists.length > 0 ? JSON.stringify(input.artists) : '[]',
+        artists: (input.artists || []) as never,
         release_type: input.releaseType,
         genre: input.genre || null,
         release_date: input.releaseDate ? `${input.releaseDate.getFullYear()}-${String(input.releaseDate.getMonth() + 1).padStart(2, '0')}-${String(input.releaseDate.getDate()).padStart(2, '0')}` : null,
         status: input.status || 'scheduled',
-        cover_url: input.coverUrl || null,
-        wav_url: input.wavUrl || null,
-        composers: input.composers && input.composers.length > 0 ? JSON.stringify(input.composers) : '[]',
-        tracks: input.tracks && input.tracks.length > 0 ? JSON.stringify(input.tracks) : '[]',
-        platform_links: input.platformLinks && input.platformLinks.length > 0 ? JSON.stringify(input.platformLinks) : '[]',
+        cover_url: input.coverUrl ? storageReference(input.coverUrl) : null,
+        wav_url: input.wavUrl ? storageReference(input.wavUrl) : null,
+        composers: (input.composers || []) as never,
+        tracks: (input.tracks || []) as never,
+        platform_links: (input.platformLinks || []) as never,
         isrc: input.isrc || null,
         upc: input.upc || null,
         label: input.label || null,
@@ -154,7 +153,7 @@ export function useReleases(options?: UseReleasesOptions) {
     if (error) throw error
 
     const newRelease = mapDbToRelease(data)
-    setReleases(prev => [...prev, newRelease])
+    await fetchReleases()
 
     // Auto-create calendar event if release has a date
     if (input.releaseDate && options?.createCalendarEvent) {
@@ -188,16 +187,16 @@ export function useReleases(options?: UseReleasesOptions) {
     const updateData: Record<string, any> = {}
     if (updates.title !== undefined) updateData.title = updates.title
     if (updates.artist !== undefined) updateData.artist = updates.artist
-    if (updates.artists !== undefined) updateData.artists = JSON.stringify(updates.artists || [])
+    if (updates.artists !== undefined) updateData.artists = updates.artists || []
     if (updates.releaseType !== undefined) updateData.release_type = updates.releaseType
     if (updates.genre !== undefined) updateData.genre = updates.genre || null
     if (updates.releaseDate !== undefined) updateData.release_date = updates.releaseDate ? `${updates.releaseDate.getFullYear()}-${String(updates.releaseDate.getMonth() + 1).padStart(2, '0')}-${String(updates.releaseDate.getDate()).padStart(2, '0')}` : null
     if (updates.status !== undefined) updateData.status = updates.status
-    if (updates.coverUrl !== undefined) updateData.cover_url = updates.coverUrl || null
-    if (updates.wavUrl !== undefined) updateData.wav_url = updates.wavUrl || null
-    if (updates.composers !== undefined) updateData.composers = JSON.stringify(updates.composers || [])
-    if (updates.tracks !== undefined) updateData.tracks = JSON.stringify(updates.tracks || [])
-    if (updates.platformLinks !== undefined) updateData.platform_links = JSON.stringify(updates.platformLinks || [])
+    if (updates.coverUrl !== undefined) updateData.cover_url = updates.coverUrl ? storageReference(updates.coverUrl) : null
+    if (updates.wavUrl !== undefined) updateData.wav_url = updates.wavUrl ? storageReference(updates.wavUrl) : null
+    if (updates.composers !== undefined) updateData.composers = updates.composers || []
+    if (updates.tracks !== undefined) updateData.tracks = updates.tracks || []
+    if (updates.platformLinks !== undefined) updateData.platform_links = updates.platformLinks || []
     if (updates.isrc !== undefined) updateData.isrc = updates.isrc || null
     if (updates.upc !== undefined) updateData.upc = updates.upc || null
     if (updates.label !== undefined) updateData.label = updates.label || null
@@ -215,7 +214,7 @@ export function useReleases(options?: UseReleasesOptions) {
 
     if (error) throw error
 
-    const updated = mapDbToRelease(data)
+    const updated = { ...mapDbToRelease(data), coverUrl: await resolveStorageUrl(data.cover_url), wavUrl: await resolveStorageUrl(data.wav_url) }
     setReleases(prev => prev.map(r => r.id === id ? updated : r))
 
     // Sync calendar event if date changed
@@ -291,7 +290,7 @@ export function useReleases(options?: UseReleasesOptions) {
 
     if (error) throw error
 
-    const updated = mapDbToRelease(data)
+    const updated = { ...mapDbToRelease(data), coverUrl: await resolveStorageUrl(data.cover_url), wavUrl: await resolveStorageUrl(data.wav_url) }
     setReleases(prev => prev.map(r => r.id === id ? updated : r))
     return updated
   }, [])

@@ -8,7 +8,7 @@ import {
   Paperclip,
   Mic,
   Image as ImageIcon,
-  File,
+  File as FileIcon,
   Camera,
 } from 'lucide-react'
 import {
@@ -21,14 +21,17 @@ import { EmojiPickerPopover } from './EmojiPickerPopover'
 import { MentionAutocomplete } from './MentionAutocomplete'
 import { detectMentionTrigger } from '@/lib/mentions'
 import { useUsers } from '@/hooks/useUsers'
+import { toast } from 'sonner'
 
 interface MessageInputPremiumProps {
-  onSendMessage: (message: string) => void
+  onSendMessage: (message: string) => Promise<void> | void
+  onSendAttachment?: (file: File) => Promise<void>
   disabled?: boolean
 }
 
 export function MessageInputPremium({
   onSendMessage,
+  onSendAttachment,
   disabled,
 }: MessageInputPremiumProps) {
   const [messageInput, setMessageInput] = useState('')
@@ -36,14 +39,55 @@ export function MessageInputPremium({
   const [mentionSearch, setMentionSearch] = useState('')
   const [mentionStartIndex, setMentionStartIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const recordingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [recording, setRecording] = useState(false)
   const { users } = useUsers()
 
-  const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      onSendMessage(messageInput)
-      setMessageInput('')
-      setShowMentionAutocomplete(false)
-    }
+  useEffect(() => () => {
+    if (recordingTimer.current) clearTimeout(recordingTimer.current)
+    const recorder = recorderRef.current
+    if (recorder) { recorder.onstop = null; if (recorder.state !== 'inactive') recorder.stop(); recorder.stream.getTracks().forEach(track => track.stop()) }
+  }, [])
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || busy || disabled) return
+    setBusy(true)
+    try { await onSendMessage(messageInput); setMessageInput(''); setShowMentionAutocomplete(false) }
+    catch { toast.error('Não foi possível enviar. Sua mensagem foi mantida para tentar novamente.') }
+    finally { setBusy(false) }
+  }
+
+  const sendFile = async (file?: File) => {
+    if (!file || !onSendAttachment || busy) return
+    setBusy(true)
+    try { await onSendAttachment(file) } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível enviar o arquivo') }
+    finally { setBusy(false); if (fileRef.current) fileRef.current.value = ''; if (cameraRef.current) cameraRef.current.value = '' }
+  }
+
+  const toggleRecording = async () => {
+    if (recording) { recorderRef.current?.stop(); return }
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { toast.error('Este navegador não suporta gravação de áudio'); return }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      recorderRef.current = recorder
+      const chunks: BlobPart[] = []
+      recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data) }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop())
+        if (recordingTimer.current) clearTimeout(recordingTimer.current)
+        setRecording(false)
+        const mime = recorder.mimeType || 'audio/webm'
+        const extension = mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'm4a' : 'webm'
+        void sendFile(new File(chunks, `audio-${Date.now()}.${extension}`, { type: mime }))
+      }
+      recorder.start(); setRecording(true)
+      recordingTimer.current = setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop() }, 120000)
+    } catch { toast.error('Não foi possível acessar o microfone. Verifique a permissão do navegador.') }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -102,6 +146,9 @@ export function MessageInputPremium({
 
   return (
     <div className="p-2 sm:p-4 border-t border-[#ff0300]/20 bg-[#0a0a0a]">
+      <input ref={fileRef} type="file" className="hidden" onChange={event => void sendFile(event.target.files?.[0])} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={event => void sendFile(event.target.files?.[0])} />
+      {recording && <p className="text-sm text-red-400 mb-2">Gravando áudio. Clique em parar para enviar (até 2 minutos).</p>}
       <div className="flex items-end gap-1 sm:gap-2">
         <div className="hidden sm:flex">
           <EmojiPickerPopover
@@ -115,19 +162,21 @@ export function MessageInputPremium({
             <Button
               variant="ghost"
               size="icon"
-              className="hidden sm:flex text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
+              disabled={disabled || busy || recording || !onSendAttachment}
+              aria-label="Anexar arquivo"
+              className="text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
             >
               <Paperclip className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-[#1a1a1a] border-[#ff0300]/20 text-white">
-            <DropdownMenuItem className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
+            <DropdownMenuItem onSelect={() => { if (fileRef.current) { fileRef.current.accept = 'image/*'; fileRef.current.click() } }} className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
               <ImageIcon className="h-4 w-4 mr-2" /> Imagem
             </DropdownMenuItem>
-            <DropdownMenuItem className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
-              <File className="h-4 w-4 mr-2" /> Documento
+            <DropdownMenuItem onSelect={() => { if (fileRef.current) { fileRef.current.accept = ''; fileRef.current.click() } }} className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
+              <FileIcon className="h-4 w-4 mr-2" /> Documento
             </DropdownMenuItem>
-            <DropdownMenuItem className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
+            <DropdownMenuItem onSelect={() => cameraRef.current?.click()} className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
               <Camera className="h-4 w-4 mr-2" /> Câmera
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -141,7 +190,7 @@ export function MessageInputPremium({
             onKeyPress={handleKeyPress}
             placeholder="Digite uma mensagem..."
             className="w-full bg-[#1a1a1a] border-[#ff0300]/20 text-white placeholder:text-gray-500 focus-visible:border-[#fc7a67] focus-visible:ring-[#fc7a67] h-9 sm:h-11 px-2 sm:px-4 text-sm sm:text-base"
-            disabled={disabled}
+            disabled={disabled || busy || recording}
           />
 
           {/* Mention Autocomplete */}
@@ -158,6 +207,9 @@ export function MessageInputPremium({
         <Button
           variant="ghost"
           size="icon"
+          onClick={() => void toggleRecording()}
+          disabled={disabled || busy || !onSendAttachment}
+          aria-label={recording ? 'Parar e enviar áudio' : 'Gravar áudio'}
           className="hidden sm:flex text-[#fc7a67] hover:bg-[#ff0300]/20 shrink-0"
         >
           <Mic className="h-5 w-5" />
@@ -165,7 +217,8 @@ export function MessageInputPremium({
 
         <Button
           onClick={handleSendMessage}
-          disabled={!messageInput.trim() || disabled}
+          aria-label="Enviar mensagem"
+          disabled={!messageInput.trim() || disabled || busy || recording}
           className="bg-[#fc7a67] text-black hover:bg-[#ff0300] disabled:bg-[#1a1a1a] disabled:text-gray-600 rounded-lg px-2 sm:px-3 h-9 sm:h-11 shrink-0 transition-colors shadow-lg shadow-[#fc7a67]/10"
         >
           <Send className="h-4 w-4 sm:h-5 sm:w-5" />

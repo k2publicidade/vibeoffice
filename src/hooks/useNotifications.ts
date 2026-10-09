@@ -68,7 +68,9 @@ export function useNotifications(): UseNotificationsReturn {
         created_at: row.created_at,
       }))
 
-      setNotifications(transformedData)
+      const { data: preferences } = await supabase.from('notification_preferences').select('notification_type, enable_in_app').eq('user_id', user.id)
+      const disabled = new Set((preferences || []).filter(pref => !pref.enable_in_app).map(pref => pref.notification_type))
+      setNotifications(transformedData.filter(notification => !disabled.has(notification.type)))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar notificações'
       setError(message)
@@ -167,8 +169,7 @@ export function useNotifications(): UseNotificationsReturn {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          const newNotification = payload.new as Notification
-          setNotifications(prev => [newNotification, ...prev])
+          void loadNotifications()
 
           // O toast premium será exibido pelo componente NotificationToast
         }
@@ -208,7 +209,7 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user, supabase])
+  }, [user, supabase, loadNotifications])
 
   const unreadCount = notifications.filter(n => !n.read).length
 

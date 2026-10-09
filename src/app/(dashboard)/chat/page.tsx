@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useChat } from '@/hooks/useChat'
 import { ChatListPremium } from '@/components/chat/ChatListPremium'
 import { ChatRoomPremium } from '@/components/chat/ChatRoomPremium'
 import { NewConversationModal } from '@/components/chat/NewConversationModal'
-import { ChatRoom, Message } from '@/types/chat'
+import { ChatRoom } from '@/types/chat'
 import { cn } from '@/lib/utils'
 
 export default function ChatPage() {
@@ -15,6 +15,9 @@ export default function ChatPage() {
     messages,
     setCurrentRoom,
     sendMessage,
+    sendAttachment,
+    unreadCounts,
+    lastMessages,
     createDM,
     getExistingDMUserIds,
     getUserById,
@@ -34,26 +37,6 @@ export default function ChatPage() {
       setCurrentRoom(rooms[0])
     }
   }, [rooms, currentRoom, setCurrentRoom])
-
-  // TODO: implementar contagem real de nao-lidas via last_read_at por room/user
-  // Ver achado S-P0-03 do diagnostico docs/superpowers/reports/2026-05-17-CONSOLIDADO.md
-  const unreadCounts: Record<string, number> = {}
-
-  // Obter última mensagem de cada sala para preview
-  const lastMessages = useMemo(() => {
-    const result: Record<string, { content: string; timestamp: Date }> = {}
-    rooms.forEach(room => {
-      const roomMessages = messages.filter((m: Message) => m.roomId === room.id)
-      if (roomMessages.length > 0) {
-        const lastMsg = roomMessages[roomMessages.length - 1]
-        result[room.id] = {
-          content: lastMsg.content,
-          timestamp: lastMsg.timestamp,
-        }
-      }
-    })
-    return result
-  }, [rooms, messages])
 
   const handleSelectRoom = (room: ChatRoom) => {
     setCurrentRoom(room)
@@ -110,6 +93,7 @@ export default function ChatPage() {
               room={currentRoom}
               messages={messages}
               onSendMessage={sendMessage}
+              onSendAttachment={sendAttachment}
               typingUsers={typingUsers}
               isLoading={isLoading}
               onBack={handleBackToList}

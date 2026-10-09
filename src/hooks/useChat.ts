@@ -6,7 +6,8 @@ import { useAuth } from './useAuth'
 import { useArchiveChat } from './useArchiveChat'
 import { ChatRoom, Message } from '@/types/chat'
 import { RealtimeChannel } from '@supabase/supabase-js'
-import { EventBus } from '@/lib/notifications/eventBus'
+import { extractMentionedUserIds } from '@/lib/mentions'
+import { uploadFile, deleteFile } from '@/lib/supabase/storage'
 import {
   validateProjectGroup,
   canManageGroup,
@@ -31,6 +32,9 @@ export interface UseChatReturn {
   messages: Message[]
   setCurrentRoom: (room: ChatRoom) => void
   sendMessage: (content: string) => Promise<void>
+  sendAttachment: (file: File) => Promise<void>
+  unreadCounts: Record<string, number>
+  lastMessages: Record<string, { content: string; timestamp: Date }>
   createDM: (userId: string, userName: string) => Promise<ChatRoom>
   getExistingDMUserIds: () => string[]
   getUserById: (userId: string) => Promise<ChatUser | null>
@@ -51,6 +55,7 @@ export function useChat(): UseChatReturn {
   const [availableUsers, setAvailableUsers] = useState<ChatUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [typingUsers, setTypingUsers] = useState<string[]>([])
+  const [roomSummaries, setRoomSummaries] = useState<Record<string, { content: string; timestamp: Date; unread: number }>>({})
   const { user } = useAuth()
   // [C05] Client criado por hook para evitar sessão stale
   const supabase = useMemo(() => createClient(), [])
@@ -70,7 +75,6 @@ export function useChat(): UseChatReturn {
       const { data, error } = await supabase
         .from('chat_rooms')
         .select('*')
-        .contains('participants', [user!.id])
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -80,7 +84,7 @@ export function useChat(): UseChatReturn {
         data.map((r) => ({
           id: r.id,
           name: r.name,
-          type: r.type as 'sector' | 'dm',
+          type: r.type,
           participants: r.participants,
           sector: r.sector || undefined,
           description: r.description || undefined,
@@ -101,6 +105,7 @@ export function useChat(): UseChatReturn {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email, avatar, sector, role')
+        .eq('active', true)
         .order('name')
 
       if (error) throw error
@@ -123,6 +128,26 @@ export function useChat(): UseChatReturn {
   // Separar salas por tipo
   const sectorRooms = useMemo(() => rooms.filter(r => r.type === 'sector'), [rooms])
   const dmRooms = useMemo(() => rooms.filter(r => r.type === 'dm'), [rooms])
+
+  useEffect(() => {
+    if (!user) return
+    let disposed = false
+    const refresh = async () => {
+      const { data, error } = await supabase.rpc('chat_room_summaries' as never)
+      if (error || disposed) return
+      const summaries: typeof roomSummaries = {}
+      for (const item of (data || []) as { room_id: string; content: string; timestamp: string; unread: number }[]) {
+        summaries[item.room_id] = { content: item.content, timestamp: new Date(item.timestamp), unread: Number(item.unread) }
+      }
+      setRoomSummaries(summaries)
+    }
+    void refresh()
+    const channel = supabase.channel(`chat-summary:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => { void fetchRooms(); void refresh() })
+      .subscribe()
+    return () => { disposed = true; void supabase.removeChannel(channel) }
+  }, [user?.id, supabase])
 
   // [M03] Corrigido: usar user?.id ao invés de 'current-user' hardcoded
   const getExistingDMUserIds = useCallback(() => {
@@ -179,6 +204,7 @@ export function useChat(): UseChatReturn {
         name: userName,
         type: 'dm',
         participants: [user.id, userId],
+        created_by: user.id,
       })
       .select()
       .single()
@@ -203,6 +229,8 @@ export function useChat(): UseChatReturn {
     if (!currentRoom || !user) return
 
     let channel: RealtimeChannel
+    let disposed = false
+    setMessages([])
 
     async function setupMessages() {
       // Fetch mensagens da sala
@@ -217,12 +245,17 @@ export function useChat(): UseChatReturn {
         return
       }
 
+      if (disposed) return
       setMessages(
         data.map((m) => ({
           id: m.id,
           roomId: m.room_id,
           userId: m.user_id,
           content: m.content,
+          type: m.type,
+          reactions: m.reactions as Message['reactions'],
+          readBy: m.read_by as Message['readBy'],
+          mentionedUsers: m.mentioned_users,
           timestamp: new Date(m.timestamp),
         }))
       )
@@ -244,6 +277,10 @@ export function useChat(): UseChatReturn {
               roomId: payload.new.room_id,
               userId: payload.new.user_id,
               content: payload.new.content,
+              type: payload.new.type,
+              reactions: payload.new.reactions,
+              readBy: payload.new.read_by,
+              mentionedUsers: payload.new.mentioned_users,
               timestamp: new Date(payload.new.timestamp),
             }
             // [M12] Prevenir duplicatas de mensagens via race condition Realtime
@@ -263,12 +300,19 @@ export function useChat(): UseChatReturn {
             }
           }
         )
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoom!.id}` }, payload => {
+          setMessages(previous => previous.map(message => message.id === payload.new.id ? { ...message, content: payload.new.content, reactions: payload.new.reactions, readBy: payload.new.read_by } : message))
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+          setMessages(previous => previous.filter(message => message.id !== payload.old.id))
+        })
         .subscribe()
     }
 
     setupMessages()
 
     return () => {
+      disposed = true
       if (channel) {
         supabase.removeChannel(channel)
       }
@@ -285,6 +329,7 @@ export function useChat(): UseChatReturn {
           room_id: currentRoom.id,
           user_id: user.id,
           content: content.trim(),
+          mentioned_users: extractMentionedUserIds(content, availableUsers),
         })
         .select()
         .single()
@@ -293,43 +338,27 @@ export function useChat(): UseChatReturn {
 
       // Validar que data existe antes de usar
       if (!data) {
-        console.error('[useChat] Message insert returned no data')
-        return
+        throw new Error('Mensagem não foi salva')
       }
 
-      // Atualizar updated_at da sala (opcional, pode ter trigger no banco)
-      const updateResult = await supabase
-        .from('chat_rooms')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', currentRoom.id)
+      setMessages(previous => previous.some(message => message.id === data.id) ? previous : [...previous, { id: data.id, roomId: data.room_id, userId: data.user_id, content: data.content, timestamp: new Date(data.timestamp), type: data.type, readBy: {}, reactions: {} }])
 
-      if (updateResult.error) {
-        console.error('[useChat] Failed to update room timestamp:', updateResult.error)
-      }
-
-      // Emitir notificação para todos os membros da sala (exceto o sender)
-      const recipients = (currentRoom.participants || []).filter(memberId => memberId !== user.id)
-
-      if (recipients.length > 0) {
-        EventBus.emit({
-          type: 'message_received',
-          recipientIds: recipients,
-          priority: 'low',
-          entityType: 'message',
-          entityId: data.id,
-          metadata: {
-            roomName: currentRoom.name,
-            roomId: currentRoom.id,
-            senderName: user.name,
-            messagePreview: content.trim().substring(0, 50),
-          },
-        }).catch((err) => {
-          console.error('[useChat] Failed to emit notification:', err)
-        })
-      }
+      // Notifications and room timestamps are generated atomically by the database.
     } catch (error) {
       console.error('Error sending message:', error)
+      throw error
     }
+  }, [currentRoom, user, supabase, availableUsers])
+
+  const sendAttachment = useCallback(async (file: File) => {
+    if (!currentRoom || !user) throw new Error('Selecione uma conversa')
+    if (!file.size || file.size > 50 * 1024 * 1024) throw new Error('O arquivo deve ter até 50 MB')
+    const path = `${currentRoom.id}/${crypto.randomUUID()}`
+    const uploaded = await uploadFile({ file, bucket: 'message-assets', path })
+    try {
+      const { error } = await supabase.from('messages').insert({ room_id: currentRoom.id, user_id: user.id, type: file.type.startsWith('image/') ? 'image' : 'file', content: JSON.stringify({ name: file.name, url: uploaded.url, size: file.size, mime: file.type }) })
+      if (error) throw error
+    } catch (error) { await deleteFile('message-assets', path).catch(() => undefined); throw error }
   }, [currentRoom, user, supabase])
 
   /**
@@ -581,6 +610,9 @@ export function useChat(): UseChatReturn {
     messages,
     setCurrentRoom,
     sendMessage,
+    sendAttachment,
+    unreadCounts: Object.fromEntries(Object.entries(roomSummaries).map(([id, summary]) => [id, summary.unread])),
+    lastMessages: Object.fromEntries(Object.entries(roomSummaries).map(([id, summary]) => [id, { content: summary.content, timestamp: summary.timestamp }])),
     createDM,
     getExistingDMUserIds,
     getUserById,

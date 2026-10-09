@@ -18,9 +18,12 @@ export interface Session {
 export async function getSession(): Promise<Session | null> {
   const supabase = await createServerSupabaseClient()
 
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return null
+
   const { data: { session }, error } = await supabase.auth.getSession()
 
-  if (error || !session) {
+  if (error || !session || session.user.id !== user.id) {
     return null
   }
 
@@ -28,10 +31,10 @@ export async function getSession(): Promise<Session | null> {
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('*')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
-  if (userError || !userData) {
+  if (userError || !userData || !userData.active) {
     return null
   }
 
@@ -47,7 +50,7 @@ export async function getSession(): Promise<Session | null> {
       updatedAt: new Date(userData.updated_at),
     },
     accessToken: session.access_token,
-    expiresAt: new Date(session.expires_at!).getTime(),
+    expiresAt: (session.expires_at ?? 0) * 1000,
   }
 }
 

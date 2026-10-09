@@ -21,7 +21,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Lesson, LessonMaterial } from '@/types/courses'
-import { uploadFile } from '@/lib/supabase/storage'
+import { uploadFile, resolveStorageUrl, storageReference } from '@/lib/supabase/storage'
 import { videoEmbedUrl } from '@/lib/video'
 import { sanitizeLessonHtml } from '@/lib/sanitize'
 import {
@@ -198,11 +198,11 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
         setUploadingMaterial(true)
         try {
             const path = `course-materials/${Date.now()}-${file.name}`
-            const result = await uploadFile({ file, bucket: 'drive-files', path })
+            const result = await uploadFile({ file, bucket: 'course-assets', path })
             const material: LessonMaterial = {
                 kind: 'file',
                 name: file.name,
-                url: result.url,
+                url: (await resolveStorageUrl(result.url))!,
                 size: file.size,
                 mime: file.type,
             }
@@ -259,9 +259,9 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
                 title: state.title.trim(),
                 chapter: state.chapter.trim() || undefined,
                 type: hasVideo ? 'video' : 'html',
-                content_url: state.content_url.trim() || undefined,
+                content_url: storageReference(state.content_url.trim()) || undefined,
                 content: state.content,
-                materials: state.materials,
+                materials: state.materials.map(m => ({ ...m, url: storageReference(m.url) })),
             })
             onClose()
         } catch {

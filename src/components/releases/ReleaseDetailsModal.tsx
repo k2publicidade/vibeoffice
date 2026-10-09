@@ -1,3 +1,4 @@
+import DOMPurify from 'isomorphic-dompurify'
 import { useCallback } from 'react'
 import html2canvas from 'html2canvas'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -97,7 +98,7 @@ export function ReleaseDetailsModal({
     const typeLabel = TYPE_LABELS[release.releaseType] || release.releaseType
     const statusColor = release.status === 'released' ? '#22c55e' : release.status === 'in_progress' ? '#f97316' : '#3b82f6'
 
-    container.innerHTML = `
+    const cardHtml = `
       <div id="card-export" style="width:800px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:white;padding:40px;border-radius:20px;border:1px solid #222;">
         <!-- Header -->
         <div style="display:flex;gap:24px;margin-bottom:32px;">
@@ -164,6 +165,7 @@ export function ReleaseDetailsModal({
       </div>
     `
 
+    container.innerHTML = DOMPurify.sanitize(cardHtml)
     try {
       // Wait for cover image to load if present
       const img = container.querySelector('img')

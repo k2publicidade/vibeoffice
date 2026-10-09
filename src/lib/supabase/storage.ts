@@ -42,21 +42,32 @@ export async function uploadFile({
     throw new Error(`Upload failed: ${error.message}`)
   }
 
-  // Obter URL pública/signed
-  const { data: urlData } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(data.path, 60 * 60 * 24 * 7) // 7 dias
-
-  if (!urlData) {
-    throw new Error('Failed to get file URL')
-  }
-
   return {
     path: data.path,
-    url: urlData.signedUrl,
+    url: `storage://${bucket}/${data.path}`,
     size: file.size,
     mimeType: file.type,
   }
+}
+
+/** Store a stable reference; sign it again each time authenticated data is loaded. */
+export function storageReference(url: string): string {
+  if (!url || url.startsWith('storage://')) return url
+  try {
+    const parsed = new URL(url)
+    const base = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!)
+    const match = parsed.pathname.match(/^\/storage\/v1\/object\/(?:sign|public)\/([^/]+)\/(.+)$/)
+    if (parsed.origin === base.origin && match) return `storage://${match[1]}/${decodeURIComponent(match[2])}`
+  } catch { /* External URL or existing storage reference. */ }
+  return url
+}
+
+export async function resolveStorageUrl(url?: string | null): Promise<string | undefined> {
+  if (!url) return undefined
+  const reference = storageReference(url)
+  const match = reference.match(/^storage:\/\/([^/]+)\/(.+)$/)
+  if (!match) return url
+  return getSignedUrl(match[1], match[2], 60 * 60 * 8)
 }
 
 /**

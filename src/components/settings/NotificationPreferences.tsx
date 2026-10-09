@@ -4,6 +4,7 @@ import { NotificationPreference } from '@/types/notifications'
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences'
 import { NotificationCategoryCard } from './NotificationCategoryCard'
 import { getMetadataByCategory, CATEGORY_LABELS } from '@/lib/notifications/metadata'
+import { PushSettings } from './PushSettings'
 
 interface NotificationPreferencesProps {
   userId: string
@@ -26,6 +27,7 @@ export function NotificationPreferences({ userId, initialPreferences }: Notifica
       </div>
 
       {/* Grid de Cards */}
+      <PushSettings userId={userId} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {categories.map((category) => {
           const categoryData = CATEGORY_LABELS[category]

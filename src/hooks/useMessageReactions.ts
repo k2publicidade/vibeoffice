@@ -15,49 +15,8 @@ export function useMessageReactions() {
   const toggleReaction = useCallback(
     async (messageId: string, emoji: string, userId: string) => {
       try {
-        // First, fetch current reactions
-        const { data: message, error: fetchError } = await supabase
-          .from('messages')
-          .select('reactions')
-          .eq('id', messageId)
-          .single()
-
-        if (fetchError) throw fetchError
-
-        const currentReactions = (message.reactions as { [emoji: string]: string[] }) || {}
-        const userIds = currentReactions[emoji] || []
-        const hasReacted = userIds.includes(userId)
-
-        let newReactions: { [emoji: string]: string[] }
-
-        if (hasReacted) {
-          // Remove user's reaction
-          const updatedUserIds = userIds.filter((id) => id !== userId)
-          if (updatedUserIds.length === 0) {
-            // Remove emoji entirely if no users left
-            newReactions = { ...currentReactions }
-            delete newReactions[emoji]
-          } else {
-            newReactions = {
-              ...currentReactions,
-              [emoji]: updatedUserIds,
-            }
-          }
-        } else {
-          // Add user's reaction
-          newReactions = {
-            ...currentReactions,
-            [emoji]: [...userIds, userId],
-          }
-        }
-
-        // Update in database
-        const { error: updateError } = await supabase
-          .from('messages')
-          .update({ reactions: newReactions })
-          .eq('id', messageId)
-
-        if (updateError) throw updateError
+        const { error } = await supabase.rpc('toggle_message_reaction' as never, { message_id: messageId, emoji } as never)
+        if (error) throw error
       } catch (error) {
         console.error('Error toggling reaction:', error)
         toast.error('Erro ao reagir à mensagem')

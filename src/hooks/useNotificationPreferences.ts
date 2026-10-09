@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useDebouncedCallback } from 'use-debounce'
 import { createClient } from '@/lib/supabase/client'
 import { NotificationType, NotificationPreference } from '@/types/notifications'
 import { toast } from 'sonner'
@@ -80,7 +79,7 @@ export function useNotificationPreferences(userId: string, initialPreferences: N
   )
 
   // Debounced version (300ms)
-  const debouncedUpdate = useDebouncedCallback(updatePreferenceInDB, 300)
+  const debouncedUpdate = updatePreferenceInDB
 
   const updatePreference = useCallback(
     (type: NotificationType, channel: ChannelType, value: boolean) => {

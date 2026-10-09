@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".worktrees/**",
+    ".agent/**",
+    "vibeoffice/**",
+    "vibecanvas/**",
+    "coverage/**",
     // Standalone/generated code is typechecked or linted separately, if needed.
     "supabase/functions/**",
     "vibe-distro-studio/**",

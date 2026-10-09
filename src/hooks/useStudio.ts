@@ -43,12 +43,12 @@ export function useStudio() {
 
             if (error) throw error
 
-            setBookings(prev => [data as any as StudioBooking, ...prev])
+            setBookings(prev => [data as any as StudioBooking, ...prev.filter(b => b.id !== (data as unknown as StudioBooking).id)])
             toast.success('Sessão agendada com sucesso!')
             return data
         } catch (error) {
             console.error('Error creating booking:', error)
-            toast.error('Erro ao criar agendamento')
+            toast.error((error as { code?: string }).code === '23P01' ? 'Este estúdio já está reservado nesse horário.' : 'Erro ao criar agendamento. Confira os horários.')
             throw error
         }
     }
@@ -105,7 +105,7 @@ export function useStudio() {
                 { event: '*', schema: 'public', table: 'studio_bookings' },
                 (payload) => {
                     if (payload.eventType === 'INSERT') {
-                        setBookings(prev => [payload.new as StudioBooking, ...prev])
+                        setBookings(prev => [payload.new as StudioBooking, ...prev.filter(b => b.id !== payload.new.id)])
                     } else if (payload.eventType === 'UPDATE') {
                         setBookings(prev => prev.map(b => b.id === payload.new.id ? (payload.new as StudioBooking) : b))
                     } else if (payload.eventType === 'DELETE') {

@@ -7,6 +7,9 @@ import { supabase } from '@/lib/supabase/client'
 describe('useAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(supabase.auth as unknown as { mfa: unknown }).mfa = {
+      getAuthenticatorAssuranceLevel: jest.fn().mockResolvedValue({ data: { currentLevel: 'aal1', nextLevel: 'aal1' }, error: null }),
+    }
   })
 
   it('should return null user when not authenticated', () => {
@@ -34,7 +37,7 @@ describe('useAuth', () => {
       name: 'Test User',
       avatar: null,
       sector: 'TI/Suporte',
-      role: 'colaborador',
+      role: 'Colaborador',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -64,7 +67,7 @@ describe('useAuth', () => {
         name: 'Test User',
         avatar: null,
         sector: 'TI/Suporte',
-        role: 'colaborador',
+        role: 'Colaborador',
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
       })
@@ -89,7 +92,7 @@ describe('useAuth', () => {
       name: 'Test User',
       avatar: null,
       sector: 'TI/Suporte',
-      role: 'colaborador',
+      role: 'Colaborador',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }

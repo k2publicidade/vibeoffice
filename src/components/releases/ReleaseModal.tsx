@@ -283,7 +283,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
     const fileName = `release-covers/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
     const { data, error } = await supabase.storage
-      .from('drive-files')
+      .from('release-assets')
       .upload(fileName, file, {
         cacheControl: '31536000',
         upsert: false,
@@ -292,11 +292,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
     if (error) throw new Error(`Upload falhou: ${error.message}`)
 
-    const { data: urlData } = supabase.storage
-      .from('drive-files')
-      .getPublicUrl(data.path)
-
-    return urlData.publicUrl
+    return `storage://release-assets/${data.path}`
   }
 
   const handleSave = async () => {

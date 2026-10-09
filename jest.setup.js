@@ -40,6 +40,7 @@ jest.mock('@/lib/supabase/client', () => {
       subscribe: jest.fn().mockReturnThis(),
       unsubscribe: jest.fn().mockReturnThis(),
     })),
+    removeChannel: jest.fn().mockResolvedValue('ok'),
   }
 
   return {

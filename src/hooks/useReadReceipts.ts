@@ -18,35 +18,10 @@ export function useReadReceipts(userId: string | undefined, roomId: string | und
     pendingReads.current.clear()
 
     try {
-      // Batch update: mark all messages as read by current user
-      const timestamp = new Date().toISOString()
-
-      for (const messageId of messageIds) {
-        // First, fetch current read_by
-        const { data: message } = await supabase
-          .from('messages')
-          .select('read_by')
-          .eq('id', messageId)
-          .single()
-
-        if (message) {
-          // Merge current read_by with new timestamp
-          const currentReadBy = (message.read_by as Record<string, string>) || {}
-          const updatedReadBy = {
-            ...currentReadBy,
-            [userId]: timestamp,
-          }
-
-          // Update with merged object
-          await supabase
-            .from('messages')
-            .update({ read_by: updatedReadBy })
-            .eq('id', messageId)
-        }
-      }
-
-      console.log(`Marked ${messageIds.length} messages as read`)
+      const { error } = await supabase.rpc('mark_messages_read' as never, { message_ids: messageIds } as never)
+      if (error) throw error
     } catch (error) {
+      messageIds.forEach(id => pendingReads.current.add(id))
       console.error('Error marking messages as read:', error)
     }
   }, [userId, supabase])

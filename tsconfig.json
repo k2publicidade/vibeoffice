@@ -38,6 +38,9 @@
   ],
   "exclude": [
     "node_modules",
+    ".worktrees",
+    "vibeoffice",
+    "vibecanvas",
     "supabase/functions",
     "vibe-distro-studio",
     "**/__tests__/**",

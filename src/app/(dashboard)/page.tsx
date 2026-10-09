@@ -3,6 +3,7 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { MeetingCard } from '@/components/dashboard/MeetingCard'
 import { EfficiencyCard } from '@/components/dashboard/EfficiencyCard'
@@ -79,8 +80,8 @@ export default function DashboardPage() {
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | undefined>()
   const { users, isLoading: usersLoading } = useUsers()
   const { tasks, isLoading: tasksLoading } = useTasks()
-  const { tickets, isLoading: ticketsLoading } = useTickets()
-  const { events, isLoading: eventsLoading } = useCalendar()
+  const { tickets, isLoading: ticketsLoading, createTicket } = useTickets()
+  const { events, isLoading: eventsLoading, createEvent } = useCalendar()
 
   useEffect(() => {
     if (!user && !isLoading) {
@@ -88,17 +89,20 @@ export default function DashboardPage() {
     }
   }, [user, isLoading, router])
 
-  const handleSaveRequest = (request: {
+  const handleSaveRequest = async (request: {
     type: string
     startDate: Date
     endDate: Date
     description?: string
   }) => {
-    console.log('Nova solicitação:', request)
-    // TODO: Integrar com API real de solicitações quando a tabela existir.
+    if (!user) throw new Error('Faça login novamente')
+    if (request.endDate < request.startDate) throw new Error('A data final deve ser igual ou posterior à inicial')
+    const label = ({ dayoff: 'Day Off', vacation: 'Férias', sick: 'Atestado Médico', remote: 'Home Office', compensatory: 'Folga Compensatória', other: 'Outro' } as Record<string, string>)[request.type] || request.type
+    await createTicket({ title: `Solicitação: ${label}`, description: request.description || `${label}: ${format(request.startDate, 'dd/MM/yyyy')} a ${format(request.endDate, 'dd/MM/yyyy')}`, category: 'Administrativo', status: 'open', priority: 'medium', requester: user.id, requestType: request.type, requestStartDate: request.startDate, requestEndDate: request.endDate })
+    toast.success('Solicitação enviada para análise')
   }
 
-  const handleSaveMeeting = (meeting: {
+  const handleSaveMeeting = async (meeting: {
     title: string
     date: Date
     startTime: string
@@ -108,8 +112,15 @@ export default function DashboardPage() {
     participants: string[]
     agenda?: string
   }) => {
-    console.log('Nova reunião:', meeting)
-    // TODO: Integrar com API real de calendário quando o modal enviar payload completo.
+    if (!user) throw new Error('Faça login novamente')
+    if (meeting.meetingLink) { const url = new URL(meeting.meetingLink); if (url.protocol !== 'https:') throw new Error('Use um link de reunião HTTPS') }
+    const startTime = new Date(meeting.date)
+    const [hours, minutes] = meeting.startTime.split(':').map(Number)
+    startTime.setHours(hours, minutes, 0, 0)
+    const duration = Number(meeting.duration)
+    if (!Number.isFinite(duration) || duration <= 0) throw new Error('Duração inválida')
+    await createEvent({ title: meeting.title, startTime, endTime: new Date(startTime.getTime() + duration * 60000), type: meeting.participants.length ? 'sector' : 'personal', sector: meeting.participants.length ? user.sector : undefined, location: meeting.location, description: [meeting.agenda, meeting.meetingLink].filter(Boolean).join('\n'), attendees: Array.from(new Set([user.id, ...meeting.participants])) })
+    toast.success('Reunião agendada no calendário')
   }
 
   const handleCreateAnnouncement = () => {
@@ -216,9 +227,9 @@ export default function DashboardPage() {
       const responsible = userById.get(ticket.assignedTo ?? ticket.requester)
       return {
         id: ticket.id,
-        startDate: new Date(ticket.createdAt),
-        endDate: new Date(ticket.updatedAt),
-        type: ticket.category || ticket.title,
+        startDate: ticket.requestStartDate || new Date(ticket.createdAt),
+        endDate: ticket.requestEndDate || new Date(ticket.updatedAt),
+        type: ticket.requestType || ticket.category || ticket.title,
         status: ticket.status === 'open' ? ('pending' as const) : ('processing' as const),
         assignedTo: {
           id: responsible?.id ?? ticket.requester,
@@ -363,7 +374,7 @@ export default function DashboardPage() {
           time={collaboratorDashboardData.nextMeeting.time}
           duration={collaboratorDashboardData.nextMeeting.duration}
           attendees={collaboratorDashboardData.nextMeeting.attendees}
-          onJoin={() => console.log('Join meeting')}
+          onJoin={() => { const next = events.filter(event => event.endTime > new Date()).sort((a,b) => a.startTime.getTime()-b.startTime.getTime())[0]; const link = next?.description?.match(/https?:\/\/[^\s]+/)?.[0]; if (link) window.open(link, '_blank', 'noopener,noreferrer'); else router.push('/calendar') }}
         />
         <div className="lg:col-span-2">
           <EfficiencyCard {...collaboratorDashboardData.efficiency} />

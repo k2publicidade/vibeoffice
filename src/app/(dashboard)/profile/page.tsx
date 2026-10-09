@@ -342,6 +342,7 @@ export default function ProfilePage() {
                             <Label htmlFor="profile-sector">Setor</Label>
                             <Select
                                 value={form.sector}
+                                disabled={user.role !== 'Admin'}
                                 onValueChange={(value) => setForm(prev => ({ ...prev, sector: value as Sector }))}
                             >
                                 <SelectTrigger id="profile-sector" className="w-full bg-black border-[#2a2a2a] text-white">

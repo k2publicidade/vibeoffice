@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
@@ -46,7 +47,7 @@ interface ScheduleMeetingModalProps {
     meetingLink?: string
     participants: string[]
     agenda?: string
-  }) => void
+  }) => Promise<void> | void
   availableParticipants?: Participant[]
 }
 
@@ -87,7 +88,7 @@ export function ScheduleMeetingModal({
   open,
   onClose,
   onSave,
-  availableParticipants = defaultParticipants,
+  availableParticipants = [],
 }: ScheduleMeetingModalProps) {
   const [title, setTitle] = useState('')
   const [date, setDate] = useState<Date | undefined>()
@@ -107,10 +108,13 @@ export function ScheduleMeetingModal({
     )
   }
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false)
+  const handleSave = async () => {
     if (!title || !date || !startTime) return
 
-    onSave({
+    setSaving(true)
+    try {
+    await onSave({
       title,
       date: date!,
       startTime,
@@ -122,6 +126,7 @@ export function ScheduleMeetingModal({
     })
     handleReset()
     onClose()
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível salvar') } finally { setSaving(false) }
   }
 
   const handleReset = () => {

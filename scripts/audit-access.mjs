@@ -1,0 +1,29 @@
+import fs from 'node:fs';import crypto from 'node:crypto';
+import {createServerClient} from '@supabase/ssr';import {createClient} from '@supabase/supabase-js';
+import { config } from 'dotenv';
+config({path:'.env.local',quiet:true});
+const env=process.env;if(!process.env.OFFICE_AUDIT_ACCOUNTS) throw Error('Set OFFICE_AUDIT_ACCOUNTS to a private account JSON file');
+const accounts=JSON.parse(fs.readFileSync(process.env.OFFICE_AUDIT_ACCOUNTS,'utf8'));const origin=process.argv[2]||'http://localhost:3050';
+const service=createClient(env.NEXT_PUBLIC_SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+async function session(email,password){const jar=new Map();const client=createServerClient(env.NEXT_PUBLIC_SUPABASE_URL,env.NEXT_PUBLIC_SUPABASE_ANON_KEY,{cookies:{getAll:()=>[...jar].map(([name,value])=>({name,value})),setAll:cs=>cs.forEach(c=>jar.set(c.name,c.value))}});const result=await client.auth.signInWithPassword({email,password});if(result.error)throw result.error;return{client,cookie:()=>[...jar].map(([name,value])=>name+'='+value).join('; ')}}
+function totp(secret){let bits='';for(const c of secret.toUpperCase().replace(/=/g,''))bits+='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'.indexOf(c).toString(2).padStart(5,'0');const key=Buffer.from(bits.match(/.{8}/g).map(b=>parseInt(b,2)));const time=Buffer.alloc(8);time.writeBigUInt64BE(BigInt(Math.floor(Date.now()/30000)));const h=crypto.createHmac('sha1',key).update(time).digest();const offset=h[19]&15;return String((h.readUInt32BE(offset)&0x7fffffff)%1000000).padStart(6,'0')}
+const admin=await session(accounts[0].email,accounts[0].password);
+let userId,bookingId;
+try{
+ const email='audit-access-'+crypto.randomUUID()+'@example.invalid',password=crypto.randomUUID()+'!';
+ const response=await fetch(origin+'/api/admin/users',{method:'POST',headers:{cookie:admin.cookie(),origin,'Content-Type':'application/json'},body:JSON.stringify({name:'Auditoria técnica',email,password,role:'Colaborador',sector:'Marketing'})});const body=await response.json();if(response.status!==201)throw Error('Cadastro ADMIN: '+JSON.stringify(body));userId=body.id;console.log('PASS ADMIN cadastra colaborador');
+ const collaborator=await session(email,password);
+ const {data:profile,error}=await collaborator.client.from('users').select('role,sector,active').eq('id',userId).single();if(error||profile.role!=='Colaborador'||profile.sector!=='Marketing'||!profile.active)throw Error('Perfil cadastrado incorreto');console.log('PASS novo colaborador entra e recebe cargo correto');
+ const enroll=await collaborator.client.auth.mfa.enroll({factorType:'totp',issuer:'Auditoria'});if(enroll.error)throw enroll.error;
+ const verification=await collaborator.client.auth.mfa.challengeAndVerify({factorId:enroll.data.id,code:totp(enroll.data.totp.secret)});if(verification.error)throw verification.error;console.log('PASS configurar e confirmar MFA');
+ const signin=await collaborator.client.auth.signInWithPassword({email,password});if(signin.error)throw signin.error;
+ const restricted=await fetch(origin+'/tasks',{headers:{cookie:collaborator.cookie()},redirect:'manual'});if(restricted.status!==307||!restricted.headers.get('location').includes('/auth/mfa'))throw Error('MFA não exigido');console.log('PASS login exige segunda etapa');
+ const challenge=await collaborator.client.auth.mfa.challengeAndVerify({factorId:enroll.data.id,code:totp(enroll.data.totp.secret)});if(challenge.error)throw challenge.error;
+ const unlocked=await fetch(origin+'/tasks',{headers:{cookie:collaborator.cookie()},redirect:'manual'});if(unlocked.status!==200)throw Error('MFA verificado não liberou sessão');console.log('PASS MFA libera acesso');
+ await collaborator.client.auth.mfa.unenroll({factorId:enroll.data.id});
+ const updated=await fetch(origin+'/api/admin/users',{method:'PATCH',headers:{cookie:admin.cookie(),origin,'Content-Type':'application/json'},body:JSON.stringify({id:userId,role:'Colaborador',sector:'Marketing',active:false})});if(updated.status!==200)throw Error('Não desativa funcionário');
+ const blocked=await fetch(origin+'/tasks',{headers:{cookie:collaborator.cookie()},redirect:'manual'});if(blocked.status!==307||!blocked.headers.get('location').includes('/login'))throw Error('Acesso inativo não bloqueado');console.log('PASS ADMIN desativa acesso');
+ const received=new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Error('Realtime não entregou')),15000);const channel=admin.client.channel('audit-realtime-'+crypto.randomUUID()).on('postgres_changes',{event:'INSERT',schema:'public',table:'studio_bookings'},payload=>{if(payload.new.track_title==='AUDITORIA REALTIME'){clearTimeout(timeout);resolve(channel)}}).subscribe(async status=>{if(status==='SUBSCRIBED'){const result=await admin.client.from('studio_bookings').insert({track_title:'AUDITORIA REALTIME',studio_name:'AUDITORIA '+crypto.randomUUID(),booking_date:'2035-02-01',start_time:'09:00',end_time:'10:00',created_by:accounts[0].id}).select().single();if(result.error){clearTimeout(timeout);reject(result.error)}else bookingId=result.data.id}})});
+ const channel=await received;await admin.client.removeChannel(channel);console.log('PASS Realtime entrega agendamento');
+ console.log('ACCESS CHECK COMPLETE');
+}catch(e){console.error(e);process.exitCode=1}finally{if(bookingId)await service.from('studio_bookings').delete().eq('id',bookingId);if(userId)await service.auth.admin.deleteUser(userId);await admin.client.removeAllChannels();await service.removeAllChannels()}

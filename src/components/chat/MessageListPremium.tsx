@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { MessageReactions, Reactions } from './MessageReactions'
 import { parseMentions } from '@/lib/mentions'
 import { ReadReceipt, calculateReadStatus } from './ReadReceipt'
+import { MessageAttachment } from './MessageAttachment'
 
 interface MessageListPremiumProps {
   messages: Message[]
@@ -96,6 +97,7 @@ export function MessageListPremium({
             return (
               <motion.div
                 key={message.id}
+                id={`message-${message.id}`}
                 ref={(el) => {
                   if (el && !isOwn) {
                     observeMessage(el, message.id, message.userId)
@@ -141,9 +143,7 @@ export function MessageListPremium({
                         : "bg-[#1a1a1a] text-white border border-[#ff0300]/20 rounded-tl-none"
                     )}
                   >
-                    <p className="text-sm leading-relaxed">
-                      {parseMentions(message.content, users || [], currentUser?.id)}
-                    </p>
+                    {message.type && message.type !== 'text' ? <MessageAttachment content={message.content} /> : <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{parseMentions(message.content, users || [], currentUser?.id)}</p>}
                   </div>
                   <div className="flex items-center gap-1 px-1">
                     <span className="text-[10px] text-gray-500 opacity-70">

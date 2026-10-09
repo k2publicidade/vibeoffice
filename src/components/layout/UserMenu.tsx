@@ -62,6 +62,7 @@ export function UserMenu() {
             <span>Configurações</span>
           </Link>
         </DropdownMenuItem>
+        {user.role === 'Admin' && <DropdownMenuItem asChild><Link href="/admin/usuarios">Funcionários</Link></DropdownMenuItem>}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
           <LogOut className="mr-2 h-4 w-4" />

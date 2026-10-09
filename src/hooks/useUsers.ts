@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
-import { Sector } from '@/types/auth'
+import { Role, Sector } from '@/types/auth'
 
 export interface User {
   id: string
@@ -11,7 +11,8 @@ export interface User {
   name: string
   avatar: string | null
   sector: Sector
-  role: 'admin' | 'gerente' | 'colaborador'
+  role: Role
+  active: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -39,6 +40,8 @@ export function useUsers(): UseUsersReturn {
     }
 
     fetchUsers()
+    const channel = supabase.channel(`directory:${user.id}:${crypto.randomUUID()}`).on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => void fetchUsers()).subscribe()
+    return () => { void supabase.removeChannel(channel) }
   }, [user])
 
   async function fetchUsers() {
@@ -62,7 +65,8 @@ export function useUsers(): UseUsersReturn {
         avatar: u.avatar,
         sector: u.sector,
         // [M13] Mantido PascalCase como definido em types/auth.ts (removido .toLowerCase())
-        role: u.role as 'admin' | 'gerente' | 'colaborador',
+        role: u.role,
+        active: (u as unknown as { active: boolean }).active,
         createdAt: new Date(u.created_at),
         updatedAt: new Date(u.updated_at),
       })))

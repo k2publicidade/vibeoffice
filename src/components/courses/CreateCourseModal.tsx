@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Course } from '@/types/courses'
-import { uploadFile } from '@/lib/supabase/storage'
+import { uploadFile, resolveStorageUrl, storageReference } from '@/lib/supabase/storage'
 import { BookOpen, Image as ImageIcon, Link2, Sparkles, Upload, Wand2, X, Loader2, GraduationCap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -102,8 +102,9 @@ export function CreateCourseModal({ open, onClose, onCreate }: CreateCourseModal
         try {
             const ext = file.name.split('.').pop() || 'png'
             const path = `course-thumbnails/${Date.now()}-${slugify(formData.title || 'curso')}.${ext}`
-            const result = await uploadFile({ file, bucket: 'drive-files', path })
-            setFormData(prev => ({ ...prev, thumbnail: result.url }))
+            const result = await uploadFile({ file, bucket: 'course-assets', path })
+            const previewUrl = await resolveStorageUrl(result.url)
+            setFormData(prev => ({ ...prev, thumbnail: previewUrl! }))
             toast.success('Imagem de capa carregada!')
         } catch (err) {
             console.error('Erro upload capa:', err)
@@ -233,19 +234,17 @@ export function CreateCourseModal({ open, onClose, onCreate }: CreateCourseModal
                             {([
                                 { key: 'upload', label: 'Upload', icon: Upload },
                                 { key: 'url', label: 'URL', icon: Link2 },
-                                { key: 'ai', label: 'IA (em breve)', icon: Wand2 },
                             ] as const).map(({ key, label, icon: Icon }) => (
                                 <button
                                     key={key}
                                     type="button"
                                     onClick={() => setCoverMode(key)}
-                                    disabled={key === 'ai'}
+
                                     className={cn(
                                         'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
                                         coverMode === key
                                             ? 'bg-zinc-800 text-white'
-                                            : 'text-zinc-400 hover:text-white',
-                                        key === 'ai' && 'opacity-40 cursor-not-allowed'
+                                            : 'text-zinc-400 hover:text-white'
                                     )}
                                 >
                                     <Icon className="h-3.5 w-3.5" />

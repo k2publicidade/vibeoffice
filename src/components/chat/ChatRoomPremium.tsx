@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { ChatRoom as ChatRoomType, Message } from '@/types/chat'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Phone, Video, Search, MoreVertical, Hash, Users, ArrowLeft, Archive, ArchiveRestore } from 'lucide-react'
+import { Search, MoreVertical, Hash, Users, ArrowLeft, Archive, ArchiveRestore } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +33,8 @@ interface ChatUser {
 interface ChatRoomPremiumProps {
   room: ChatRoomType | null
   messages: Message[]
-  onSendMessage: (message: string) => void
+  onSendMessage: (message: string) => Promise<void> | void
+  onSendAttachment?: (file: File) => Promise<void>
   typingUsers?: string[]
   isLoading?: boolean
   onBack?: () => void
@@ -43,12 +45,14 @@ export function ChatRoomPremium({
   room,
   messages,
   onSendMessage,
+  onSendAttachment,
   typingUsers = [],
   isLoading,
   onBack,
   getDMUserInfo,
 }: ChatRoomPremiumProps) {
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
+  const [peopleOpen, setPeopleOpen] = useState(false)
   const { users } = useUsers()
   const { user } = useAuth()
   const { isRoomArchived, toggleArchive } = useArchiveChat(user?.id)
@@ -67,8 +71,7 @@ export function ChatRoomPremium({
   }, [])
 
   const handleMessageClick = (messageId: string) => {
-    // TODO: Scroll to message in list
-    console.log('Scroll to message:', messageId)
+    document.getElementById(`message-${messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   if (!room) {
@@ -87,8 +90,9 @@ export function ChatRoomPremium({
     )
   }
 
-  const currentChatName = room.name
-  const isOnline = room.type === 'dm'
+  const roomPeople = (users || []).filter(person => person.active && (room.participants.includes(person.id) || (room.type === 'sector' && person.sector === room.sector)))
+  const dmPerson = roomPeople.find(person => person.id !== user?.id)
+  const currentChatName = room.type === 'dm' ? dmPerson?.name || room.name : room.name
   const isArchived = isRoomArchived(room.id)
   // TODO: Implementar cache de usuários DM para evitar Promise no render
   // const dmUser = room.type === 'dm' ? await getDMUserInfo?.(room) : null
@@ -139,27 +143,11 @@ export function ChatRoomPremium({
           <div className="min-w-0">
             <h2 className="font-semibold text-white truncate">{currentChatName}</h2>
             <p className="text-xs text-gray-400">
-              {room.type === 'dm'
-                ? isOnline ? "Online" : "Offline"
-                : `${room.participants.length} participantes`}
+              {room.type === 'dm' ? dmPerson?.sector || 'Mensagem direta' : `${roomPeople.length} participantes`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1 md:gap-2 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-[#fc7a67] hover:bg-[#ff0300]/20 hidden md:flex"
-          >
-            <Phone className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-[#fc7a67] hover:bg-[#ff0300]/20 hidden md:flex"
-          >
-            <Video className="h-5 w-5" />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -180,11 +168,8 @@ export function ChatRoomPremium({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-[#1a1a1a] border-[#ff0300]/20 text-white">
-              <DropdownMenuItem className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
-                Ver perfil
-              </DropdownMenuItem>
-              <DropdownMenuItem className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
-                Silenciar
+              <DropdownMenuItem onSelect={() => setPeopleOpen(true)} className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
+                {room.type === 'dm' ? 'Ver perfil' : 'Ver participantes'}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-[#ff0300]/20" />
               <DropdownMenuItem
@@ -203,10 +188,6 @@ export function ChatRoomPremium({
                   </>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-[#ff0300]/20" />
-              <DropdownMenuItem className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20 text-[#ff0300]">
-                Bloquear
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -220,7 +201,8 @@ export function ChatRoomPremium({
       />
 
       {/* Input */}
-      <MessageInputPremium onSendMessage={onSendMessage} />
+      <MessageInputPremium key={room.id} onSendMessage={onSendMessage} onSendAttachment={onSendAttachment} />
+      <Dialog open={peopleOpen} onOpenChange={setPeopleOpen}><DialogContent><DialogHeader><DialogTitle>{room.type === 'dm' ? 'Perfil' : 'Participantes'}</DialogTitle></DialogHeader><div className="space-y-4">{roomPeople.filter(person => room.type !== 'dm' || person.id !== user?.id).map(person => <div key={person.id}><p className="font-medium">{person.name}</p><p className="text-sm text-muted-foreground">{person.email} · {person.role} · {person.sector}</p></div>)}</div></DialogContent></Dialog>
 
       {/* Search Dialog */}
       <MessageSearchDialog

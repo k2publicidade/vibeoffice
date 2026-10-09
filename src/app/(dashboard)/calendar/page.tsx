@@ -61,16 +61,10 @@ export default function CalendarPage() {
   const [filters, setFilters] = useState([
     { id: 'personal', name: 'Pessoal', color: 'hsl(218, 100%, 52%)', checked: true, count: getEventsByType('personal').length },
     { id: 'sector', name: 'Setor', color: 'hsl(22, 94%, 48%)', checked: true, count: getEventsByType('sector').length },
-    { id: 'company', name: 'Empresa', color: 'hsl(142, 76%, 36%)', checked: false, count: getEventsByType('company').length },
+    { id: 'company', name: 'Empresa', color: 'hsl(142, 76%, 36%)', checked: true, count: getEventsByType('company').length },
   ])
 
-  // TODO: Implement Real Projects Backend
-  // Currently using static mock data as requested until project module is fully integrated
-  const projects = [
-    { id: '1', name: 'Projeto WeBuild', hours: 16.5, color: 'hsl(218, 100%, 52%)' },
-    { id: '2', name: 'Tarefas de Marketing', hours: 12.5, color: 'hsl(22, 94%, 48%)' },
-    { id: '3', name: 'Reuniões', hours: 3, color: 'hsl(0, 0%, 0%)' },
-  ]
+  const projects = filters.map(filter => ({ id: filter.id, name: filter.name, color: filter.color, hours: events.filter(event => event.type === filter.id).reduce((hours, event) => hours + (event.endTime.getTime() - event.startTime.getTime()) / 3600000, 0) }))
 
   // Transform events for WeekView
   const weekEvents: ViewCalendarEvent[] = useMemo(() => {

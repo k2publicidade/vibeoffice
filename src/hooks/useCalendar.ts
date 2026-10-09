@@ -45,9 +45,11 @@ export function useCalendar(): UseCalendarReturn {
 
   // Fetch inicial de events
   useEffect(() => {
-    if (!user) return
-
+    if (!user) { setEvents([]); setIsLoading(false); return }
     fetchEvents()
+    const channel = supabase.channel(`calendar-${user.id}`).on('postgres_changes',
+      { event: '*', schema: 'public', table: 'calendar_events' }, () => { fetchEvents() }).subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [user, supabase])
 
   async function fetchEvents() {
@@ -203,9 +205,9 @@ export function useCalendar(): UseCalendarReturn {
           type: updates.type,
           location: updates.location,
           attendees: updates.attendees,
-          linked_task_id: updates.linkedTaskId || null,
-          linked_ticket_id: updates.linkedTicketId || null,
-          linked_release_id: updates.linkedReleaseId || null,
+          linked_task_id: updates.linkedTaskId === undefined ? undefined : updates.linkedTaskId || null,
+          linked_ticket_id: updates.linkedTicketId === undefined ? undefined : updates.linkedTicketId || null,
+          linked_release_id: updates.linkedReleaseId === undefined ? undefined : updates.linkedReleaseId || null,
         })
         .eq('id', id)
         .select()
@@ -265,6 +267,7 @@ export function useCalendar(): UseCalendarReturn {
           start_time: originalEvent.startTime.toISOString(),
           end_time: originalEvent.endTime.toISOString(),
           type: originalEvent.type,
+          sector: originalEvent.sector || null,
           location: originalEvent.location,
           attendees: originalEvent.attendees || [],
           created_by: user.id,

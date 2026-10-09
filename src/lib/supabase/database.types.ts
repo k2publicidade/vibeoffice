@@ -745,6 +745,9 @@ export type Database = {
       }
       tickets: {
         Row: {
+          request_type: string | null
+          request_start_date: string | null
+          request_end_date: string | null
           id: string
           title: string
           description: string
@@ -758,6 +761,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          request_type?: string | null
+          request_start_date?: string | null
+          request_end_date?: string | null
           id?: string
           title: string
           description: string
@@ -771,6 +777,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          request_type?: string | null
+          request_start_date?: string | null
+          request_end_date?: string | null
           id?: string
           title?: string
           description?: string
@@ -854,6 +863,8 @@ export type Database = {
       }
       users: {
         Row: {
+          active: boolean
+          phone: string | null
           id: string
           name: string
           email: string
@@ -864,6 +875,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
+          phone?: string | null
           id: string
           name: string
           email: string
@@ -874,6 +887,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
+          phone?: string | null
           id?: string
           name?: string
           email?: string
@@ -903,6 +918,7 @@ export type Database = {
           release_date: string | null
           status: string
           cover_url: string | null
+          wav_url: string | null
           spotify_url: string | null
           apple_music_url: string | null
           youtube_url: string | null

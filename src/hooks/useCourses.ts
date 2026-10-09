@@ -11,6 +11,7 @@ import type {
   DifficultyLevel,
 } from '@/types/courses'
 import { toast } from 'sonner'
+import { resolveStorageUrl, storageReference } from '@/lib/supabase/storage'
 
 // --- Row types refletindo o schema do banco (snake_case) ---
 interface CourseRow {
@@ -101,6 +102,11 @@ export function useCourses() {
 
       if (lessonsError) throw lessonsError
       const lessonsData = (lessonsDataRaw ?? []) as unknown as LessonRow[]
+      await Promise.all(coursesData.map(async course => { course.thumbnail = await resolveStorageUrl(course.thumbnail) }))
+      await Promise.all(lessonsData.map(async lesson => {
+        lesson.content_url = await resolveStorageUrl(lesson.content_url)
+        lesson.materials = await Promise.all((lesson.materials || []).map(async material => ({ ...material, url: (await resolveStorageUrl(material.url))! })))
+      }))
 
       // 3. Assemble Structure
       const fullCourses: Course[] = coursesData.map((course) => {
@@ -178,23 +184,25 @@ export function useCourses() {
     setProgressData((prev) => {
       const current = prev[courseId] || []
       const updated = isCompleted
-        ? [...current, lessonId]
+        ? [...new Set([...current, lessonId])]
         : current.filter((id) => id !== lessonId)
       return { ...prev, [courseId]: updated }
     })
 
     try {
       if (isCompleted) {
-        await supabase.from('user_course_progress' as any).insert({
+        const { error } = await supabase.from('user_course_progress' as any).upsert({
           user_id: user.id,
           course_id: courseId,
           lesson_id: lessonId,
-        })
+        }, { onConflict: 'user_id,lesson_id' })
+        if (error) throw error
       } else {
-        await supabase
+        const { error } = await supabase
           .from('user_course_progress' as any)
           .delete()
           .match({ user_id: user.id, lesson_id: lessonId })
+        if (error) throw error
       }
     } catch (err) {
       console.error('Error updating progress', err)
@@ -260,7 +268,7 @@ export function useCourses() {
         description: courseData.description ?? '',
         difficulty: courseData.difficulty ?? 'beginner',
         tags: Array.isArray(courseData.tags) ? courseData.tags : [],
-        thumbnail: courseData.thumbnail ?? null,
+        thumbnail: courseData.thumbnail ? storageReference(courseData.thumbnail) : null,
         instructor: courseData.instructor || user.name || 'Equipe',
         duration: courseData.duration ?? 0,
         is_published: courseData.is_published ?? true,
@@ -319,7 +327,7 @@ export function useCourses() {
     try {
       const { data, error } = await supabase
         .from('courses' as any)
-        .update(courseData)
+        .update({ ...courseData, ...(courseData.thumbnail !== undefined ? { thumbnail: storageReference(courseData.thumbnail || '') } : {}) })
         .eq('id', id)
         .select()
         .single()

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { Calendar as CalendarIcon, FileText, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -35,7 +36,7 @@ interface NewRequestModalProps {
     startDate: Date
     endDate: Date
     description?: string
-  }) => void
+  }) => Promise<void> | void
 }
 
 const requestTypes = [
@@ -73,10 +74,13 @@ export function NewRequestModal({
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [description, setDescription] = useState('')
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false)
+  const handleSave = async () => {
     if (!type || !startDate || !endDate) return
 
-    onSave({
+    setSaving(true)
+    try {
+    await onSave({
       type,
       startDate: startDate!,
       endDate: endDate!,
@@ -84,6 +88,7 @@ export function NewRequestModal({
     })
     handleReset()
     onClose()
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível salvar') } finally { setSaving(false) }
   }
 
   const handleReset = () => {
@@ -196,7 +201,7 @@ export function NewRequestModal({
         </Button>
         <Button
           onClick={handleSave}
-          disabled={!type || !startDate || !endDate}
+          disabled={saving || !type || !startDate || !endDate}
           className="rounded-full px-6 h-11 bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#cc0200] shadow-lg shadow-[#ff0300]/30 transition-all disabled:opacity-50"
         >
           Enviar solicitação
