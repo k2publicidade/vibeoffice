@@ -1014,6 +1014,7 @@ export type Database = {
     Functions: {
       can_drive: { Args: { i: string; writing?: boolean }; Returns: boolean }
       can_manage_drive: { Args: { i: string }; Returns: boolean }
+      office_mfa_ok: { Args: Record<string, never>; Returns: boolean }
       drive_is_public: { Args: { i: string }; Returns: boolean }
       manage_group_member: { Args: { room_id: string; member_id: string; adding: boolean }; Returns: Database['public']['Tables']['chat_rooms']['Row'] }
       toggle_message_reaction: { Args: { message_id: string; emoji: string }; Returns: undefined }

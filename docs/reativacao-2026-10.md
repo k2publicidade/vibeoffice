@@ -10,6 +10,8 @@ As migrações em `supabase/migrations` foram aplicadas em ordem no banco novo. 
 
 O banco valida os cargos pelo perfil ativo, restringe dados com RLS e mantém os buckets privados. O cadastro público não concede acesso ao escritório. O usuário não pode alterar seu próprio cargo, setor ou ativação. Reservas do mesmo estúdio não podem se sobrepor. Reações e confirmações de leitura são atualizadas atomicamente.
 
+Quem ativou MFA precisa confirmar o autenticador para acessar dados do escritório, Storage e operações do chat, inclusive por chamadas diretas ao Supabase. Apenas o próprio perfil ativo pode ser lido durante o login anterior à confirmação. A regra é opcional por fator verificado, conforme a [documentação oficial do Supabase](https://supabase.com/docs/guides/auth/auth-mfa). Tokens antigos sem segunda etapa continuam bloqueados depois de confirmar MFA em outra sessão.
+
 ## Correções
 
 - Autenticação, renovação de cookies, redirecionamentos e MFA; cadastro e gestão de funcionários pelo ADMIN.
@@ -34,6 +36,7 @@ node scripts/audit-database.mjs
 node scripts/audit-http.mjs https://office.vibedistro.com
 node scripts/audit-access.mjs https://office.vibedistro.com
 node scripts/audit-drive.mjs https://office.vibedistro.com
+node scripts/audit-mfa.mjs
 ```
 
 Esses testes criam registros e contas temporárias, validam permissões positivas/negativas e removem os registros próprios. O teste de acesso confirma MFA, desativação de funcionário e Realtime. Não usar contas de pessoas que não autorizaram a auditoria.
@@ -56,4 +59,6 @@ Em seguida, a revisão `bb19686` foi publicada pela Vercel com estado READY no d
 
 A revisão `a7a56d6` foi publicada com estado READY. Notificações usam inscrições Realtime independentes; falhas de gravação não consomem a leitura e arquivamento/preferências atualizam a lista. Inicialização concorrente das 11 preferências preservou escolhas existentes. Em produção, destinatários inativos e avisos arquivados foram ignorados; e-mail solicitado sem provedor retornou falha explícita. O agendador de lembretes não duplicou avisos nem notificou funcionários inativos.
 
-A revisão seguinte do Drive passou localmente por testes reais no Supabase e HTTP: leitura/edição/gerenciamento, herança em subpastas, download com bytes conferidos, revogação pública, exclusão autorizada de arquivo e negativas para acesso indevido, alteração de titularidade e ciclos. Também corrige seleção de arquivos do Drive em lançamentos e a navegação que cobria notificações/perfil. Validação: 80 testes, lint sem erros (356 avisos legados) e compilação de produção. A confirmação da publicação e a verificação visual serão registradas após o deploy.
+As revisões `9af4365` e `fd8f6e8` foram publicadas com estado READY. O Drive passou por testes reais no Supabase e HTTP em produção: leitura/edição/gerenciamento, herança em subpastas, download com bytes conferidos, revogação pública, exclusão autorizada de arquivo e negativas para acesso indevido, alteração de titularidade e ciclos. A interface mostrou a permissão real do gerente, copiou o link correto e gravou ativação/revogação pública de uma pasta técnica. A capa selecionada pelo Drive carregou em Lançamentos. O cabeçalho foi corrigido para não cobrir notificações/perfil; sino e menu foram verificados em desktop e em 390px. A leitura gravou `read_at` e zerou o contador. Validação: 80 testes, lint sem erros (356 avisos legados) e compilação de produção. Os registros temporários foram removidos.
+
+Uma verificação adicional reproduziu acesso direto ao banco sem a segunda etapa de MFA. A migração `202610090010_mfa_enforcement.sql` corrigiu o banco e as operações com privilégios elevados. O teste `audit-mfa.mjs` confirmou bloqueio de leitura, gravação, diretório de funcionários, alteração de perfil, download e reação antes de verificar o código; confirmou acesso após MFA, negação de token antigo e restauração do acesso opcional ao remover o fator. Perfil inativo também não pode reagir pelo RPC. Todas as contas/arquivos técnicos desse teste foram removidos.
