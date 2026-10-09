@@ -181,24 +181,26 @@ export function DriveList({
                                 <TableCell>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" aria-label={`Ações de ${item.name}`} className="h-8 w-8 text-zinc-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <MoreVertical className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-48 bg-zinc-950 border-zinc-800">
-                                            {item.type !== 'folder' && (
-                                                <>
+                                            {item.type !== 'folder' && onFileDownload && (
                                                     <DropdownMenuItem onClick={() => onFileDownload?.(item.id)} className="gap-2 text-zinc-300 cursor-pointer">
                                                         <Download className="h-4 w-4" /> Download
                                                     </DropdownMenuItem>
+                                            )}
+                                            {onFileShare && (
                                                     <DropdownMenuItem onClick={() => onFileShare?.(item.id)} className="gap-2 text-zinc-300 cursor-pointer">
                                                         <Share2 className="h-4 w-4" /> Compartilhar
                                                     </DropdownMenuItem>
-                                                </>
                                             )}
+                                            {onFileDelete && (
                                             <DropdownMenuItem onClick={() => onFileDelete?.(item.id)} className="gap-2 text-red-400 focus:text-red-300 cursor-pointer">
                                                 <Trash2 className="h-4 w-4" /> Excluir
                                             </DropdownMenuItem>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell>

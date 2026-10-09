@@ -156,24 +156,28 @@ export function FileCard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label={`Ações de ${item.name}`}
+                onClick={event => event.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-zinc-950 border-zinc-800">
-              {!isFolder && (
-                <>
+            <DropdownMenuContent align="end" className="w-48 bg-zinc-950 border-zinc-800" onClick={event => event.stopPropagation()}>
+              {!isFolder && onDownload && (
                   <DropdownMenuItem onClick={onDownload} className="gap-2 text-zinc-300 focus:text-white focus:bg-white/10 cursor-pointer">
                     <Download className="h-4 w-4" /> Download
                   </DropdownMenuItem>
+              )}
+              {onShare && (
                   <DropdownMenuItem onClick={onShare} className="gap-2 text-zinc-300 focus:text-white focus:bg-white/10 cursor-pointer">
                     <Share2 className="h-4 w-4" /> Compartilhar
                   </DropdownMenuItem>
-                </>
               )}
+              {onDelete && (
               <DropdownMenuItem onClick={onDelete} className="gap-2 text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer">
                 <Trash2 className="h-4 w-4" /> Excluir
               </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -237,9 +237,9 @@ export function DriveGrid({
                                             <FileCard
                                                 item={item}
                                                 // Event bubble up is handled by wrapper, but we pass onClick for specific non-drag clicks via wrapper
-                                                onDelete={() => onFileDelete?.(item.id)}
-                                                onDownload={() => onFileDownload?.(item.id)}
-                                                onShare={() => onFileShare?.(item.id)}
+                                                onDelete={onFileDelete ? () => onFileDelete(item.id) : undefined}
+                                                onDownload={onFileDownload ? () => onFileDownload(item.id) : undefined}
+                                                onShare={onFileShare ? () => onFileShare(item.id) : undefined}
                                                 // Dnd-kit specific props
                                                 isOver={isOver}
                                             />
@@ -250,9 +250,9 @@ export function DriveGrid({
                                     <FileCard
                                         item={item}
                                         onDoubleClick={() => onFileClick?.(item.id)}
-                                        onDelete={() => onFileDelete?.(item.id)}
-                                        onDownload={() => onFileDownload?.(item.id)}
-                                        onShare={() => onFileShare?.(item.id)}
+                                        onDelete={onFileDelete ? () => onFileDelete(item.id) : undefined}
+                                        onDownload={onFileDownload ? () => onFileDownload(item.id) : undefined}
+                                        onShare={onFileShare ? () => onFileShare(item.id) : undefined}
                                     />
                                 )}
                             </DraggableDriveItem>
