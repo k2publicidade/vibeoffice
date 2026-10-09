@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { LucideIcon } from "lucide-react"
@@ -20,37 +20,14 @@ interface NavBarProps {
 
 export function NavBar({ items, className }: NavBarProps) {
     const pathname = usePathname()
-    const [activeTab, setActiveTab] = useState(items[0].name)
-    const [isMobile, setIsMobile] = useState(false)
-
-    // Update active tab based on pathname
-    useEffect(() => {
-        const currentItem = items.find(item =>
-            item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)
-        )
-        if (currentItem) {
-            setActiveTab(currentItem.name)
-        }
-    }, [pathname, items])
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 768)
-        }
-
-        handleResize()
-        window.addEventListener("resize", handleResize)
-        return () => window.removeEventListener("resize", handleResize)
-    }, [])
+    const activeTab = items.find(item =>
+        item.url === '/' ? pathname === '/' : pathname.startsWith(item.url)
+    )?.name
 
     return (
-        <div
-            className={cn(
-                "fixed bottom-0 sm:top-0 left-1/2 -translate-x-1/2 z-50 mb-6 sm:pt-6",
-                className,
-            )}
-        >
-            <div className="flex items-center gap-3 bg-zinc-900/80 border border-zinc-800 backdrop-blur-lg py-1 px-1 rounded-full shadow-lg">
+        <nav aria-label="Navegação principal" className={cn("min-w-0", className)}>
+            <div className="overflow-x-auto pt-2">
+            <div className="flex w-max mx-auto items-center gap-1 bg-zinc-900/80 border border-zinc-800 backdrop-blur-lg py-1 px-1 rounded-full shadow-lg">
                 {items.map((item) => {
                     const Icon = item.icon
                     const isActive = activeTab === item.name
@@ -59,9 +36,9 @@ export function NavBar({ items, className }: NavBarProps) {
                         <Link
                             key={item.name}
                             href={item.url}
-                            onClick={() => setActiveTab(item.name)}
+                            aria-current={isActive ? 'page' : undefined}
                             className={cn(
-                                "relative cursor-pointer text-sm font-semibold px-6 py-2 rounded-full transition-colors",
+                                "relative shrink-0 cursor-pointer text-sm font-semibold px-3 lg:px-4 py-2 rounded-full transition-colors",
                                 "text-zinc-400 hover:text-white",
                                 isActive && "bg-zinc-800 text-[#fc7a67]",
                             )}
@@ -92,6 +69,7 @@ export function NavBar({ items, className }: NavBarProps) {
                     )
                 })}
             </div>
-        </div>
+            </div>
+        </nav>
     )
 }

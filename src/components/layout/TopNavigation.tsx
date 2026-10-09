@@ -51,14 +51,11 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
           <Link href="/" className="flex items-center">
             <img
               src="/logo.png"
-              alt="Yanger Logo"
+              alt="VIBEDISTRO Logo"
               className="h-10 w-auto object-contain"
             />
           </Link>
         </div>
-
-        {/* Center: Navigation - Hidden on mobile and tablet */}
-        <NavBar items={navItems} className="hidden md:block pb-[15px]" />
 
         {/* Right: User Info */}
         <div className="flex items-center gap-2 md:gap-4">
@@ -85,6 +82,7 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
           </div>
         </div>
       </div>
+      <NavBar items={navItems} className="hidden md:block px-6 lg:px-8 pb-3" />
     </header>
   )
 }

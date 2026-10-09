@@ -52,11 +52,12 @@ interface ShareModalProps {
   open: boolean
   onClose: () => void
   shares: SharedAccess[]
-  onShare: (userId: string, permission: SharePermission) => void
-  onUnshare: (userId: string) => void
-  onUpdatePermission: (userId: string, permission: SharePermission) => void
-  onTogglePublic: () => void
-  onCopyLink: () => string
+  busy?: boolean
+  onShare: (userId: string, permission: SharePermission) => Promise<void>
+  onUnshare: (userId: string) => Promise<void>
+  onUpdatePermission: (userId: string, permission: SharePermission) => Promise<void>
+  onTogglePublic: () => Promise<void>
+  onCopyLink: () => Promise<string>
   availableUsers: { id: string; name: string; email: string; avatar?: string; sector: string }[]
   getUserById: (userId: string) => Promise<{ name: string; avatar?: string; email: string } | null>
 }
@@ -82,6 +83,7 @@ export function ShareModal({
   open,
   onClose,
   shares,
+  busy = false,
   onShare,
   onUnshare,
   onUpdatePermission,
@@ -100,28 +102,23 @@ export function ShareModal({
     const sharedUserIds = shares.map(s => s.userId)
 
     return availableUsers
-      .filter(u => !sharedUserIds.includes(u.id))
+      .filter(u => !sharedUserIds.includes(u.id) && u.id !== item?.uploadedBy)
       .filter(u =>
         searchQuery
           ? u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             u.email.toLowerCase().includes(searchQuery.toLowerCase())
           : true
       )
-  }, [availableUsers, shares, searchQuery])
+  }, [availableUsers, shares, searchQuery, item?.uploadedBy])
 
   if (!item) return null
 
-  const handleCopyLink = () => {
-    const link = onCopyLink()
-    navigator.clipboard.writeText(link)
-    setLinkCopied(true)
-    setTimeout(() => setLinkCopied(false), 2000)
+  const handleCopyLink = async () => {
+    try { await onCopyLink(); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000) } catch { /* The parent reports the error. */ }
   }
 
-  const handleShareUser = (userId: string) => {
-    onShare(userId, selectedPermission)
-    setSearchQuery('')
-    setShowUserList(false)
+  const handleShareUser = async (userId: string) => {
+    try { await onShare(userId, selectedPermission); setSearchQuery(''); setShowUserList(false) } catch { /* Keep the selection for retry. */ }
   }
 
   const getInitials = (name: string) => {
@@ -182,11 +179,16 @@ export function ShareModal({
               </div>
               <Switch
                 checked={item.isPublic || false}
-                onCheckedChange={onTogglePublic}
+                onCheckedChange={() => { void onTogglePublic().catch(() => {}) }}
+                disabled={busy || !item.canManage}
+                aria-label="Acesso público"
                 className="data-[state=checked]:bg-green-500"
               />
             </div>
           </motion.div>
+
+          {item.type === 'folder' && <p className="text-xs text-zinc-400">O acesso desta pasta também se aplica aos arquivos e pastas dentro dela.</p>}
+          {item.inheritsPublic && <p className="text-xs text-orange-300">Este item também recebe acesso público de uma pasta acima. Para restringi-lo, altere o compartilhamento dessa pasta.</p>}
 
           {/* Copiar Link */}
           <motion.div variants={itemVariants}>
@@ -194,13 +196,15 @@ export function ShareModal({
               <div className="flex-1 relative">
                 <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 <Input
-                  value={`vibeoffice.app/drive/share/${item.id}`}
+                  value={`${typeof window === 'undefined' ? 'https://office.vibedistro.com' : window.location.origin}/drive/share/${item.id}`}
+                  aria-label="Link de compartilhamento"
                   readOnly
                   className="pl-10 pr-4 bg-zinc-800/50 border-zinc-700 text-zinc-300 text-sm"
                 />
               </div>
               <Button
                 onClick={handleCopyLink}
+                aria-label="Copiar link"
                 className={cn(
                   "rounded-lg transition-all",
                   linkCopied
@@ -218,9 +222,10 @@ export function ShareModal({
           </motion.div>
 
           <Separator className="bg-zinc-800" />
+          <p className="text-xs text-zinc-400">A lista mostra os acessos concedidos diretamente. Permissões das pastas acima também se aplicam.</p>
 
           {/* Adicionar Pessoas */}
-          <motion.div variants={itemVariants} className="space-y-3">
+          {item.canManage && <motion.div variants={itemVariants} className="space-y-3">
             <div className="flex items-center gap-2 text-zinc-400">
               <UserPlus className="h-4 w-4" />
               <span className="text-sm font-medium">Adicionar pessoas</span>
@@ -272,6 +277,7 @@ export function ShareModal({
                         <button
                           key={user.id}
                           onClick={() => handleShareUser(user.id)}
+                          disabled={busy}
                           className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-700/50 transition-colors group"
                         >
                           <Avatar className="h-8 w-8">
@@ -298,7 +304,7 @@ export function ShareModal({
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </motion.div>}
 
           {/* Lista de pessoas com acesso */}
           {shares.length > 0 && (
@@ -345,7 +351,8 @@ export function ShareModal({
 
                           <Select
                             value={share.permission}
-                            onValueChange={(v) => onUpdatePermission(share.userId, v as SharePermission)}
+                            onValueChange={(v) => { void onUpdatePermission(share.userId, v as SharePermission).catch(() => {}) }}
+                            disabled={busy || !item.canManage}
                           >
                             <SelectTrigger className="w-[120px] h-8 bg-zinc-800/50 border-zinc-700 text-zinc-300 text-xs">
                               <SelectValue />
@@ -365,7 +372,9 @@ export function ShareModal({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onUnshare(share.userId)}
+                            onClick={() => { void onUnshare(share.userId).catch(() => {}) }}
+                            disabled={busy || !item.canManage}
+                            aria-label={`Remover acesso de ${user.name}`}
                             className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-zinc-500 hover:text-red-400 hover:bg-red-500/10"
                           >
                             <Trash2 className="h-4 w-4" />

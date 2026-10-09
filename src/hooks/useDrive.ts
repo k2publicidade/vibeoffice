@@ -44,7 +44,7 @@ export interface UseDriveReturn {
   updateShare: (itemId: string, userId: string, permission: SharePermission) => Promise<void>
   getItemShares: (itemId: string) => SharedAccess[]
   getSharedWithMe: () => SharedWithMe[]
-  togglePublicAccess: (itemId: string) => void
+  togglePublicAccess: (itemId: string) => Promise<void>
   copyShareLink: (itemId: string) => string
   // Usuários para compartilhamento
   availableUsers: { id: string; name: string; email: string; avatar?: string; sector: string }[]
@@ -70,13 +70,12 @@ export function useDrive(): UseDriveReturn {
     try {
       const { data, error } = await supabase
         .from('drive_items')
-        .select('*')
+        .select('*, shared_access(user_id,permission,shared_at,shared_by)')
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      setItems(
-        data.map((item) => ({
+      const mappedItems: DriveItem[] = data.map((item) => ({
           id: item.id,
           name: item.name,
           type: item.type as 'file' | 'folder',
@@ -85,18 +84,30 @@ export function useDrive(): UseDriveReturn {
           mimeType: item.mime_type ?? undefined,
           url: item.storage_path ?? undefined, // URL do Supabase Storage
           uploadedBy: item.uploaded_by,
-          sharedWith: [], // TODO: Implementar tabela de compartilhamento
+          sharedWith: (item.shared_access || []).map(share => ({ userId: share.user_id, permission: share.permission as SharePermission, sharedAt: new Date(share.shared_at), sharedBy: share.shared_by })),
           isPublic: item.is_public || false,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at),
         }))
-      )
+      for (const item of mappedItems) {
+        const visited = new Set<string>()
+        let ancestor: DriveItem | undefined = item
+        item.canManage = user?.role === 'Admin'
+        item.inheritsPublic = false
+        while (ancestor && !visited.has(ancestor.id)) {
+          visited.add(ancestor.id)
+          if (ancestor.uploadedBy === user?.id || ancestor.sharedWith?.some(share => share.userId === user?.id && share.permission === 'manage')) item.canManage = true
+          if (ancestor.id !== item.id && ancestor.isPublic) item.inheritsPublic = true
+          ancestor = mappedItems.find(candidate => candidate.id === ancestor?.parentId)
+        }
+      }
+      setItems(mappedItems)
     } catch (error) {
       console.error('Error fetching drive items:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [supabase])
+  }, [supabase, user])
 
   const fetchUsers = useCallback(async () => {
     if (!user) return
@@ -104,7 +115,7 @@ export function useDrive(): UseDriveReturn {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, email, avatar, sector')
-        .neq('id', user.id)
+        .eq('active', true)
         .order('name')
 
       if (error) throw error
@@ -130,6 +141,15 @@ export function useDrive(): UseDriveReturn {
     fetchItems()
     fetchUsers()
   }, [user, fetchItems, fetchUsers])
+
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase.channel(`drive:${crypto.randomUUID()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drive_items' }, () => void fetchItems())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_access' }, () => void fetchItems())
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [user?.id, supabase, fetchItems])
 
   // Obter usuário por ID
   const getUserById = useCallback(async (userId: string) => {
@@ -271,7 +291,7 @@ export function useDrive(): UseDriveReturn {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) { await supabase.storage.from('drive-files').remove([storagePath]); throw error }
 
       const newItem: DriveItem = {
         id: data.id,
@@ -282,13 +302,13 @@ export function useDrive(): UseDriveReturn {
         mimeType: data.mime_type ?? undefined,
         url: data.storage_path ?? undefined, // URL do Supabase Storage
         uploadedBy: data.uploaded_by,
-        sharedWith: [], // TODO: Implementar compartilhamento
+        sharedWith: [],
         isPublic: data.is_public || false,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
       }
 
-      setItems(prev => [...prev, newItem])
+      setItems(prev => prev.some(item => item.id === newItem.id) ? prev : [...prev, newItem])
       return newItem
     } catch (error) {
       console.error('Error uploading file:', error)
@@ -351,7 +371,7 @@ export function useDrive(): UseDriveReturn {
     }
 
     // Atualizar estado local imediatamente
-    setItems(prev => [...prev, newFolder])
+    setItems(prev => prev.some(item => item.id === newFolder.id) ? prev : [...prev, newFolder])
 
     // Recarregar dados do servidor para garantir consistência
     await fetchItems()
@@ -365,13 +385,20 @@ export function useDrive(): UseDriveReturn {
     if (!item) return
 
     try {
-      // Se for arquivo, deletar do Storage também
-      if (item.type === 'file' && item.url) {
+      const writable = await supabase.rpc('can_drive', { i: itemId, writing: true })
+      if (writable.error || !writable.data) throw new Error('Você não tem permissão para excluir este item')
+      const descendants = new Set([itemId])
+      for (let changed = true; changed;) {
+        changed = false
+        for (const child of items) if (child.parentId && descendants.has(child.parentId) && !descendants.has(child.id)) { descendants.add(child.id); changed = true }
+      }
+      const paths = items.filter(child => descendants.has(child.id) && child.type === 'file' && child.url).map(child => child.url!)
+      if (paths.length) {
         const { error: storageError } = await supabase.storage
           .from('drive-files')
-          .remove([item.url])
+          .remove(paths)
 
-        if (storageError) console.error('Error deleting from storage:', storageError)
+        if (storageError) throw storageError
       }
 
       // Deletar do banco (CASCADE vai deletar filhos automaticamente)
@@ -379,6 +406,8 @@ export function useDrive(): UseDriveReturn {
         .from('drive_items')
         .delete()
         .eq('id', itemId)
+        .select('id')
+        .single()
 
       if (error) throw error
 
@@ -433,6 +462,8 @@ export function useDrive(): UseDriveReturn {
       .from('drive_items')
       .update({ parent_id: targetFolderId })
       .eq('id', itemId)
+      .select('id')
+      .single()
 
     if (error) throw error
 
@@ -451,17 +482,16 @@ export function useDrive(): UseDriveReturn {
     if (!user) throw new Error('User not authenticated')
 
     const item = items.find(i => i.id === input.itemId)
-    if (!item || item.uploadedBy !== user.id) {
-      throw new Error('Only owner can share items')
-    }
+    if (!item) throw new Error('Item não encontrado')
 
     // Verificar se já existe compartilhamento
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from('shared_access')
       .select('id')
       .eq('item_id', input.itemId)
       .eq('user_id', input.userId)
-      .single()
+      .maybeSingle()
+    if (lookupError) throw lookupError
 
     if (existing) {
       // Atualizar permissão existente
@@ -469,6 +499,8 @@ export function useDrive(): UseDriveReturn {
         .from('shared_access')
         .update({ permission: input.permission })
         .eq('id', existing.id)
+        .select('id')
+        .single()
 
       if (error) throw error
     } else {
@@ -481,6 +513,8 @@ export function useDrive(): UseDriveReturn {
           shared_by: user.id,
           permission: input.permission,
         })
+        .select('id')
+        .single()
 
       if (error) throw error
     }
@@ -496,6 +530,8 @@ export function useDrive(): UseDriveReturn {
       .delete()
       .eq('item_id', itemId)
       .eq('user_id', userId)
+      .select('id')
+      .single()
 
     if (error) throw error
 
@@ -510,6 +546,8 @@ export function useDrive(): UseDriveReturn {
       .update({ permission })
       .eq('item_id', itemId)
       .eq('user_id', userId)
+      .select('id')
+      .single()
 
     if (error) throw error
 
@@ -557,6 +595,8 @@ export function useDrive(): UseDriveReturn {
       .from('drive_items')
       .update({ is_public: newPublicState })
       .eq('id', itemId)
+      .select('id')
+      .single()
 
     if (error) throw error
 
@@ -571,8 +611,7 @@ export function useDrive(): UseDriveReturn {
 
   // Gerar link de compartilhamento
   const copyShareLink = useCallback((itemId: string): string => {
-    // Simula geração de link
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vibeoffice.app'
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://office.vibedistro.com'
     return `${baseUrl}/drive/share/${itemId}`
   }, [])
 
@@ -581,7 +620,7 @@ export function useDrive(): UseDriveReturn {
     currentFolder,
     breadcrumbs,
     currentFolderId,
-    setCurrentFolder: () => { },
+    setCurrentFolder: (folder) => navigateToFolder(folder?.id || null),
     navigateToFolder,
     goBack,
     getItemsInFolder,

@@ -98,7 +98,7 @@ export function DriveGrid({
     // Filter items for current folder if filtering is enabled
     const currentItems = disableFiltering ? items : items.filter((item) => {
         if (currentFolderId === null) {
-            return item.parentId === null || item.parentId === undefined
+            return !item.parentId || !items.some(parent => parent.id === item.parentId)
         }
         return item.parentId === currentFolderId
     })

@@ -91,6 +91,8 @@ export default function DrivePage() {
   const [previewFile, setPreviewFile] = useState<DriveItem | null>(null)
   const [shareItem_, setShareItem] = useState<DriveItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [sharingBusy, setSharingBusy] = useState(false)
+  const liveShareItem = shareItem_ ? getItemById(shareItem_.id) : null
   const [successModal, setSuccessModal] = useState<{ open: boolean; title: string; description?: string }>({ open: false, title: '' })
   const [errorModal, setErrorModal] = useState<{ open: boolean; title: string; description?: string }>({ open: false, title: '' })
 
@@ -240,40 +242,46 @@ export default function DrivePage() {
   // Handlers de compartilhamento
   const handleShareUser = async (userId: string, permission: SharePermission) => {
     if (!shareItem_) return
+    setSharingBusy(true)
     try {
       await shareItem({ itemId: shareItem_.id, userId, permission })
       const user = await getUserById(userId)
       toast.success(`Compartilhado com ${user?.name || 'usuário'}`)
     } catch (error) {
       toast.error('Erro ao compartilhar item')
-    }
+      throw error
+    } finally { setSharingBusy(false) }
   }
 
-  const handleUnshareUser = (userId: string) => {
+  const handleUnshareUser = async (userId: string) => {
     if (!shareItem_) return
-    unshareItem(shareItem_.id, userId)
-    toast.success('Acesso removido')
+    setSharingBusy(true)
+    try { await unshareItem(shareItem_.id, userId); toast.success('Acesso removido') }
+    catch (error) { toast.error('Não foi possível remover o acesso'); throw error }
+    finally { setSharingBusy(false) }
   }
 
-  const handleUpdatePermission = (userId: string, permission: SharePermission) => {
+  const handleUpdatePermission = async (userId: string, permission: SharePermission) => {
     if (!shareItem_) return
-    updateShare(shareItem_.id, userId, permission)
-    toast.success('Permissão atualizada')
+    setSharingBusy(true)
+    try { await updateShare(shareItem_.id, userId, permission); toast.success('Permissão atualizada') }
+    catch (error) { toast.error('Não foi possível atualizar a permissão'); throw error }
+    finally { setSharingBusy(false) }
   }
 
-  const handleTogglePublic = () => {
+  const handleTogglePublic = async () => {
     if (!shareItem_) return
-    togglePublicAccess(shareItem_.id)
-    const updatedItem = getItemById(shareItem_.id)
-    toast.success(updatedItem?.isPublic ? 'Acesso público ativado' : 'Acesso público desativado')
-    if (updatedItem) setShareItem(updatedItem)
+    setSharingBusy(true)
+    try { await togglePublicAccess(shareItem_.id); toast.success(liveShareItem?.isPublic ? 'Acesso público desativado' : 'Acesso público ativado') }
+    catch (error) { toast.error('Não foi possível atualizar o acesso público'); throw error }
+    finally { setSharingBusy(false) }
   }
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!shareItem_) return ''
     const link = copyShareLink(shareItem_.id)
-    navigator.clipboard.writeText(link)
-    toast.success('Link copiado para área de transferência!')
+    try { await navigator.clipboard.writeText(link); toast.success('Link copiado para área de transferência!') }
+    catch (error) { toast.error('Não foi possível copiar o link'); throw error }
     return link
   }
 
@@ -581,7 +589,8 @@ export default function DrivePage() {
       />
 
       <ShareModal
-        item={shareItem_}
+        item={liveShareItem}
+        busy={sharingBusy}
         open={!!shareItem_}
         onClose={() => setShareItem(null)}
         shares={itemShares}

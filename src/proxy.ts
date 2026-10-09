@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
   // Server-to-server webhook authenticates with its own secret in the route.
-  if (request.nextUrl.pathname === '/api/notifications/deliver' || request.nextUrl.pathname === '/office-sw.js') return NextResponse.next()
+  if (request.nextUrl.pathname === '/api/notifications/deliver' || request.nextUrl.pathname === '/office-sw.js' || request.nextUrl.pathname.startsWith('/drive/share/')) return NextResponse.next()
   let response = NextResponse.next({
     request: {
       headers: request.headers,

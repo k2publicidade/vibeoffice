@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { safeAuthRedirect } from '@/lib/auth-redirect'
 
 export default function VerifyMfaPage() {
   const router = useRouter()
@@ -20,7 +21,7 @@ export default function VerifyMfaPage() {
       if (!factor) throw new Error('Autenticador não encontrado. Entre novamente.')
       const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code })
       if (error) throw error
-      router.push('/'); router.refresh()
+      router.push(safeAuthRedirect(new URLSearchParams(window.location.search).get('next'))); router.refresh()
     } catch (e) { setError(e instanceof Error ? e.message : 'Código inválido') } finally { setBusy(false) }
   }
   return <form onSubmit={verify} className="max-w-md mx-auto mt-20 space-y-4 p-8 border rounded-xl"><h1 className="text-2xl font-bold">Verificar acesso</h1><p>Digite o código de seis dígitos do seu autenticador.</p><Input value={code} onChange={e => setCode(e.target.value)} aria-label="Código do autenticador" autoComplete="one-time-code" inputMode="numeric" maxLength={6} required />{error && <p role="alert">{error}</p>}<Button disabled={busy || code.length !== 6}>Verificar</Button><Button type="button" variant="outline" onClick={async () => { await createClient().auth.signOut(); router.push('/login'); router.refresh() }}>Sair</Button></form>

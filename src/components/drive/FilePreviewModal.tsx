@@ -199,8 +199,8 @@ export function FilePreviewModal({
 
     setIsDownloading(true)
     try {
-      await downloadFile(file)
-      onDownload?.(file)
+      if (onDownload) await onDownload(file)
+      else await downloadFile(file)
     } finally {
       setIsDownloading(false)
     }

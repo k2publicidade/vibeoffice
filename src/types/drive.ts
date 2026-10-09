@@ -20,6 +20,8 @@ export interface DriveItem {
   uploadedBy: string // User ID
   sharedWith?: SharedAccess[] // Lista de acessos compartilhados
   isPublic?: boolean // Se é acessível publicamente
+  inheritsPublic?: boolean
+  canManage?: boolean
   createdAt: Date
   updatedAt: Date
 }

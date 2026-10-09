@@ -5,6 +5,9 @@ import { DriveGrid } from '@/components/drive/DriveGrid'
 import { useDrive } from '@/hooks/useDrive'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
+import { useState } from 'react'
+import { getSignedUrl } from '@/lib/supabase/storage'
+import { toast } from 'sonner'
 
 interface DrivePickerModalProps {
     open: boolean
@@ -15,6 +18,7 @@ interface DrivePickerModalProps {
 }
 
 export function DrivePickerModal({ open, onClose, onSelect, title = 'Selecionar Arquivo', acceptedMimeTypes }: DrivePickerModalProps) {
+    const [selecting, setSelecting] = useState(false)
     const {
         items,
         currentFolderId,
@@ -26,7 +30,8 @@ export function DrivePickerModal({ open, onClose, onSelect, title = 'Selecionar 
         // I recall checking useDrive.ts and it had these.
     } = useDrive()
 
-    const handleFileClick = (fileId: string) => {
+    const handleFileClick = async (fileId: string) => {
+        if (selecting) return
         const file = getItemById(fileId)
         if (file && file.url) {
             // If acceptedMimeTypes is provided, validate
@@ -40,12 +45,18 @@ export function DrivePickerModal({ open, onClose, onSelect, title = 'Selecionar 
                 })
 
                 if (!isAccepted) {
-                    // Could show toast here via parent or internal state, but for now just ignore
+                    toast.error('Selecione um arquivo do formato solicitado')
                     return
                 }
             }
-            onSelect(file.url)
-            onClose()
+            setSelecting(true)
+            try {
+                const signedUrl = await getSignedUrl('drive-files', file.url)
+                onSelect(signedUrl)
+                onClose()
+            } catch {
+                toast.error('Não foi possível acessar o arquivo selecionado')
+            } finally { setSelecting(false) }
         }
     }
 
@@ -61,7 +72,7 @@ export function DrivePickerModal({ open, onClose, onSelect, title = 'Selecionar 
                         )}
                         <DialogTitle>{title}</DialogTitle>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
+                    <Button variant="ghost" size="sm" onClick={onClose} disabled={selecting}>Cancelar</Button>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto p-4 bg-black/50">
@@ -73,7 +84,7 @@ export function DrivePickerModal({ open, onClose, onSelect, title = 'Selecionar 
                         items={items}
                         currentFolderId={currentFolderId}
                         onFolderOpen={navigateToFolder}
-                        onFileClick={handleFileClick}
+                        onFileClick={selecting ? undefined : handleFileClick}
                         // Disable actions we don't want in a picker
                         onFileDelete={undefined}
                         onFileDownload={undefined}

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Role, Sector, User } from '@/types/auth'
 import { useRouter } from 'next/navigation'
 import { getDashboardRoute } from '@/lib/auth-utils'
+import { safeAuthRedirect } from '@/lib/auth-redirect'
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -126,13 +127,15 @@ export function useAuth(): UseAuthReturn {
           throw new Error('Acesso não autorizado. Solicite seu cadastro ao ADMIN master.')
         }
         const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        const destination = new URLSearchParams(window.location.search).get('next')
+        const safeDestination = destination ? safeAuthRedirect(destination) : null
         if (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') {
-          router.push('/auth/mfa')
+          router.push(safeDestination ? `/auth/mfa?next=${encodeURIComponent(safeDestination)}` : '/auth/mfa')
           return
         }
         // Redirecionar baseado na role
         if (profile?.role) {
-          const dashboardRoute = getDashboardRoute(profile.role)
+          const dashboardRoute = safeDestination || getDashboardRoute(profile.role)
           router.push(dashboardRoute)
           router.refresh()
         } else {
