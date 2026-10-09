@@ -26,12 +26,14 @@ import { toast } from 'sonner'
 interface MessageInputPremiumProps {
   onSendMessage: (message: string) => Promise<void> | void
   onSendAttachment?: (file: File) => Promise<void>
+  onTypingChange?: (typing: boolean) => void
   disabled?: boolean
 }
 
 export function MessageInputPremium({
   onSendMessage,
   onSendAttachment,
+  onTypingChange,
   disabled,
 }: MessageInputPremiumProps) {
   const [messageInput, setMessageInput] = useState('')
@@ -56,7 +58,7 @@ export function MessageInputPremium({
   const handleSendMessage = async () => {
     if (!messageInput.trim() || busy || disabled) return
     setBusy(true)
-    try { await onSendMessage(messageInput); setMessageInput(''); setShowMentionAutocomplete(false) }
+    try { await onSendMessage(messageInput); setMessageInput(''); setShowMentionAutocomplete(false); onTypingChange?.(false) }
     catch { toast.error('Não foi possível enviar. Sua mensagem foi mantida para tentar novamente.') }
     finally { setBusy(false) }
   }
@@ -111,6 +113,7 @@ export function MessageInputPremium({
     const cursorPosition = e.target.selectionStart || 0
 
     setMessageInput(newValue)
+    onTypingChange?.(!!newValue.trim())
 
     // Detect mention trigger
     const mentionTrigger = detectMentionTrigger(newValue, cursorPosition)

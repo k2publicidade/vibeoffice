@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { MessageReactions, Reactions } from './MessageReactions'
-import { parseMentions } from '@/lib/mentions'
+import { MessageText } from './MessageText'
 import { ReadReceipt, calculateReadStatus } from './ReadReceipt'
 import { MessageAttachment } from './MessageAttachment'
 
@@ -143,7 +143,7 @@ export function MessageListPremium({
                         : "bg-[#1a1a1a] text-white border border-[#ff0300]/20 rounded-tl-none"
                     )}
                   >
-                    {message.type && message.type !== 'text' ? <MessageAttachment content={message.content} /> : <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{parseMentions(message.content, users || [], currentUser?.id)}</p>}
+                    {message.type && message.type !== 'text' ? <MessageAttachment content={message.content} /> : <p className="text-sm leading-relaxed whitespace-pre-wrap break-words"><MessageText content={message.content} users={users || []} currentUserId={currentUser?.id} /></p>}
                   </div>
                   <div className="flex items-center gap-1 px-1">
                     <span className="text-[10px] text-gray-500 opacity-70">
@@ -176,6 +176,7 @@ export function MessageListPremium({
             animate={{ opacity: 1, y: 0 }}
             className="flex gap-3 items-end"
           >
+            <span className="sr-only">{typingUsers.join(', ')} digitando</span>
             <Avatar className="w-8 h-8 border-2 border-[#ff0300]/20">
               <AvatarFallback className="bg-[#fc7a67] text-black text-xs font-bold">
                 ...

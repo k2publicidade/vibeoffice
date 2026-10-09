@@ -16,10 +16,11 @@ O banco valida os cargos pelo perfil ativo, restringe dados com RLS e mantém os
 - Tarefas e tickets com visibilidade por atribuição, comentários internos restritos e prevenção de duplicação durante Realtime.
 - Solicitações e reuniões do painel persistidas no banco; calendário preserva os vínculos ao editar.
 - Arquivos e materiais de cursos com referências persistentes e URLs assinadas renovadas ao carregar. Upload de capas e áudio de lançamentos no bucket correto.
-- Chat de setor, grupos e conversas diretas; menções, reações, leitura, resumos de todas as salas, anexos privados e gravação de áudio em navegadores compatíveis.
+- Chat de setor, grupos e conversas diretas; menções, reações, leitura, resumos de todas as salas, anexos privados e gravação de áudio em navegadores compatíveis. Grupos têm gestão de membros pelo criador; conversas diretas não se duplicam. Bloqueio impede envio no banco, silenciamento interrompe notificações e arquivamento preserva as preferências. Presença e indicação de digitação usam canais privados autorizados.
 - Preferências e notificações geradas no servidor, webhook autenticado, push com VAPID e repetição de entregas pendentes. E-mail depende de remetente e provedor configurados.
-- Configurações reais de perfil, senha, tema e notificações. Removidas ações de demonstração sem implementação do chat (chamadas nativas, bloquear e silenciar). Reuniões usam o link de Meet/Zoom/Teams fornecido pelo usuário.
-- Dependências de produção atualizadas; código de IA sem uso que continha chave embutida removido. Capas gera briefings e salva projetos no navegador, conforme a implementação existente; não gera imagens por IA.
+- Configurações reais de perfil, senha, tema e notificações. Chamadas do chat compartilham convites com link HTTPS de Meet/Zoom/Teams. O participante abre o link para entrar na reunião. Áudio/vídeo nativo não está implementado; o formato de chamadas está aguardando confirmação da preferência do usuário.
+- Capas gera briefings e salva projetos no Supabase, com edição, arquivamento/restauração e importação explícita dos projetos antigos deste navegador. Colaboradores acessam seus próprios projetos; ADMIN/Gerente acompanham os projetos da equipe. O módulo não gera imagens por IA.
+- Dependências de produção atualizadas; código de IA sem uso que continha chave embutida removido.
 
 ## Validação reproduzível
 
@@ -37,6 +38,14 @@ Esses testes criam registros e contas temporárias, validam permissões positiva
 
 ## Pendências para concluir a auditoria
 
-Configurar e validar Site URL/redirects do Supabase para produção e a recuperação de senha por e-mail. Configurar um remetente autorizado com SMTP/Resend e testar entrega real. Validar push em dispositivo com permissão concedida pelo usuário. Avisos de desenvolvimento do lint e dependências de teste merecem manutenção separada; não foram tratados como falhas operacionais de produção.
+Site URL e redirects foram configurados no painel Supabase em 09/10/2026 para `https://office.vibedistro.com`, `/auth/callback**` e `/update-password`. Falta configurar um remetente autorizado com SMTP/Resend e testar entrega real de recuperação de senha e notificações. SMTP personalizado está desativado no projeto; o serviço padrão não atende funcionários externos. Validar push em dispositivo com permissão concedida pelo usuário. Avisos de desenvolvimento do lint e dependências de teste merecem manutenção separada; não foram tratados como falhas operacionais de produção.
 
 A auditoria não implica restauração de dados históricos indisponíveis nem comprovação de funcionalidades externas sem credenciais/configuração. O relatório deve registrar a versão efetivamente publicada e os resultados em produção antes de dar a reativação por concluída.
+
+## Evidências de publicação
+
+Em 09/10/2026, a Vercel publicou a revisão `d00f47c` com estado READY no domínio oficial. A autenticação ADMIN foi confirmada pela interface, e a tela Funcionários exibiu as duas contas autorizadas. Os testes HTTP passaram nas 16 páginas e nas negativas de autorização, origem de requisição e webhook. Os testes de acesso em produção confirmaram cadastro, login, MFA, desativação de funcionário e entrega Realtime de reservas. O webhook autenticado retornou 200 e negou credencial inválida com 401.
+
+Validação local: 77 testes passaram; compilação de produção passou; lint sem erros, com avisos legados; `npm audit --omit=dev` sem vulnerabilidades. Os testes do banco confirmaram CRUD, regras de acesso, cursos/progresso, arquivos privados, notificações, anexos por sala e conflito de reservas. Pela interface foram verificadas criação/persistência e mudança de status de tarefa, envio de mensagem privada e reação. Os registros de auditoria foram removidos, ficando duas contas ativas e nenhum histórico artificial de tarefas/tickets/mensagens.
+
+A validação adicional confirmou persistência, edição e restauração de capas com controle de acesso, gestão atômica de participantes, DM única, silenciamento e bloqueio aplicado pelo banco. Broadcast privado entre participantes funcionou, e acesso de pessoa fora da sala foi negado. Os 24 conjuntos de dados públicos têm RLS e os quatro buckets são privados. A auditoria permanece em andamento até concluir as pendências de e-mail/autenticação, confirmar push em dispositivo autorizado e concluir a escolha do formato de chamadas.

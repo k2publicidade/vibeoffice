@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { ChatRoom as ChatRoomType, Message } from '@/types/chat'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Search, MoreVertical, Hash, Users, ArrowLeft, Archive, ArchiveRestore } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Phone, Video, Search, MoreVertical, Hash, Users, ArrowLeft, Archive, ArchiveRestore } from 'lucide-react'
+import { ChatCallDialog } from './ChatCallDialog'
+import { ChatPeopleDialog } from './ChatPeopleDialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ import { useUsers } from '@/hooks/useUsers'
 import { useAuth } from '@/hooks/useAuth'
 import { useArchiveChat } from '@/hooks/useArchiveChat'
 import { toast } from 'sonner'
+import { useRoomPreferences } from '@/hooks/useRoomPreferences'
 
 interface ChatUser {
   id: string
@@ -35,6 +37,10 @@ interface ChatRoomPremiumProps {
   messages: Message[]
   onSendMessage: (message: string) => Promise<void> | void
   onSendAttachment?: (file: File) => Promise<void>
+  onTypingChange?: (typing: boolean) => void
+  onUpdateGroup?: (roomId: string, updates: { name?: string; description?: string }) => Promise<boolean>
+  onAddMember?: (roomId: string, userId: string) => Promise<boolean>
+  onRemoveMember?: (roomId: string, userId: string) => Promise<boolean>
   typingUsers?: string[]
   isLoading?: boolean
   onBack?: () => void
@@ -46,6 +52,10 @@ export function ChatRoomPremium({
   messages,
   onSendMessage,
   onSendAttachment,
+  onTypingChange,
+  onUpdateGroup,
+  onAddMember,
+  onRemoveMember,
   typingUsers = [],
   isLoading,
   onBack,
@@ -53,8 +63,10 @@ export function ChatRoomPremium({
 }: ChatRoomPremiumProps) {
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [peopleOpen, setPeopleOpen] = useState(false)
+  const [callKind, setCallKind] = useState<'audio' | 'video' | null>(null)
   const { users } = useUsers()
   const { user } = useAuth()
+  const roomPreferences = useRoomPreferences(room?.id, user?.id)
   const { isRoomArchived, toggleArchive } = useArchiveChat(user?.id)
 
   // Keyboard shortcut: Ctrl+F to open search
@@ -148,6 +160,8 @@ export function ChatRoomPremium({
           </div>
         </div>
         <div className="flex items-center gap-1 md:gap-2 shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => setCallKind('audio')} disabled={roomPreferences.blocked || roomPreferences.loading} aria-label="Convidar para chamada de áudio" className="text-[#fc7a67] hover:bg-[#ff0300]/20"><Phone className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCallKind('video')} disabled={roomPreferences.blocked || roomPreferences.loading} aria-label="Convidar para chamada de vídeo" className="text-[#fc7a67] hover:bg-[#ff0300]/20"><Video className="h-5 w-5" /></Button>
           <Button
             variant="ghost"
             size="icon"
@@ -171,6 +185,8 @@ export function ChatRoomPremium({
               <DropdownMenuItem onSelect={() => setPeopleOpen(true)} className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
                 {room.type === 'dm' ? 'Ver perfil' : 'Ver participantes'}
               </DropdownMenuItem>
+              <DropdownMenuItem disabled={roomPreferences.loading || roomPreferences.saving} onSelect={() => { void roomPreferences.update('is_muted', !roomPreferences.muted).then(() => toast.success(roomPreferences.muted ? 'Notificações da sala ativadas' : 'Sala silenciada')).catch(() => toast.error('Não foi possível salvar a preferência')) }}>{roomPreferences.muted ? 'Ativar notificações da sala' : 'Silenciar'}</DropdownMenuItem>
+              {room.type === 'dm' && <DropdownMenuItem disabled={roomPreferences.loading || roomPreferences.saving} onSelect={() => { void roomPreferences.update('is_blocked', !roomPreferences.blocked).then(() => toast.success(roomPreferences.blocked ? 'Conversa desbloqueada' : 'Conversa bloqueada')).catch(() => toast.error('Não foi possível salvar a preferência')) }}>{roomPreferences.blocked ? 'Desbloquear' : 'Bloquear'}</DropdownMenuItem>}
               <DropdownMenuSeparator className="bg-[#ff0300]/20" />
               <DropdownMenuItem
                 className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20"
@@ -201,8 +217,10 @@ export function ChatRoomPremium({
       />
 
       {/* Input */}
-      <MessageInputPremium key={room.id} onSendMessage={onSendMessage} onSendAttachment={onSendAttachment} />
-      <Dialog open={peopleOpen} onOpenChange={setPeopleOpen}><DialogContent><DialogHeader><DialogTitle>{room.type === 'dm' ? 'Perfil' : 'Participantes'}</DialogTitle></DialogHeader><div className="space-y-4">{roomPeople.filter(person => room.type !== 'dm' || person.id !== user?.id).map(person => <div key={person.id}><p className="font-medium">{person.name}</p><p className="text-sm text-muted-foreground">{person.email} · {person.role} · {person.sector}</p></div>)}</div></DialogContent></Dialog>
+      {roomPreferences.blocked && <p className="px-4 py-2 text-sm text-orange-300">Conversa bloqueada. Desbloqueie no menu para enviar e receber novas mensagens.</p>}
+      <MessageInputPremium key={room.id} disabled={roomPreferences.loading || roomPreferences.blocked} onSendMessage={onSendMessage} onSendAttachment={onSendAttachment} onTypingChange={onTypingChange} />
+      <ChatPeopleDialog room={room} users={users || []} currentUserId={user?.id} open={peopleOpen} onOpenChange={setPeopleOpen} onUpdateGroup={onUpdateGroup} onAddMember={onAddMember} onRemoveMember={onRemoveMember} />
+      <ChatCallDialog kind={callKind} onClose={() => setCallKind(null)} onSendMessage={onSendMessage} />
 
       {/* Search Dialog */}
       <MessageSearchDialog

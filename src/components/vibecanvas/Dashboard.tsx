@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SavedProject, GenerationConfig } from '@/types/vibecanvas';
-import { getProjects, deleteProject } from '@/lib/vibecanvas/storageService';
+import { getProjects, deleteProject, restoreProject, getLocalProjects, importLocalProjects } from '@/lib/vibecanvas/storageService';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 import { Trash2, Edit, Calendar, Music, Sparkles, Copy, FolderOpen, ArrowRight } from 'lucide-react';
 
 interface DashboardProps {
@@ -11,24 +13,40 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ onEdit, onCreateNew }) => {
     const [projects, setProjects] = useState<SavedProject[]>([]);
     const [loading, setLoading] = useState(true);
+    const [archived, setArchived] = useState(false);
+    const [localCount, setLocalCount] = useState(0);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(false);
+
+    const loadProjects = useCallback(async () => {
+        setLoading(true);
+        setError(false);
+        try { setProjects(await getProjects(archived)); setLocalCount(getLocalProjects().length); }
+        catch { setError(true); toast.error('Não foi possível carregar os projetos'); }
+        finally { setLoading(false); }
+    }, [archived]);
 
     useEffect(() => {
-        loadProjects();
-    }, []);
+        void loadProjects();
+        const client = createClient();
+        const channel = client.channel(`cover-projects:${crypto.randomUUID()}`).on('postgres_changes', { event: '*', schema: 'public', table: 'cover_projects' }, () => void loadProjects()).subscribe();
+        return () => { void client.removeChannel(channel); };
+    }, [loadProjects]);
 
-    const loadProjects = () => {
-        setLoading(true);
-        const data = getProjects();
-        setProjects(data);
-        setLoading(false);
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (busy) return;
+        setBusy(true);
+        try { if (archived) await restoreProject(id); else await deleteProject(id); await loadProjects(); toast.success(archived ? 'Projeto restaurado' : 'Projeto arquivado. Você pode restaurá-lo na lista de arquivados.'); }
+        catch { toast.error('Não foi possível atualizar o projeto'); }
+        finally { setBusy(false); }
     };
 
-    const handleDelete = (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (confirm('Tem certeza que deseja excluir este projeto?')) {
-            deleteProject(id);
-            loadProjects();
-        }
+    const handleImport = async () => {
+        setBusy(true);
+        try { const count = await importLocalProjects(); await loadProjects(); toast.success(`${count} projetos importados para sua conta`); }
+        catch { toast.error('Não foi possível concluir a importação. Os projetos locais foram preservados.'); }
+        finally { setBusy(false); }
     };
 
     const formatDate = (timestamp: number) => {
@@ -40,15 +58,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onEdit, onCreateNew }) => {
         }).format(new Date(timestamp));
     };
 
-    if (loading) return null;
+    if (loading) return <p className="p-8 text-zinc-400">Carregando projetos…</p>;
+    if (error) return <div className="p-8"><p>Não foi possível carregar os projetos.</p><button onClick={() => void loadProjects()} className="underline">Tentar novamente</button></div>;
 
     return (
         <div className="w-full max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500">
 
             <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6">
                 <div>
-                    <h2 className="text-4xl font-bold text-white mb-2">Meus Projetos</h2>
-                    <p className="text-zinc-400">Gerencie seus briefings e conceitos.</p>
+                    <h2 className="text-4xl font-bold text-white mb-2">{archived ? 'Projetos arquivados' : 'Projetos de Capas'}</h2>
+                    <p className="text-zinc-400">Seus briefings e conceitos ficam salvos na sua conta.</p>
                 </div>
                 <button
                     onClick={onCreateNew}
@@ -58,6 +77,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onEdit, onCreateNew }) => {
                     Novo Projeto
                 </button>
             </div>
+            <div className="flex flex-wrap gap-4 mb-6"><button onClick={() => setArchived(value => !value)} disabled={busy} className="underline text-zinc-300">{archived ? 'Ver projetos ativos' : 'Ver arquivados'}</button>{localCount > 0 && <button onClick={() => void handleImport()} disabled={busy} className="underline text-orange-400">Importar {localCount} projetos deste navegador para minha conta</button>}</div>
 
             {projects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-16 border border-dashed border-zinc-800 rounded-3xl bg-zinc-900/30">
@@ -80,7 +100,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onEdit, onCreateNew }) => {
                     {projects.map((project) => (
                         <div
                             key={project.id}
-                            onClick={() => onEdit(project)}
+                            onClick={() => { if (!archived) onEdit(project); }}
                             className="group relative bg-zinc-900 border border-zinc-800 hover:border-orange-500/50 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-orange-900/10 hover:-translate-y-1"
                         >
                             {/* Header */}
@@ -90,9 +110,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onEdit, onCreateNew }) => {
                                 </div>
                                 <button
                                     onClick={(e) => handleDelete(project.id, e)}
+                                    disabled={busy}
+                                    aria-label={archived ? 'Restaurar projeto' : 'Arquivar projeto'}
                                     className="text-zinc-600 hover:text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-colors"
                                 >
-                                    <Trash2 size={16} />
+                                    {archived ? 'Restaurar' : <Trash2 size={16} />}
                                 </button>
                             </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface ChatPreference {
@@ -14,7 +14,7 @@ interface ChatPreference {
 }
 
 export function useArchiveChat(userId: string | undefined) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [archivedRoomIds, setArchivedRoomIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
 
@@ -23,6 +23,7 @@ export function useArchiveChat(userId: string | undefined) {
    */
   const fetchArchivedRooms = useCallback(async () => {
     if (!userId) {
+      setArchivedRoomIds(new Set())
       setIsLoading(false)
       return
     }
@@ -46,8 +47,13 @@ export function useArchiveChat(userId: string | undefined) {
   }, [userId, supabase])
 
   useEffect(() => {
-    fetchArchivedRooms()
-  }, [fetchArchivedRooms])
+    void fetchArchivedRooms()
+    if (!userId) return
+    const channel = supabase.channel(`archived-rooms:${crypto.randomUUID()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_chat_preferences', filter: `user_id=eq.${userId}` }, () => void fetchArchivedRooms())
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [fetchArchivedRooms, userId, supabase])
 
   /**
    * Check if a room is archived

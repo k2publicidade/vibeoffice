@@ -17,6 +17,7 @@ export async function POST(request: Request) {
   const updates: Record<string, string> = {}
   const failures: string[] = []
   const raw = notification as unknown as { push_sent_at?: string; email_sent_at?: string }
+  if (preferences?.enable_email && !raw.email_sent_at && (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) && notification.type !== 'message_received' && notification.type !== 'mentioned_in_chat') failures.push('email_unconfigured')
   const path = notification.entity_type === 'task' ? '/tasks' : notification.entity_type === 'ticket' ? '/tickets' : notification.entity_type === 'message' ? '/chat' : '/'
   if (preferences?.enable_push && !raw.push_sent_at && process.env.VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails('mailto:admin@vibedistro.com.br', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY)

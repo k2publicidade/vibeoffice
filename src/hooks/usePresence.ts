@@ -18,7 +18,7 @@ export function usePresence() {
   useEffect(() => {
     if (!user) return
 
-    const channel = supabase.channel('online-users')
+    const channel = supabase.channel('office-presence', { config: { private: true, presence: { key: user.id } } })
 
     channel
       .on('presence', { event: 'sync' }, () => {
@@ -26,7 +26,7 @@ export function usePresence() {
         const users = Object.keys(state).flatMap(key =>
           state[key].map((presence: any) => presence.user_id)
         )
-        setOnlineUsers(users)
+        setOnlineUsers(Array.from(new Set(users)))
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -38,7 +38,7 @@ export function usePresence() {
       })
 
     return () => {
-      channel.unsubscribe()
+      void supabase.removeChannel(channel)
     }
   }, [user, supabase])
 

@@ -77,9 +77,9 @@ export default function VibeCanvasPage() {
 
             // Auto Save or Update
             if (currentProjectId) {
-                updateProject(currentProjectId, config, briefing);
+                await updateProject(currentProjectId, config, briefing);
             } else {
-                const newProject = saveProject(config, briefing);
+                const newProject = await saveProject(config, briefing);
                 setCurrentProjectId(newProject.id);
             }
             setView('results');

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { toast } from 'sonner';
 import { GenerationConfig, MusicGenre, AlbumMood, VISUAL_STYLE_CATEGORIES, VisualStyle, FontStyle, TextEffect } from '@/types/vibecanvas';
 import { ChevronRight, ChevronLeft, Flag, Info, Camera, Image as ImageIcon, Music, Palette, Type, Check, Sparkles, Upload, X } from 'lucide-react';
 
@@ -59,6 +60,7 @@ const Wizard: React.FC<WizardProps> = ({ config, setConfig, onComplete }) => {
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
+            if (!file.type.startsWith('image/') || file.size > 2 * 1024 * 1024) { toast.error('Escolha uma imagem de até 2 MB'); event.target.value = ''; return; }
             const reader = new FileReader();
             reader.onloadend = () => {
                 updateConfig('referenceImage', reader.result as string);

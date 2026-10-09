@@ -7,6 +7,7 @@ import { ChatRoomPremium } from '@/components/chat/ChatRoomPremium'
 import { NewConversationModal } from '@/components/chat/NewConversationModal'
 import { ChatRoom } from '@/types/chat'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export default function ChatPage() {
   const {
@@ -25,7 +26,11 @@ export default function ChatPage() {
     availableUsers,
     isLoading,
     typingUsers,
+    setTyping,
     createProjectGroup,
+    updateProjectGroup,
+    addMemberToProject,
+    removeMemberFromProject,
   } = useChat()
 
   const [showChatList, setShowChatList] = useState(true)
@@ -51,9 +56,11 @@ export default function ChatPage() {
   }
 
   const handleNewConversation = async (user: { id: string; name: string }) => {
+    try {
     const newRoom = await createDM(user.id, user.name)
     setCurrentRoom(newRoom)
     setShowNewConversationModal(false)
+    } catch { toast.error('Não foi possível iniciar a conversa. Tente novamente.') }
   }
 
   return (
@@ -95,6 +102,10 @@ export default function ChatPage() {
               onSendMessage={sendMessage}
               onSendAttachment={sendAttachment}
               typingUsers={typingUsers}
+              onTypingChange={setTyping}
+              onUpdateGroup={updateProjectGroup}
+              onAddMember={addMemberToProject}
+              onRemoveMember={removeMemberFromProject}
               isLoading={isLoading}
               onBack={handleBackToList}
               getDMUserInfo={getDMUserInfo}

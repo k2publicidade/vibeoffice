@@ -9,6 +9,12 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cover_projects: {
+        Row: { id: string; created_by: string; config: Json; briefing: string; created_at: string; updated_at: string; deleted_at: string | null }
+        Insert: { id?: string; created_by: string; config: Json; briefing: string; created_at?: string; updated_at?: string; deleted_at?: string | null }
+        Update: { config?: Json; briefing?: string; updated_at?: string; deleted_at?: string | null }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           id: string
@@ -822,6 +828,8 @@ export type Database = {
           user_id: string
           room_id: string
           is_archived: boolean
+          is_muted: boolean
+          is_blocked: boolean
           archived_at: string | null
           created_at: string
           updated_at: string
@@ -831,6 +839,8 @@ export type Database = {
           user_id: string
           room_id: string
           is_archived?: boolean
+          is_muted?: boolean
+          is_blocked?: boolean
           archived_at?: string | null
           created_at?: string
           updated_at?: string
@@ -840,6 +850,8 @@ export type Database = {
           user_id?: string
           room_id?: string
           is_archived?: boolean
+          is_muted?: boolean
+          is_blocked?: boolean
           archived_at?: string | null
           created_at?: string
           updated_at?: string
@@ -1000,7 +1012,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      manage_group_member: { Args: { room_id: string; member_id: string; adding: boolean }; Returns: Database['public']['Tables']['chat_rooms']['Row'] }
+      toggle_message_reaction: { Args: { message_id: string; emoji: string }; Returns: undefined }
+      mark_messages_read: { Args: { message_ids: string[] }; Returns: undefined }
+      chat_room_summaries: { Args: Record<string, never>; Returns: { room_id: string; content: string; timestamp: string; unread: number }[] }
     }
     Enums: {
       announcement_priority: "info" | "warning" | "urgent"

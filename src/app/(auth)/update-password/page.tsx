@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { Lock } from 'lucide-react'
 
 export default function UpdatePasswordPage() {
     const [password, setPassword] = useState('')
+    const [confirmation, setConfirmation] = useState('')
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     // [C05] Client criado por componente para evitar sessão stale
@@ -16,8 +17,8 @@ export default function UpdatePasswordPage() {
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (password.length < 6) {
-            toast.error('A senha deve ter pelo menos 6 caracteres.')
+        if (password.length < 12 || password !== confirmation) {
+            toast.error('Use pelo menos 12 caracteres e confirme a mesma senha.')
             return
         }
 
@@ -27,7 +28,8 @@ export default function UpdatePasswordPage() {
             if (error) throw error
 
             toast.success('Senha atualizada com sucesso!')
-            router.push('/login')
+            router.push('/settings')
+            router.refresh()
         } catch (error) {
             console.error(error)
             toast.error('Erro ao atualizar senha.')
@@ -57,16 +59,20 @@ export default function UpdatePasswordPage() {
                     <input
                         type="password"
                         placeholder="Nova senha"
+                        aria-label="Nova senha"
+                        autoComplete="new-password"
+                        minLength={12}
                         className="w-full px-6 py-4 bg-white/5 border border-white/10 text-white rounded-2xl focus:ring-2 focus:ring-[#fd6e5b] transition-all outline-none placeholder:text-white/20 text-sm"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         autoFocus
                     />
+                    <input type="password" aria-label="Confirmar nova senha" placeholder="Confirmar nova senha" autoComplete="new-password" minLength={12} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="w-full px-6 py-4 bg-white/5 border border-white/10 text-white rounded-2xl outline-none text-sm" />
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || password.length < 12 || password !== confirmation}
                         className="w-full py-4 bg-gradient-to-r from-[#fd6e5b] to-[#ff0300] text-white rounded-full font-black uppercase tracking-[0.2em] hover:shadow-[0_0_30px_rgba(253,110,91,0.5)] transition-all active:scale-95 disabled:opacity-50 text-sm"
                     >
                         {loading ? 'ATUALIZANDO...' : 'SALVAR SENHA'}

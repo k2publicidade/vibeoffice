@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { useArchiveChat } from './useArchiveChat'
@@ -42,6 +42,7 @@ export interface UseChatReturn {
   availableUsers: ChatUser[]
   isLoading: boolean
   typingUsers: string[]
+  setTyping: (typing: boolean) => void
   createProjectGroup: (data: CreateProjectGroupData) => Promise<ChatRoom | null>
   updateProjectGroup: (roomId: string, updates: { name?: string; description?: string }) => Promise<boolean>
   addMemberToProject: (roomId: string, userId: string) => Promise<boolean>
@@ -55,6 +56,9 @@ export function useChat(): UseChatReturn {
   const [availableUsers, setAvailableUsers] = useState<ChatUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [typingUsers, setTypingUsers] = useState<string[]>([])
+  const roomChannel = useRef<RealtimeChannel | null>(null)
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTypingAt = useRef(0)
   const [roomSummaries, setRoomSummaries] = useState<Record<string, { content: string; timestamp: Date; unread: number }>>({})
   const { user } = useAuth()
   // [C05] Client criado por hook para evitar sessão stale
@@ -80,8 +84,7 @@ export function useChat(): UseChatReturn {
       if (error) throw error
 
       // [C08] Adicionados campos sector, description, createdBy ao map
-      setRooms(
-        data.map((r) => ({
+      const mappedRooms: ChatRoom[] = data.map((r) => ({
           id: r.id,
           name: r.name,
           type: r.type,
@@ -92,7 +95,15 @@ export function useChat(): UseChatReturn {
           createdAt: new Date(r.created_at),
           updatedAt: new Date(r.updated_at),
         }))
-      )
+      setRooms(mappedRooms)
+      setCurrentRoom(previous => {
+        if (!previous) return null
+        const fresh = mappedRooms.find(room => room.id === previous.id)
+        if (!fresh) return null
+        // Message timestamps must not restart the room subscription.
+        return fresh.name === previous.name && fresh.description === previous.description &&
+          fresh.participants.join(',') === previous.participants.join(',') ? previous : fresh
+      })
     } catch (error) {
       console.error('Error fetching rooms:', error)
     } finally {
@@ -198,7 +209,7 @@ export function useChat(): UseChatReturn {
     }
 
     // Criar nova sala DM no banco
-    const { data, error } = await supabase
+    const { data: insertedRoom, error } = await supabase
       .from('chat_rooms')
       .insert({
         name: userName,
@@ -209,7 +220,13 @@ export function useChat(): UseChatReturn {
       .select()
       .single()
 
-    if (error) throw error
+    let data = insertedRoom
+    if (error?.code === '23505') {
+      const existing = await supabase.from('chat_rooms').select('*').eq('type', 'dm').contains('participants', [user.id, userId]).single()
+      if (existing.error) throw existing.error
+      data = existing.data
+    } else if (error) throw error
+    if (!data) throw new Error('Não foi possível criar a conversa')
 
     const newRoom: ChatRoom = {
       id: data.id,
@@ -220,7 +237,7 @@ export function useChat(): UseChatReturn {
       updatedAt: new Date(data.updated_at),
     }
 
-    setRooms(prev => [...prev, newRoom])
+    setRooms(prev => [...prev.filter(room => room.id !== newRoom.id), newRoom])
     return newRoom
   }, [rooms, user, supabase])
 
@@ -262,7 +279,7 @@ export function useChat(): UseChatReturn {
 
       // Subscribe para novas mensagens em tempo real
       channel = supabase
-        .channel(`room:${currentRoom!.id}`)
+        .channel(`office-room:${currentRoom!.id}`, { config: { private: true, presence: { key: user!.id } } })
         .on(
           'postgres_changes',
           {
@@ -306,18 +323,36 @@ export function useChat(): UseChatReturn {
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
           setMessages(previous => previous.filter(message => message.id !== payload.old.id))
         })
-        .subscribe()
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState<{ userId: string; name: string; typing: boolean; at: number }>()
+          setTypingUsers(Array.from(new Set(Object.values(state).flat().filter(member => member.userId !== user!.id && member.typing && member.at > Date.now() - 5000).map(member => member.name))))
+        })
+        .subscribe(status => {
+          if (status === 'SUBSCRIBED') { roomChannel.current = channel; void channel.track({ userId: user!.id, name: user!.name, typing: false, at: Date.now() }) }
+        })
     }
 
     setupMessages()
 
     return () => {
       disposed = true
+      roomChannel.current = null
+      setTypingUsers([])
+      if (typingTimer.current) clearTimeout(typingTimer.current)
       if (channel) {
         supabase.removeChannel(channel)
       }
     }
   }, [currentRoom, user, supabase, isRoomArchived, unarchiveRoom])
+
+  const setTyping = useCallback((typing: boolean) => {
+    const channel = roomChannel.current
+    if (!channel || !user) return
+    if (typingTimer.current) clearTimeout(typingTimer.current)
+    const publish = (value: boolean) => { void channel.track({ userId: user.id, name: user.name, typing: value, at: Date.now() }) }
+    if (!typing || Date.now() - lastTypingAt.current > 1000) { lastTypingAt.current = Date.now(); publish(typing) }
+    if (typing) typingTimer.current = setTimeout(() => publish(false), 3000)
+  }, [user])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!currentRoom || !content.trim() || !user) return
@@ -504,18 +539,11 @@ export function useChat(): UseChatReturn {
       return false
     }
 
-    const newParticipants = [...room.participants, userId]
-
     try {
-      const { error } = await supabase
-        .from('chat_rooms')
-        .update({
-          participants: newParticipants,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', roomId)
+      const { data, error } = await supabase.rpc('manage_group_member', { room_id: roomId, member_id: userId, adding: true })
 
       if (error) throw error
+      const newParticipants = data.participants
 
       // Atualizar estado local
       setRooms(prev => prev.map(r =>
@@ -565,18 +593,11 @@ export function useChat(): UseChatReturn {
       return false
     }
 
-    const newParticipants = room.participants.filter(id => id !== userId)
-
     try {
-      const { error } = await supabase
-        .from('chat_rooms')
-        .update({
-          participants: newParticipants,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', roomId)
+      const { data, error } = await supabase.rpc('manage_group_member', { room_id: roomId, member_id: userId, adding: false })
 
       if (error) throw error
+      const newParticipants = data.participants
 
       // Atualizar estado local
       setRooms(prev => prev.map(r =>
@@ -620,6 +641,7 @@ export function useChat(): UseChatReturn {
     availableUsers,
     isLoading,
     typingUsers,
+    setTyping,
     createProjectGroup,
     updateProjectGroup,
     addMemberToProject,

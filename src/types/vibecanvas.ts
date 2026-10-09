@@ -319,6 +319,7 @@ export interface AppState {
 
 export interface SavedProject {
     id: string;
+    deletedAt?: number;
     createdAt: number;
     config: GenerationConfig;
     briefing: string;
