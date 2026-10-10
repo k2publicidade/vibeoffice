@@ -502,7 +502,9 @@ export function useTasks(): UseTasksReturn {
         description: normalizedUpdates.description,
         status: normalizedUpdates.status,
         priority: normalizedUpdates.priority,
-        due_date: normalizedUpdates.dueDate?.toISOString(),
+        due_date: Object.prototype.hasOwnProperty.call(normalizedUpdates, 'dueDate')
+          ? normalizedUpdates.dueDate?.toISOString() ?? null
+          : undefined,
         // assigned_to removido — fonte da verdade e task_assignees (M2M)
         // Ver achado S-P0-05 do diagnostico 2026-05-17
         sector: normalizedUpdates.sector,

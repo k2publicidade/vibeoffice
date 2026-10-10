@@ -176,6 +176,19 @@ describe('useTasks', () => {
     expect(result.current.tasks[0].title).toBe('Updated Task')
   })
 
+  it('clears a deadline when the editor explicitly removes it', async () => {
+    mockTaskFetch([{ ...mockTaskData, due_date: '2026-10-20T15:00:00Z' }])
+    const { result } = renderHook(() => useTasks())
+    await waitFor(() => expect(result.current.tasks).toHaveLength(1))
+    const update = jest.fn().mockReturnThis()
+    ;(supabase.from as jest.Mock)
+      .mockReturnValueOnce({ update, eq: jest.fn().mockResolvedValue({ error: null }) })
+      .mockReturnValueOnce({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: mockTaskData, error: null }) })
+    await act(async () => { await result.current.updateTask('task-1', { dueDate: undefined }) })
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ due_date: null }))
+    expect(result.current.tasks[0].dueDate).toBeUndefined()
+  })
+
   it('should delete task successfully', async () => {
     mockTaskFetch([mockTaskData])
     const { result } = renderHook(() => useTasks())
