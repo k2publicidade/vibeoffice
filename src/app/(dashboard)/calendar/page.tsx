@@ -24,7 +24,6 @@ import { addDays, subDays, addWeeks, subWeeks, addMonths, subMonths } from 'date
 export default function CalendarPage() {
   const {
     events,
-    getEventsByType,
     createEvent,
     updateEvent,
     deleteEvent,
@@ -58,11 +57,14 @@ export default function CalendarPage() {
   }, [isMobile])
 
   // Calendar filters
-  const [filters, setFilters] = useState([
-    { id: 'personal', name: 'Pessoal', color: 'hsl(218, 100%, 52%)', checked: true, count: getEventsByType('personal').length },
-    { id: 'sector', name: 'Setor', color: 'hsl(22, 94%, 48%)', checked: true, count: getEventsByType('sector').length },
-    { id: 'company', name: 'Empresa', color: 'hsl(142, 76%, 36%)', checked: true, count: getEventsByType('company').length },
+  const [filterSelections, setFilterSelections] = useState([
+    { id: 'personal', name: 'Pessoal', color: 'hsl(218, 100%, 52%)', checked: true },
+    { id: 'sector', name: 'Setor', color: 'hsl(22, 94%, 48%)', checked: true },
+    { id: 'company', name: 'Empresa', color: 'hsl(142, 76%, 36%)', checked: true },
   ])
+  const filters = useMemo(() => filterSelections.map(filter => ({
+    ...filter, count: events.filter(event => event.type === filter.id).length,
+  })), [filterSelections, events])
 
   const projects = filters.map(filter => ({ id: filter.id, name: filter.name, color: filter.color, hours: events.filter(event => event.type === filter.id).reduce((hours, event) => hours + (event.endTime.getTime() - event.startTime.getTime()) / 3600000, 0) }))
 
@@ -94,7 +96,7 @@ export default function CalendarPage() {
   }, [events, filters, users])
 
   const handleFilterChange = (id: string, checked: boolean) => {
-    setFilters(prev =>
+    setFilterSelections(prev =>
       prev.map(f => (f.id === id ? { ...f, checked } : f))
     )
   }
