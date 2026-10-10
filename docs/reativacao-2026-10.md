@@ -99,3 +99,13 @@ A revisão `0dd1398` foi confirmada READY/Production, com `office.vibedistro.com
 As revisões `2c25f2c` e `b3213c1` foram confirmadas READY/Production no domínio oficial. As cinco auditorias completas passaram após a mudança de autorização no banco. A interface confirmou criação, edição de título/categoria/setor e duplicação; uma nova aba e o banco confirmaram dois eventos Marketing persistidos. Os contadores dos filtros agora acompanham os dados carregados, preservando a seleção. A tela mostrou `Setor 2` para os dois eventos técnicos.
 
 O diálogo nativo de confirmação da exclusão bloqueou a automação; a interação visual com Cancelar ficou pendente de liberação pelo usuário. Os testes de cancelamento e de exclusão autorizada/negada passaram. Os dois eventos próprios foram removidos por IDs e titularidade conferidos; contas e credenciais do runner também foram removidas. Resend, push em dispositivo e escolha do formato de chamadas continuam pendentes; não há comprovação de entrega real de e-mail nesta etapa.
+
+### Dependências e confirmação de exclusão no estúdio
+
+A manutenção `56c72e3` foi publicada READY/Production. A auditoria passou de 25 para cinco alertas nas ferramentas de desenvolvimento; produção segue sem vulnerabilidades conhecidas no `npm audit --omit=dev`. A resolução foi reconstruída com `npm ci`, e configurações da cobertura passaram por teste de YAML/JSON e herança. [Relatório e limitações](./dependency-audit-2026-10.md).
+
+Foi reproduzido sucesso indevido na exclusão de sessão: uma resposta sem erro, mas sem linha autorizada, removia a sessão apenas da lista local e anunciava sucesso. `useStudio.deleteBooking` agora exige uma linha retornada para confirmar a gravação; falhas preservam a listagem. Oito testes novos cobrem exclusão autorizada/negada, conflito de reservas, edição malsucedida, ausência de autenticação, criação concorrente com Realtime, atualizações/removidas remotas, liberação da inscrição e recuperação após falha de carregamento.
+
+`scripts/audit-studio-transactions.mjs` confirmou no banco real que um colaborador pode ver a sessão de outro, mas não editá-la/excluí-la; intervalos inválidos e conflitos são negados; horários adjacentes são permitidos; edição conflitante preserva o horário; exclusão própria retorna uma linha. Contas e sessões foram revertidas com ROLLBACK. Executar com as mesmas variáveis de conexão e certificado oficial usadas na auditoria da agenda.
+
+Validação local: 123 testes em 18 suites, build/TypeScript e lint sem erros. O gate global de cobertura ainda falha e permanece em `vibeoffice-19`; não foi reduzido. A busca por casos semelhantes encontrou outros deletes sem confirmação em tarefas, tickets, avisos, lançamentos e cursos, registrados para reprodução em `vibeoffice-22`.

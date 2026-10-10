@@ -80,6 +80,8 @@ export function useStudio() {
                 .from('studio_bookings' as any)
                 .delete()
                 .eq('id', id)
+                .select('id')
+                .single()
 
             if (error) throw error
 
