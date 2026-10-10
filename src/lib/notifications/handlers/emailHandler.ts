@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { NotificationEvent, NotificationType } from '@/types/notifications'
+import { getNotificationPath } from '@/lib/notification-links'
 
 /**
  * Circuit Breaker para prevenir email spam
@@ -248,16 +249,7 @@ export class EmailHandler {
   private generateActionUrl(event: NotificationEvent): string {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-    if (event.entityType === 'task' && event.entityId) {
-      return `${baseUrl}/tarefas?task=${event.entityId}`
-    }
-    if (event.entityType === 'ticket' && event.entityId) {
-      return `${baseUrl}/tickets/${event.entityId}`
-    }
-    if (event.entityType === 'message') {
-      return `${baseUrl}/chat`
-    }
-    return `${baseUrl}/notificacoes`
+    return baseUrl + (getNotificationPath({ entity_type: event.entityType, entity_id: event.entityId, metadata: event.metadata }) || '/')
   }
 
   private generateActionText(event: NotificationEvent): string {

@@ -4,6 +4,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { safeAuthRedirect } from '@/lib/auth-redirect'
 
 export async function proxy(request: NextRequest) {
   // Server-to-server webhook authenticates with its own secret in the route.
@@ -47,20 +48,29 @@ export async function proxy(request: NextRequest) {
   }
 
   const isProtectedRoute = !isPublicRoute
+  const destination = isAuthRoute
+    ? safeAuthRedirect(request.nextUrl.searchParams.get('next'))
+    : safeAuthRedirect(request.nextUrl.pathname + request.nextUrl.search)
+
+  function requireAuthentication(path: '/login' | '/auth/mfa') {
+    const url = new URL(path, request.url)
+    if (destination !== '/') url.searchParams.set('next', destination)
+    return redirect(url)
+  }
 
   if (isProtectedRoute && !user) {
-    return redirect(new URL('/login', request.url))
+    return requireAuthentication('/login')
   }
 
   if (user && request.nextUrl.pathname !== '/auth/mfa' && !request.nextUrl.pathname.startsWith('/auth/callback')) {
     const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     if (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') {
-      return redirect(new URL('/auth/mfa', request.url))
+      return requireAuthentication('/auth/mfa')
     }
   }
 
   if (isAuthRoute && user) {
-    return redirect(new URL('/', request.url))
+    return redirect(new URL(destination, request.url))
   }
 
   if (isProtectedRoute && user) {

@@ -81,7 +81,7 @@ jest.mock('framer-motion', () => ({
 }))
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+if (typeof window !== 'undefined') Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
     matches: false,

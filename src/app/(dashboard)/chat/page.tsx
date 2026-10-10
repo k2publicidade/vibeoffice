@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useRecordLink } from '@/hooks/useRecordLink'
 import { useChat } from '@/hooks/useChat'
 import { ChatListPremium } from '@/components/chat/ChatListPremium'
 import { ChatRoomPremium } from '@/components/chat/ChatRoomPremium'
@@ -10,6 +11,10 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 export default function ChatPage() {
+  return <Suspense fallback={<p>Carregando conversas...</p>}><ChatPageContent /></Suspense>
+}
+
+function ChatPageContent() {
   const {
     rooms,
     currentRoom,
@@ -35,16 +40,22 @@ export default function ChatPage() {
 
   const [showChatList, setShowChatList] = useState(true)
   const [showNewConversationModal, setShowNewConversationModal] = useState(false)
+  const selectLinkedRoom = useCallback((room: ChatRoom) => {
+    setCurrentRoom(room)
+    if (window.innerWidth < 1024) setShowChatList(false)
+  }, [setCurrentRoom])
+  const { requestedId, clearLink } = useRecordLink('room', rooms, !isLoading, selectLinkedRoom)
 
   // Selecionar primeiro room automaticamente
   useEffect(() => {
-    if (!currentRoom && rooms.length > 0) {
+    if (!currentRoom && !requestedId && rooms.length > 0) {
       setCurrentRoom(rooms[0])
     }
-  }, [rooms, currentRoom, setCurrentRoom])
+  }, [rooms, currentRoom, setCurrentRoom, requestedId])
 
   const handleSelectRoom = (room: ChatRoom) => {
     setCurrentRoom(room)
+    clearLink()
     // Em mobile, esconder a lista ao selecionar um chat
     if (window.innerWidth < 1024) {
       setShowChatList(false)
@@ -59,6 +70,7 @@ export default function ChatPage() {
     try {
     const newRoom = await createDM(user.id, user.name)
     setCurrentRoom(newRoom)
+    clearLink()
     setShowNewConversationModal(false)
     } catch { toast.error('Não foi possível iniciar a conversa. Tente novamente.') }
   }

@@ -18,7 +18,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AlertCircle, LayoutGrid, List, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, Suspense } from 'react'
+import { useRecordLink } from '@/hooks/useRecordLink'
 import { toast } from 'sonner'
 import {
   Sheet,
@@ -29,6 +30,10 @@ import {
 import { Badge } from '@/components/ui/badge'
 
 export default function TicketsPage() {
+  return <Suspense fallback={<p>Carregando solicitações...</p>}><TicketsPageContent /></Suspense>
+}
+
+function TicketsPageContent() {
   const {
     filteredTickets,
     filters,
@@ -39,6 +44,7 @@ export default function TicketsPage() {
     deleteComment,
     getUserById,
     tickets, // Destructure tickets for realtime updates
+    isLoading,
   } = useTickets()
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
@@ -54,6 +60,11 @@ export default function TicketsPage() {
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
   // S-P1-21: sidebar de filtros vira Sheet em mobile/tablet
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const handleSelectTicket = useCallback((ticket: Ticket) => {
+    setSelectedTicket(ticket)
+    setIsDetailModalOpen(true)
+  }, [])
+  const { clearLink } = useRecordLink('open', tickets, !isLoading, handleSelectTicket)
 
   // Contagem de filtros ativos (para badge no botao mobile)
   const activeFilterCount = useMemo(() => {
@@ -72,13 +83,9 @@ export default function TicketsPage() {
     return getCommentsByTicketId(activeTicket.id)
   }, [activeTicket, getCommentsByTicketId])
 
-  const handleSelectTicket = (ticket: Ticket) => {
-    setSelectedTicket(ticket)
-    setIsDetailModalOpen(true)
-  }
-
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false)
+    clearLink()
     setTimeout(() => {
       setSelectedTicket(null)
     }, 300)

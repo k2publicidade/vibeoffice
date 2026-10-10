@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
+import { getNotificationPath } from '@/lib/notification-links'
 import { motion } from 'framer-motion'
 import {
   CheckSquare,
@@ -45,21 +46,6 @@ const priorityColors = {
 } as const
 
 // Helper para obter link de redirecionamento baseado na notificação
-function getNotificationLink(notif: Notification): string | null {
-  switch (notif.entity_type) {
-    case 'task':
-      return notif.entity_id ? `/tasks?open=${notif.entity_id}` : null
-    case 'ticket':
-      return notif.entity_id ? `/tickets?open=${notif.entity_id}` : null
-    case 'message':
-      // metadata é Json (pode ser null, object, array, etc)
-      const metadata = notif.metadata as Record<string, any> | null
-      return metadata?.roomId ? `/chat?room=${metadata.roomId}` : null
-    default:
-      return null
-  }
-}
-
 export function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
   const router = useRouter()
   const [isRemoving, setIsRemoving] = useState(false)
@@ -72,10 +58,10 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
       if (!notification.read) {
         setIsRemoving(true)
         await onMarkAsRead(notification.id)
-        const link = getNotificationLink(notification)
+        const link = getNotificationPath(notification)
         if (link) router.push(link)
       } else {
-        const link = getNotificationLink(notification)
+        const link = getNotificationPath(notification)
         if (link) {
           router.push(link)
         }

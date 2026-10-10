@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { NotificationEvent } from '@/types/notifications'
+import { getNotificationPath } from '@/lib/notification-links'
 
 export class PushHandler {
   private supabase = createClient()
@@ -91,15 +92,6 @@ export class PushHandler {
   }
 
   private generateDeepLink(event: NotificationEvent): string {
-    if (event.entityType === 'task') {
-      return `/tarefas?task=${event.entityId}`
-    }
-    if (event.entityType === 'ticket') {
-      return `/tickets/${event.entityId}`
-    }
-    if (event.entityType === 'message') {
-      return `/chat`
-    }
-    return '/notificacoes'
+    return getNotificationPath({ entity_type: event.entityType, entity_id: event.entityId, metadata: event.metadata }) || '/'
   }
 }

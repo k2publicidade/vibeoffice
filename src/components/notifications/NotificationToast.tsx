@@ -2,10 +2,11 @@
 
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { useNotifications, type Notification } from '@/hooks/useNotifications'
+import { useNotifications } from '@/hooks/useNotifications'
 import { Bell, CheckSquare, Ticket, MessageSquare, RefreshCw, Plus, AtSign, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { getNotificationPath } from '@/lib/notification-links'
 
 const notificationIcons = {
   task_assigned: CheckSquare,
@@ -26,21 +27,6 @@ const priorityColors = {
   medium: 'text-orange-500',
   high: 'text-red-500',
 } as const
-
-function getNotificationLink(notification: Notification): string | null {
-  switch (notification.entity_type) {
-    case 'task':
-      return notification.entity_id ? `/tasks?open=${notification.entity_id}` : null
-    case 'ticket':
-      return notification.entity_id ? `/tickets?open=${notification.entity_id}` : null
-    case 'message':
-      // metadata é Json (pode ser null, object, array, etc)
-      const metadata = notification.metadata as Record<string, any> | null
-      return metadata?.roomId ? `/chat?room=${metadata.roomId}` : null
-    default:
-      return null
-  }
-}
 
 // Função para reproduzir som de notificação usando Web Audio API
 const playNotificationSound = () => {
@@ -66,7 +52,7 @@ const playNotificationSound = () => {
 }
 
 export function NotificationToast() {
-  const { notifications } = useNotifications()
+  const { notifications, markAsRead } = useNotifications()
   const router = useRouter()
   const displayedNotificationsRef = useRef<Set<string>>(new Set())
 
@@ -90,16 +76,21 @@ export function NotificationToast() {
       const iconColor = priorityColors[latestUnread.priority as keyof typeof priorityColors] || 'text-gray-500'
 
       // Exibir toast premium
+      const openNotification = async (toastId: string | number) => {
+        try {
+          await markAsRead(latestUnread.id)
+          toast.dismiss(toastId)
+          const link = getNotificationPath(latestUnread)
+          if (link) router.push(link)
+        } catch { toast.error('Não foi possível abrir a notificação') }
+      }
       toast.custom(
         (t) => (
           <div
-            onClick={() => {
-              toast.dismiss(t)
-              const link = getNotificationLink(latestUnread)
-              if (link) {
-                router.push(link)
-              }
-            }}
+            role="button"
+            tabIndex={0}
+            onClick={() => { void openNotification(t) }}
+            onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); void openNotification(t) } }}
             className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 dark:from-purple-500/20 dark:to-pink-500/20 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4 shadow-2xl cursor-pointer hover:scale-105 transition-all duration-200 max-w-md"
           >
             <div className="flex items-start gap-3">
@@ -132,7 +123,7 @@ export function NotificationToast() {
         }
       )
     }
-  }, [notifications, router])
+  }, [notifications, router, markAsRead])
 
   return null // Este componente não renderiza nada
 }

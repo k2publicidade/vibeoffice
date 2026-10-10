@@ -50,7 +50,7 @@ import { cn } from '@/lib/utils'
 
 interface TaskDialogProps {
   task?: Task
-  onSave: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
+  onSave: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void | Promise<void>
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   defaultStatus?: TaskStatus
@@ -87,11 +87,16 @@ function getInitialFormData(
     sector: task?.sector || currentUser?.sector || 'A&R',
     assignees: isCollaborator && currentUser ? [currentUser.id] : (task?.assignees || []),
     createdBy: task?.createdBy || currentUser?.id || 'user-001',
-    dueDate: task?.dueDate || new Date(),
+    dueDate: task ? task.dueDate : new Date(),
   }
 }
 
-export function TaskDialog({
+export function TaskDialog(props: TaskDialogProps) {
+  const identity = props.task?.id || `new-${props.defaultStatus || 'todo'}`
+  return <TaskDialogForm key={`${identity}:${props.isOpen === false ? 'closed' : 'open'}`} {...props} />
+}
+
+function TaskDialogForm({
   task,
   onSave,
   isOpen,
@@ -105,6 +110,8 @@ export function TaskDialog({
   const [open, setOpen] = useState(isOpen || false)
   const [formData, setFormData] = useState(() => getInitialFormData(task, defaultStatus, currentUser))
   const [assigneeSearch, setAssigneeSearch] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // Mapa id->user para renderizar badges com nome real (não UUID)
   const userById = (users || []).reduce<Record<string, User>>((acc, u) => {
@@ -122,18 +129,25 @@ export function TaskDialog({
   const getInitials = (name: string) =>
     name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.title.trim()) return
-    onSave(isCollaborator && currentUser
-      ? { ...formData, assignees: [currentUser.id], createdBy: currentUser.id, sector: formData.sector || currentUser.sector }
-      : formData
-    )
-    setOpen(false)
-    onOpenChange?.(false)
+    if (!formData.title.trim() || isSaving) return
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      await onSave(isCollaborator && currentUser
+        ? { ...formData, assignees: [currentUser.id], createdBy: currentUser.id, sector: formData.sector || currentUser.sector }
+        : formData
+      )
+      setOpen(false)
+      onOpenChange?.(false)
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar a tarefa. Tente novamente.')
+    } finally { setIsSaving(false) }
   }
 
   const handleOpenChange = (newOpen: boolean) => {
+    if (isSaving) return
     // Resetar form quando abrir para nova tarefa
     if (newOpen && !task) {
       setFormData(getInitialFormData(undefined, defaultStatus, currentUser))
@@ -180,7 +194,7 @@ export function TaskDialog({
         </Button>
       )}
 
-      <PremiumModal open={open} onClose={() => handleOpenChange(false)} size="lg">
+      <PremiumModal open={isOpen ?? open} onClose={() => handleOpenChange(false)} size="lg">
         <PremiumModalHeader>
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#fc7a67]/20 to-[#ff0300]/20 flex items-center justify-center border border-[#fc7a67]/20">
@@ -500,21 +514,24 @@ export function TaskDialog({
           </div>
         </PremiumModalBody>
 
+        {saveError && <p role="alert" className="text-sm text-red-400 px-6">{saveError}</p>}
         <PremiumModalFooter>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
             <Button
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
+              disabled={isSaving}
               className="w-full sm:w-auto min-w-[120px] h-11 rounded-full border-zinc-700 hover:bg-zinc-800"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
+              disabled={!formData.title.trim() || isSaving}
               className="w-full sm:w-auto min-w-[120px] h-11 rounded-full bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:from-[#ff0300] hover:to-[#fc7a67] text-white font-medium"
             >
-              {task ? 'Atualizar Tarefa' : 'Criar Tarefa'}
+              {isSaving ? 'Salvando...' : task ? 'Atualizar Tarefa' : 'Criar Tarefa'}
             </Button>
           </div>
         </PremiumModalFooter>

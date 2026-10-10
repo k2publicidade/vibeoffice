@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, Suspense } from 'react'
+import { useRecordLink } from '@/hooks/useRecordLink'
 import { useTasks } from '@/hooks/useTasks'
 import { useAuth } from '@/hooks/useAuth'
 import { Task, TaskStatus } from '@/types/tasks'
@@ -53,11 +54,17 @@ function tasksToPremiumColumns(tasks: Task[]): KanbanColumnData[] {
 }
 
 export default function TasksPage() {
+  return <Suspense fallback={<p>Carregando tarefas...</p>}><TasksPageContent /></Suspense>
+}
+
+function TasksPageContent() {
   const { user, isLoading: authLoading } = useAuth()
   const isCollaborator = user?.role === 'Colaborador'
 
 
   const {
+    tasks,
+    isLoading,
     filteredTasks,
     filters,
     stats,
@@ -72,6 +79,12 @@ export default function TasksPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [preselectedStatus, setPreselectedStatus] = useState<TaskStatus | undefined>()
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null)
+  const handleEditTask = useCallback((task: Task) => {
+    setSelectedTask(task)
+    setPreselectedStatus(undefined)
+    setIsDialogOpen(true)
+  }, [])
+  const { clearLink } = useRecordLink('open', tasks, !authLoading && !isLoading, handleEditTask)
 
   // Converter tasks para colunas do Kanban Premium
   const kanbanColumns = useMemo(
@@ -83,17 +96,13 @@ export default function TasksPage() {
     try {
       await createTask(taskData)
       setIsDialogOpen(false)
+      clearLink()
       setPreselectedStatus(undefined)
       toast.success('Tarefa criada')
     } catch (error) {
       toast.error('Erro ao criar tarefa: ' + (error as Error).message)
+      throw error
     }
-  }
-
-  const handleEditTask = (task: Task) => {
-    setSelectedTask(task)
-    setPreselectedStatus(undefined)
-    setIsDialogOpen(true)
   }
 
   const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -107,9 +116,11 @@ export default function TasksPage() {
         toast.success('Tarefa criada')
       }
       setIsDialogOpen(false)
+      clearLink()
       setPreselectedStatus(undefined)
     } catch (error) {
       toast.error('Erro ao salvar tarefa: ' + (error as Error).message)
+      throw error
     }
   }
 
@@ -224,6 +235,7 @@ export default function TasksPage() {
             onOpenChange={(open: boolean) => {
               setIsDialogOpen(open)
               if (!open) {
+                clearLink()
                 setSelectedTask(undefined)
                 setPreselectedStatus(undefined)
               }
@@ -320,7 +332,7 @@ export default function TasksPage() {
           currentUser={user}
           onOpenChange={(open: boolean) => {
             setIsDialogOpen(open)
-            if (!open) setSelectedTask(undefined)
+            if (!open) { setSelectedTask(undefined); clearLink() }
           }}
         />
       )}
