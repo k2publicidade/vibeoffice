@@ -22,6 +22,7 @@ export interface CalendarEvent {
   updatedAt: Date
   // Linked items
   linkedTaskId?: string
+  generatedByTask?: boolean
   linkedTicketId?: string
   linkedReleaseId?: string
 }

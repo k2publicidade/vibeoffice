@@ -3,6 +3,7 @@ import '@testing-library/jest-dom'
 // Mock Supabase client
 jest.mock('@/lib/supabase/client', () => {
   const supabase = {
+    rpc: jest.fn(),
     auth: {
       getUser: jest.fn(),
       getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),

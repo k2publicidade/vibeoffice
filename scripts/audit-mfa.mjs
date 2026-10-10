@@ -48,6 +48,7 @@ try {
   const stale = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { ...options, global: { headers: { Authorization: 'Bearer ' + signin.session.access_token } } });
   ok(await client.from('users').select('role,active').eq('id', userId).single()); pass('own sign-in profile remains readable before MFA');
   blocked(await client.from('tasks').select('id').eq('id', task.id), 'direct database read before MFA');
+  blocked(await client.rpc('save_office_task', { task_id: task.id, changes: { title: tag + ' bypass' } }), 'task transaction before MFA');
   blocked(await client.from('tasks').insert({ title: tag + ' bypass', sector: 'Administrativo', created_by: userId }).select(), 'direct database insert before MFA');
   blocked(await client.from('users').select('id').eq('id', accounts[0].id), 'employee directory before MFA');
   blocked(await client.from('users').update({ name: tag + ' bypass' }).eq('id', userId).select(), 'profile update before MFA');
@@ -59,15 +60,18 @@ try {
   pass('read receipt RPC cannot mutate before MFA');
   ok(await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code: totp(factor.totp.secret) }));
   ok(await client.from('tasks').select('id').eq('id', task.id).single());
+  ok(await client.rpc('save_office_task', { task_id: task.id, changes: { title: tag + ' verified' } })); pass('verified MFA permits task transaction');
   ok(await client.storage.from('drive-files').createSignedUrl(objectPath, 60));
   ok(await client.rpc('toggle_message_reaction', { message_id: message.id, emoji: '👍' })); pass('verified MFA permits database, Storage and RPC');
   blocked(await stale.from('tasks').select('id').eq('id', task.id), 'old AAL1 token after verified MFA');
+  blocked(await stale.rpc('save_office_task', { task_id: task.id, changes: { title: tag + ' stale' } }), 'old AAL1 task transaction');
   ok(await client.auth.mfa.unenroll({ factorId: factor.id }));
   ok(await client.auth.refreshSession());
   ok(await client.from('tasks').select('id').eq('id', task.id).single()); pass('unenrollment restores optional MFA access');
   ok(await service.from('users').update({ active: false }).eq('id', userId));
   if (ok(await client.rpc('can_room', { r: room.id }))) throw Error('Inactive profile bypass: room RPC');
   blocked(await client.rpc('toggle_message_reaction', { message_id: message.id, emoji: '👍' }), 'inactive profile reaction RPC');
+  blocked(await client.rpc('save_office_task', { task_id: task.id, changes: { title: tag + ' inactive' } }), 'inactive task transaction');
   pass('MFA AUDIT COMPLETE');
 } catch (error) { console.error(error.message); process.exitCode = 1; }
 finally {

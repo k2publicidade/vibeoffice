@@ -121,22 +121,7 @@ describe('useTasks', () => {
       linked_ticket_id: null,
     }
 
-    ;(supabase.from as jest.Mock)
-      .mockReturnValueOnce({
-        insert: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({ data: insertedTask, error: null }),
-      })
-      .mockReturnValueOnce({ insert: jest.fn().mockResolvedValue({ error: null }) })
-      .mockReturnValueOnce({
-        insert: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({ data: { id: 'ticket-new' }, error: null }),
-      })
-      .mockReturnValueOnce({
-        update: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockResolvedValue({ error: null }),
-      })
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: { ...insertedTask, linked_ticket_id: 'ticket-new' }, error: null })
 
     await act(async () => {
       await result.current.createTask(newTaskInput)
@@ -158,16 +143,7 @@ describe('useTasks', () => {
     await waitFor(() => expect(result.current.tasks).toHaveLength(1))
 
     const updatedRow = { ...mockTaskData, title: 'Updated Task' }
-    ;(supabase.from as jest.Mock)
-      .mockReturnValueOnce({
-        update: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockResolvedValue({ error: null }),
-      })
-      .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({ data: updatedRow, error: null }),
-      })
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: updatedRow, error: null })
 
     await act(async () => {
       await result.current.updateTask('task-1', { title: 'Updated Task' })
@@ -176,16 +152,32 @@ describe('useTasks', () => {
     expect(result.current.tasks[0].title).toBe('Updated Task')
   })
 
+  it('reports an assignment failure without adding a partial task to the list', async () => {
+    mockTaskFetch([])
+    const { result } = renderHook(() => useTasks())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const failure = { message: 'Responsável inexistente', code: '23503' }
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: null, error: failure })
+    await expect(result.current.createTask({ title: 'Teste', description: '', status: 'todo', priority: 'medium', sector: 'TI/Suporte', assignees: [user2Id] })).rejects.toMatchObject(failure)
+    expect(result.current.tasks).toHaveLength(0)
+  })
+
+  it('keeps the existing task when its transactional update fails', async () => {
+    mockTaskFetch([mockTaskData])
+    const { result } = renderHook(() => useTasks())
+    await waitFor(() => expect(result.current.tasks).toHaveLength(1))
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: null, error: { message: 'Falha na atribuição' } })
+    await expect(result.current.updateTask('task-1', { title: 'Alterado', assignees: [user2Id] })).rejects.toMatchObject({ message: 'Falha na atribuição' })
+    expect(result.current.tasks[0]).toMatchObject({ title: 'Test Task', assignees: [userId] })
+  })
+
   it('clears a deadline when the editor explicitly removes it', async () => {
     mockTaskFetch([{ ...mockTaskData, due_date: '2026-10-20T15:00:00Z' }])
     const { result } = renderHook(() => useTasks())
     await waitFor(() => expect(result.current.tasks).toHaveLength(1))
-    const update = jest.fn().mockReturnThis()
-    ;(supabase.from as jest.Mock)
-      .mockReturnValueOnce({ update, eq: jest.fn().mockResolvedValue({ error: null }) })
-      .mockReturnValueOnce({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: mockTaskData, error: null }) })
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: mockTaskData, error: null })
     await act(async () => { await result.current.updateTask('task-1', { dueDate: undefined }) })
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ due_date: null }))
+    expect(supabase.rpc).toHaveBeenCalledWith('save_office_task', expect.objectContaining({ changes: expect.objectContaining({ due_date: null }) }))
     expect(result.current.tasks[0].dueDate).toBeUndefined()
   })
 
@@ -281,14 +273,7 @@ describe('useTasks', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    ;(supabase.from as jest.Mock).mockReturnValueOnce({
-      insert: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Insert failed' },
-      }),
-    })
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: null, error: { message: 'Insert failed' } })
 
     await expect(
       result.current.createTask({

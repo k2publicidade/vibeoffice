@@ -3,6 +3,10 @@ import { TaskDialog } from '../TaskDialog'
 import type { Task } from '@/types/tasks'
 
 jest.mock('@/hooks/useUsers', () => ({ useUsers: () => ({ users: [], isLoading: false }) }))
+jest.mock('@/components/ui/premium-date-picker', () => ({
+  PremiumDatePicker: ({ onDateChange }: { onDateChange: (date?: Date) => void }) =>
+    <button type="button" onClick={() => onDateChange(undefined)}>Remover prazo</button>,
+}))
 jest.mock('@/components/ui/premium-modal', () => ({
   PremiumModal: ({ open, children }: { open: boolean; children: React.ReactNode }) => open ? <div>{children}</div> : null,
   PremiumModalHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -47,5 +51,13 @@ describe('task editor lifecycle and persistence', () => {
     expect(screen.getByLabelText(/Título/)).toHaveValue('Rascunho')
     expect(screen.getByRole('alert')).toHaveTextContent('Falha ao salvar')
     expect(close).not.toHaveBeenCalled()
+  })
+
+  it('allows removing an existing deadline', async () => {
+    const save = jest.fn()
+    render(<TaskDialog hideTrigger isOpen task={{ ...first, dueDate: new Date('2026-10-20T15:00:00Z') }} onSave={save} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Remover prazo' }))
+    fireEvent.submit(screen.getByLabelText(/Título/).closest('form')!)
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ dueDate: undefined })))
   })
 })

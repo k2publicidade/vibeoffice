@@ -487,7 +487,10 @@ function TaskDialogForm({
                 <PremiumDatePicker
                   date={formData.dueDate}
                   onDateChange={(date) => {
-                    if (!date) return
+                    if (!date) {
+                      setFormData({ ...formData, dueDate: undefined })
+                      return
+                    }
                     const newDate = new Date(date)
                     // Manter a hora atual se já existir
                     if (formData.dueDate) {

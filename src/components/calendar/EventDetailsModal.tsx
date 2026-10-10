@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Calendar as CalendarIcon,
@@ -183,7 +184,7 @@ export function EventDetailsModal({
                             <div className="flex items-center justify-between">
                                 <PremiumModalTitle>{event.title}</PremiumModalTitle>
                                 <div className="flex gap-2">
-                                    <Button
+                                    {!event.generatedByTask && <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => setIsEditing(true)}
@@ -191,7 +192,7 @@ export function EventDetailsModal({
                                         title="Editar evento"
                                     >
                                         <Edit2 className="h-4 w-4" />
-                                    </Button>
+                                    </Button>}
                                     {onDuplicate && (
                                         <Button
                                             variant="ghost"
@@ -203,7 +204,7 @@ export function EventDetailsModal({
                                             <Copy className="h-4 w-4" />
                                         </Button>
                                     )}
-                                    <Button
+                                    {!event.generatedByTask && <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={handleDelete}
@@ -211,7 +212,7 @@ export function EventDetailsModal({
                                         title="Excluir evento"
                                     >
                                         <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    </Button>}
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -237,6 +238,14 @@ export function EventDetailsModal({
                     </PremiumModalHeader>
 
                     <PremiumModalBody className="pl-8 space-y-6">
+                        {event.generatedByTask && event.linkedTaskId && (
+                            <p className="text-sm text-zinc-300">
+                                Este evento acompanha o prazo da tarefa.{' '}
+                                <Link href={`/tasks?open=${event.linkedTaskId}`} className="text-orange-400 underline" onClick={onClose}>
+                                    Editar tarefa vinculada
+                                </Link>
+                            </p>
+                        )}
                         {/* Time */}
                         <div className="flex items-start gap-3">
                             <div className="h-8 w-8 rounded-lg bg-zinc-800/50 flex items-center justify-center shrink-0">

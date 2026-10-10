@@ -31,6 +31,7 @@ export type Database = {
           linked_task_id: string | null
           linked_ticket_id: string | null
           linked_release_id: string | null
+          generated_by_task: boolean
         }
         Insert: {
           id?: string
@@ -1012,6 +1013,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_office_task: { Args: { task_id: string | null; changes: Json }; Returns: Json }
       can_drive: { Args: { i: string; writing?: boolean }; Returns: boolean }
       can_manage_drive: { Args: { i: string }; Returns: boolean }
       office_mfa_ok: { Args: Record<string, never>; Returns: boolean }
