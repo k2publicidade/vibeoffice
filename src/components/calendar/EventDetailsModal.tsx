@@ -241,7 +241,7 @@ export function EventDetailsModal({
                         {event.generatedByTask && event.linkedTaskId && (
                             <p className="text-sm text-zinc-300">
                                 Este evento acompanha o prazo da tarefa.{' '}
-                                <Link href={`/tasks?open=${event.linkedTaskId}`} className="text-orange-400 underline" onClick={onClose}>
+                                <Link href={`/tasks?open=${event.linkedTaskId}`} className="text-orange-400 underline">
                                     Editar tarefa vinculada
                                 </Link>
                             </p>
