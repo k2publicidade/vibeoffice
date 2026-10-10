@@ -29,8 +29,8 @@ export interface UseCalendarReturn {
   getUpcomingEvents: (days?: number) => CalendarEvent[]
   getEventById: (id: string) => CalendarEvent | null
   createEvent: (event: CreateEventInput) => Promise<void>
-  updateEvent: (id: string, event: Partial<CalendarEvent>) => void
-  deleteEvent: (id: string) => void
+  updateEvent: (id: string, event: Partial<CalendarEvent>) => Promise<void>
+  deleteEvent: (id: string) => Promise<void>
   duplicateEvent: (id: string) => Promise<void>
   getEventsByType: (type: CalendarEvent['type']) => CalendarEvent[]
   getMonthDays: (date: Date) => Date[]
@@ -189,7 +189,7 @@ export function useCalendar(): UseCalendarReturn {
         linkedReleaseId: data.linked_release_id || undefined,
       }
 
-      setEvents((prev) => [...prev, newEvent])
+      setEvents((prev) => [...prev.filter(event => event.id !== newEvent.id), newEvent])
     },
     [user, supabase]
   )
@@ -214,6 +214,7 @@ export function useCalendar(): UseCalendarReturn {
           start_time: updates.startTime?.toISOString(),
           end_time: updates.endTime?.toISOString(),
           type: updates.type,
+          sector: Object.prototype.hasOwnProperty.call(updates, 'sector') ? updates.sector ?? null : undefined,
           location: updates.location,
           attendees: updates.attendees,
           linked_task_id: updates.linkedTaskId === undefined ? undefined : updates.linkedTaskId || null,
@@ -236,6 +237,7 @@ export function useCalendar(): UseCalendarReturn {
                 startTime: new Date(data.start_time),
                 endTime: new Date(data.end_time),
                 type: data.type as 'personal' | 'sector' | 'company',
+                sector: data.sector || undefined,
                 location: data.location,
                 attendees: data.attendees || [],
                 updatedAt: new Date(), // DB não tem updated_at, usando data atual
@@ -258,6 +260,8 @@ export function useCalendar(): UseCalendarReturn {
       .from('calendar_events')
       .delete()
       .eq('id', id)
+      .select('id')
+      .single()
 
     if (error) throw error
 
@@ -301,6 +305,7 @@ export function useCalendar(): UseCalendarReturn {
         startTime: new Date(data.start_time),
         endTime: new Date(data.end_time),
         type: data.type as 'personal' | 'sector' | 'company',
+        sector: data.sector || undefined,
         location: data.location,
         attendees: data.attendees || [],
         createdBy: data.created_by,
@@ -311,7 +316,7 @@ export function useCalendar(): UseCalendarReturn {
         linkedReleaseId: data.linked_release_id || undefined,
       }
 
-      setEvents((prev) => [...prev, newEvent])
+      setEvents((prev) => [...prev.filter(event => event.id !== newEvent.id), newEvent])
     },
     [user, events, supabase]
   )

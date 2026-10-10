@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CalendarEvent } from '@/types/calendar'
+import type { Sector } from '@/types/auth'
 import { useTasks } from '@/hooks/useTasks'
 import { useTickets } from '@/hooks/useTickets'
 
@@ -62,9 +63,9 @@ interface EventDetailsModalProps {
     open: boolean
     onClose: () => void
     event: CalendarEvent | null
-    onUpdate: (id: string, updates: Partial<CalendarEvent>) => void
-    onDelete: (id: string) => void
-    onDuplicate?: (id: string) => void
+    onUpdate: (id: string, updates: Partial<CalendarEvent>) => void | Promise<void>
+    onDelete: (id: string) => boolean | void | Promise<boolean | void>
+    onDuplicate?: (id: string) => void | Promise<void>
     availableAttendees?: Attendee[]
     availableTags?: Tag[]
 }
@@ -75,6 +76,7 @@ const defaultTags: Tag[] = [
     { id: 'developer', name: 'Dev', color: 'hsl(0, 0%, 15%)' },
     { id: 'meeting', name: 'Reunião', color: 'hsl(142, 76%, 36%)' },
 ]
+const eventSectors: Sector[] = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
 
 export function EventDetailsModal({
     open,
@@ -88,6 +90,8 @@ export function EventDetailsModal({
 }: EventDetailsModalProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editedEvent, setEditedEvent] = useState<Partial<CalendarEvent>>({})
+    const [isSaving, setIsSaving] = useState(false)
+    const [saveError, setSaveError] = useState<string | null>(null)
 
     // Tasks & Tickets for linking
     const { tasks } = useTasks()
@@ -107,6 +111,7 @@ export function EventDetailsModal({
                 endTime: event.endTime,
                 location: event.location,
                 type: event.type,
+                sector: event.sector,
                 attendees: event.attendees,
                 linkedTaskId: event.linkedTaskId,
                 linkedTicketId: event.linkedTicketId,
@@ -126,35 +131,62 @@ export function EventDetailsModal({
                 setSelectedTicketId(undefined)
             }
             setIsEditing(false)
+            setSaveError(null)
         }
     }, [event, open])
 
     if (!event) return null
 
-    const handleSave = () => {
-        if (event.id) {
+    const handleSave = async () => {
+        if (event.id && !isSaving) {
+            if (!editedEvent.title?.trim()) { setSaveError('O título do evento é obrigatório.'); return }
+            if (!editedEvent.startTime || !editedEvent.endTime || !Number.isFinite(editedEvent.startTime.getTime()) || !Number.isFinite(editedEvent.endTime.getTime()) || editedEvent.endTime <= editedEvent.startTime) {
+                setSaveError('A hora de término deve ser após a hora de início.'); return
+            }
+            if (editedEvent.type === 'sector' && !editedEvent.sector) {
+                setSaveError('Selecione o setor do evento.'); return
+            }
             // Incluir linked items baseado no linkType
             const updatedEvent = {
                 ...editedEvent,
-                linkedTaskId: linkType === 'task' ? selectedTaskId : undefined,
-                linkedTicketId: linkType === 'ticket' ? selectedTicketId : undefined,
+                sector: editedEvent.type === 'sector' ? editedEvent.sector : undefined,
+                linkedTaskId: linkType === 'task' ? selectedTaskId ?? '' : '',
+                linkedTicketId: linkType === 'ticket' ? selectedTicketId ?? '' : '',
             }
-            onUpdate(event.id, updatedEvent)
-            setIsEditing(false)
+            setIsSaving(true)
+            setSaveError(null)
+            try {
+                await onUpdate(event.id, updatedEvent)
+                setIsEditing(false)
+                onClose()
+            } catch (error) {
+                setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar o evento. Tente novamente.')
+            } finally { setIsSaving(false) }
         }
     }
 
-    const handleDelete = () => {
-        if (event.id) {
-            onDelete(event.id)
-            onClose()
+    const handleDelete = async () => {
+        if (event.id && !isSaving) {
+            setIsSaving(true)
+            setSaveError(null)
+            try {
+                if (await onDelete(event.id) !== false) onClose()
+            } catch (error) {
+                setSaveError(error instanceof Error ? error.message : 'Não foi possível excluir o evento. Tente novamente.')
+            } finally { setIsSaving(false) }
         }
     }
 
-    const handleDuplicate = () => {
-        if (event.id && onDuplicate) {
-            onDuplicate(event.id)
-            onClose()
+    const handleDuplicate = async () => {
+        if (event.id && onDuplicate && !isSaving) {
+            setIsSaving(true)
+            setSaveError(null)
+            try {
+                await onDuplicate(event.id)
+                onClose()
+            } catch (error) {
+                setSaveError(error instanceof Error ? error.message : 'Não foi possível duplicar o evento. Tente novamente.')
+            } finally { setIsSaving(false) }
         }
     }
 
@@ -171,7 +203,8 @@ export function EventDetailsModal({
     const eventColor = getTypeColor(event.type)
 
     return (
-        <PremiumModal open={open} onClose={onClose} size="md" showCloseButton={false}>
+        <PremiumModal open={open} onClose={() => { if (!isSaving) onClose() }} size="md" showCloseButton={false}>
+            {saveError && <p role="alert" className="mb-4 text-sm text-red-400">{saveError}</p>}
             {!isEditing ? (
                 // VIEW MODE
                 <>
@@ -190,6 +223,7 @@ export function EventDetailsModal({
                                         onClick={() => setIsEditing(true)}
                                         className="h-8 w-8 text-zinc-400 hover:text-white"
                                         title="Editar evento"
+                                        disabled={isSaving}
                                     >
                                         <Edit2 className="h-4 w-4" />
                                     </Button>}
@@ -200,6 +234,7 @@ export function EventDetailsModal({
                                             onClick={handleDuplicate}
                                             className="h-8 w-8 text-zinc-400 hover:text-blue-400"
                                             title="Duplicar evento"
+                                            disabled={isSaving}
                                         >
                                             <Copy className="h-4 w-4" />
                                         </Button>
@@ -210,6 +245,7 @@ export function EventDetailsModal({
                                         onClick={handleDelete}
                                         className="h-8 w-8 text-zinc-400 hover:text-red-400"
                                         title="Excluir evento"
+                                        disabled={isSaving}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>}
@@ -219,6 +255,7 @@ export function EventDetailsModal({
                                         onClick={onClose}
                                         className="h-8 w-8 text-zinc-400 hover:text-white"
                                         title="Fechar"
+                                        disabled={isSaving}
                                     >
                                         <X className="h-4 w-4" />
                                     </Button>
@@ -325,6 +362,7 @@ export function EventDetailsModal({
                         <Button
                             variant="outline"
                             onClick={onClose}
+                            disabled={isSaving}
                             className="w-full rounded-full border-zinc-700 hover:bg-zinc-800"
                         >
                             Fechar
@@ -339,8 +377,9 @@ export function EventDetailsModal({
                     </PremiumModalHeader>
                     <PremiumModalBody className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Título</Label>
+                            <Label htmlFor="calendar-edit-title">Título</Label>
                             <Input
+                                id="calendar-edit-title"
                                 value={editedEvent.title}
                                 onChange={e => setEditedEvent({ ...editedEvent, title: e.target.value })}
                                 className="bg-zinc-800/50 border-zinc-700"
@@ -349,8 +388,9 @@ export function EventDetailsModal({
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Início</Label>
+                                <Label htmlFor="calendar-edit-start">Início</Label>
                                 <Input
+                                    id="calendar-edit-start"
                                     type="time"
                                     value={editedEvent.startTime ? format(new Date(editedEvent.startTime), 'HH:mm') : ''}
                                     onChange={e => {
@@ -363,8 +403,9 @@ export function EventDetailsModal({
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Fim</Label>
+                                <Label htmlFor="calendar-edit-end">Fim</Label>
                                 <Input
+                                    id="calendar-edit-end"
                                     type="time"
                                     value={editedEvent.endTime ? format(new Date(editedEvent.endTime), 'HH:mm') : ''}
                                     onChange={e => {
@@ -379,8 +420,9 @@ export function EventDetailsModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Local</Label>
+                            <Label htmlFor="calendar-edit-location">Local</Label>
                             <Input
+                                id="calendar-edit-location"
                                 value={editedEvent.location || ''}
                                 onChange={e => setEditedEvent({ ...editedEvent, location: e.target.value })}
                                 placeholder="Adicionar local"
@@ -389,8 +431,9 @@ export function EventDetailsModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Descrição</Label>
+                            <Label htmlFor="calendar-edit-description">Descrição</Label>
                             <Textarea
+                                id="calendar-edit-description"
                                 value={editedEvent.description || ''}
                                 onChange={e => setEditedEvent({ ...editedEvent, description: e.target.value })}
                                 placeholder="Adicione detalhes..."
@@ -399,12 +442,12 @@ export function EventDetailsModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Tipo</Label>
+                            <Label htmlFor="calendar-edit-type">Tipo</Label>
                             <Select
                                 value={editedEvent.type}
                                 onValueChange={(val: any) => setEditedEvent({ ...editedEvent, type: val })}
                             >
-                                <SelectTrigger className="bg-zinc-800/50 border-zinc-700">
+                                <SelectTrigger id="calendar-edit-type" className="bg-zinc-800/50 border-zinc-700">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -414,6 +457,16 @@ export function EventDetailsModal({
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {editedEvent.type === 'sector' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="calendar-edit-sector">Setor</Label>
+                                <Select value={editedEvent.sector || ''} onValueChange={value => setEditedEvent({ ...editedEvent, sector: value as Sector })}>
+                                    <SelectTrigger id="calendar-edit-sector" className="bg-zinc-800/50 border-zinc-700"><SelectValue placeholder="Selecione o setor" /></SelectTrigger>
+                                    <SelectContent>{eventSectors.map(sector => <SelectItem key={sector} value={sector}>{sector}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
                         {/* Vinculação a Task/Ticket */}
                         <div className="space-y-2">
@@ -458,13 +511,14 @@ export function EventDetailsModal({
                         </div>
                     </PremiumModalBody>
                     <PremiumModalFooter className="flex justify-between">
-                        <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                        <Button variant="ghost" disabled={isSaving} onClick={() => setIsEditing(false)}>Cancelar</Button>
                         <Button
                             onClick={handleSave}
+                            disabled={isSaving}
                             className="bg-gradient-to-r from-[#fc7a67] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#fc7a67]"
                         >
                             <Save className="h-4 w-4 mr-2" />
-                            Salvar Alterações
+                            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                         </Button>
                     </PremiumModalFooter>
                 </>

@@ -48,3 +48,52 @@ it('keeps generated events tied to the task when deletion is attempted', async (
   expect(result.current.events).toHaveLength(1)
   expect(supabase.from).toHaveBeenCalledTimes(1)
 })
+
+it('keeps a manual event when deletion affects no authorized row', async () => {
+  fetchRows([{ ...row, generated_by_task: false }])
+  const { result } = renderHook(() => useCalendar())
+  await waitFor(() => expect(result.current.events).toHaveLength(1))
+  const failure = { message: 'Evento indisponível', code: 'PGRST116' }
+  ;(supabase.from as jest.Mock).mockReturnValueOnce({
+    delete: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), select: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data: null, error: failure }),
+  })
+  await expect(result.current.deleteEvent('event-1')).rejects.toMatchObject(failure)
+  expect(result.current.events).toHaveLength(1)
+})
+
+it('persists a sector change on a manual event', async () => {
+  fetchRows([{ ...row, generated_by_task: false, type: 'sector', sector: 'Marketing' }])
+  const { result } = renderHook(() => useCalendar())
+  await waitFor(() => expect(result.current.events).toHaveLength(1))
+  const update = jest.fn().mockReturnThis()
+  ;(supabase.from as jest.Mock).mockReturnValueOnce({
+    update, eq: jest.fn().mockReturnThis(), select: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data: { ...row, generated_by_task: false, type: 'sector', sector: 'Financeiro' }, error: null }),
+  })
+  await act(async () => { await result.current.updateEvent('event-1', { sector: 'Financeiro' }) })
+  expect(update).toHaveBeenCalledWith(expect.objectContaining({ sector: 'Financeiro' }))
+  expect(result.current.events[0].sector).toBe('Financeiro')
+})
+
+it('does not duplicate an event already delivered by Realtime during creation', async () => {
+  fetchRows([])
+  const { result } = renderHook(() => useCalendar())
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  let resolveInsert!: (result: unknown) => void
+  ;(supabase.from as jest.Mock).mockReturnValueOnce({
+    insert: jest.fn().mockReturnThis(), select: jest.fn().mockReturnThis(),
+    single: jest.fn(() => new Promise(resolve => { resolveInsert = resolve })),
+  })
+  fetchRows([{ ...row, generated_by_task: false }])
+  const channel = (supabase.channel as jest.Mock).mock.results.at(-1)!.value
+  const notification = channel.on.mock.calls[0][2]
+  let saving!: Promise<void>
+  await act(async () => {
+    saving = result.current.createEvent({ title: row.title, startTime: new Date(row.start_time), endTime: new Date(row.end_time), type: 'personal' })
+    notification()
+  })
+  expect(result.current.events).toHaveLength(1)
+  await act(async () => { resolveInsert({ data: { ...row, generated_by_task: false }, error: null }); await saving })
+  expect(result.current.events).toHaveLength(1)
+})

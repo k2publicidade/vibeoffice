@@ -185,9 +185,7 @@ export default function CalendarPage() {
 
       // Validação extra antes de enviar
       if (endTime <= startTime) {
-        toast.error('Erro: Hora de término deve ser após hora de início')
-        console.error('[CalendarPage] Validação falhou: endTime <= startTime')
-        return
+        throw new Error('A hora de término deve ser após a hora de início.')
       }
 
       await createEvent({
@@ -208,7 +206,8 @@ export default function CalendarPage() {
       toast.success('Evento criado com sucesso!')
     } catch (error) {
       console.error('[CalendarPage] Erro ao criar evento:', error)
-      toast.error('Erro ao criar evento. Verifique o console para detalhes.')
+      toast.error('Não foi possível criar o evento. Seus dados foram preservados.')
+      throw error
     }
   }
 
@@ -243,6 +242,7 @@ export default function CalendarPage() {
     } catch (error) {
       console.error("Error update", error)
       toast.error("Erro ao atualizar evento")
+      throw error
     }
   }
 
@@ -252,11 +252,14 @@ export default function CalendarPage() {
         await deleteEvent(id)
         toast.success('Evento excluído com sucesso!')
         setDetailsModalOpen(false)
+        return true
       } catch (error) {
         console.error("Error delete", error)
         toast.error("Erro ao excluir evento")
+        throw error
       }
     }
+    return false
   }
 
   const handleDuplicateEvent = async (id: string) => {
@@ -267,6 +270,7 @@ export default function CalendarPage() {
     } catch (error) {
       console.error("Error duplicate", error)
       toast.error("Erro ao duplicar evento")
+      throw error
     }
   }
 

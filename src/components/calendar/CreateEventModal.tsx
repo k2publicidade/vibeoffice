@@ -54,7 +54,7 @@ interface CreateEventModalProps {
     attendees: string[]
     linkedTaskId?: string
     linkedTicketId?: string
-  }) => void
+  }) => void | Promise<void>
   selectedDate?: Date
   selectedHour?: number
   availableAttendees?: Attendee[]
@@ -103,14 +103,16 @@ export function CreateEventModal({
   open,
   onClose,
   onSave,
-  selectedDate = new Date(),
+  selectedDate,
   selectedHour,
   availableAttendees = [],
 }: CreateEventModalProps) {
+  const [fallbackDate] = useState(() => new Date())
+  const initialDate = selectedDate ?? fallbackDate
   // Todos os estados do formulário
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [date, setDate] = useState(selectedDate)
+  const [date, setDate] = useState(initialDate)
   const [dateStr, setDateStr] = useState('')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
@@ -121,6 +123,8 @@ export function CreateEventModal({
   const [linkType, setLinkType] = useState<'none' | 'task' | 'ticket'>('none')
   const [selectedTaskId, setSelectedTaskId] = useState<string>()
   const [selectedTicketId, setSelectedTicketId] = useState<string>()
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // Resetar e sincronizar tudo quando o modal abre
   useEffect(() => {
@@ -135,9 +139,10 @@ export function CreateEventModal({
       setLinkType('none')
       setSelectedTaskId(undefined)
       setSelectedTicketId(undefined)
+      setSaveError(null)
 
       // Normalizar data removendo componente de hora
-      const normalizedDate = new Date(selectedDate)
+      const normalizedDate = new Date(initialDate)
       normalizedDate.setHours(0, 0, 0, 0)
       setDate(normalizedDate)
 
@@ -152,13 +157,13 @@ export function CreateEventModal({
         const hour = Math.max(0, Math.min(23, selectedHour))
         const endHour = Math.min(23, hour + 1)
         setStartTime(`${hour.toString().padStart(2, '0')}:00`)
-        setEndTime(`${endHour.toString().padStart(2, '0')}:00`)
+        setEndTime(hour === 23 ? '23:30' : `${endHour.toString().padStart(2, '0')}:00`)
       } else {
         setStartTime('09:00')
         setEndTime('10:00')
       }
     }
-  }, [open, selectedDate, selectedHour])
+  }, [open, initialDate, selectedHour])
 
   // Sincronizar dateStr -> date quando o usuário altera o input
   const handleDateChange = (value: string) => {
@@ -181,7 +186,8 @@ export function CreateEventModal({
     )
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return
     // Validar que título foi preenchido
     if (!title.trim()) {
       toast.error('O título do evento é obrigatório')
@@ -194,30 +200,28 @@ export function CreateEventModal({
     const startMinutes = startHour * 60 + startMin
     const endMinutes = endHour * 60 + endMin
 
-    // Debug logging
-    console.log('[CreateEventModal] Criando evento:', {
-      title,
-      date: date.toISOString(),
-      startTime,
-      endTime,
-      startMinutes,
-      endMinutes,
-    })
-
-    if (endMinutes <= startMinutes) {
+    if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes) || endMinutes <= startMinutes) {
       toast.error('A hora de término deve ser após a hora de início')
       console.error('[CreateEventModal] Validação falhou: endMinutes <= startMinutes', { startMinutes, endMinutes })
       return
     }
 
     // Garantir que a data é válida
-    if (!date || isNaN(date.getTime())) {
+    if (!dateStr || !date || isNaN(date.getTime())) {
       toast.error('Data inválida selecionada')
       console.error('[CreateEventModal] Data inválida:', date)
       return
     }
 
-    onSave({
+    if (eventType === 'sector' && !eventSector) {
+      toast.error('Selecione o setor do evento')
+      return
+    }
+
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      await onSave({
       title,
       description: description.trim() || undefined,
       date,
@@ -229,14 +233,17 @@ export function CreateEventModal({
       attendees: selectedAttendees,
       linkedTaskId: linkType === 'task' ? selectedTaskId : undefined,
       linkedTicketId: linkType === 'ticket' ? selectedTicketId : undefined,
-    })
-    onClose()
+      })
+      onClose()
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Não foi possível criar o evento. Tente novamente.')
+    } finally { setIsSaving(false) }
   }
 
   return (
     <PremiumModal
       open={open}
-      onClose={onClose}
+      onClose={() => { if (!isSaving) onClose() }}
       size="md"
       mobileFullScreen={true}
       title="Novo Evento"
@@ -251,6 +258,7 @@ export function CreateEventModal({
       </PremiumModalHeader>
 
       <PremiumModalBody>
+        {saveError && <p role="alert" className="mb-4 text-sm text-red-400">{saveError}</p>}
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -497,16 +505,17 @@ export function CreateEventModal({
         <Button
           variant="outline"
           onClick={onClose}
+          disabled={isSaving}
           className="rounded-full px-6 h-12 md:h-11 border-zinc-700 hover:bg-zinc-800 hover:text-foreground flex-1 md:flex-none"
         >
           Cancelar
         </Button>
         <Button
           onClick={handleSave}
-          disabled={!title}
+          disabled={!title.trim() || isSaving}
           className="rounded-full px-6 h-12 md:h-11 bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#cc0200] shadow-lg shadow-[#ff0300]/30 transition-all disabled:opacity-50 flex-1 md:flex-none"
         >
-          Criar evento
+          {isSaving ? 'Salvando...' : 'Criar evento'}
         </Button>
       </PremiumModalFooter>
     </PremiumModal>
