@@ -25,6 +25,7 @@ export interface CalendarEvent {
   generatedByTask?: boolean
   linkedTicketId?: string
   linkedReleaseId?: string
+  generatedByRelease?: boolean
 }
 
 export interface CreateEventInput {

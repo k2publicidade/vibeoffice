@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Suspense } from 'react'
 import { Plus, Search, Disc3, LayoutDashboard, Columns3 } from 'lucide-react'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useReleases } from '@/hooks/useReleases'
-import { useCalendar } from '@/hooks/useCalendar'
+import { useRecordLink } from '@/hooks/useRecordLink'
 import { ReleasesKanbanBoard, ReleaseColumnData } from '@/components/releases/ReleasesKanbanBoard'
 import { ReleasesDashboard } from '@/components/releases/ReleasesDashboard'
 import { ReleaseModal } from '@/components/releases/ReleaseModal'
@@ -28,10 +28,9 @@ const COLUMN_TITLES: Record<ReleaseStatus, string> = {
   released: 'Lancado',
 }
 
-export default function LancamentosPage() {
-  const { createEvent: createCalendarEvent } = useCalendar()
-
+function LancamentosContent() {
   const {
+    releases,
     filteredReleases,
     filters,
     setFilters,
@@ -41,7 +40,7 @@ export default function LancamentosPage() {
     deleteRelease,
     updateReleaseStatus,
     getReleasesByStatus,
-  } = useReleases({ createCalendarEvent })
+  } = useReleases()
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -103,6 +102,8 @@ export default function LancamentosPage() {
     setEditModalOpen(true)
   }
 
+  const { clearLink } = useRecordLink('open', releases, !isLoading, handleEditRelease)
+
   const handleUpdateRelease = async (data: CreateReleaseInput) => {
     if (!selectedRelease) return
     try {
@@ -128,11 +129,14 @@ export default function LancamentosPage() {
       await createRelease({
         title: `${original.title} (Copia)`,
         artist: original.artist,
+        artists: original.artists,
         releaseType: original.releaseType,
         genre: original.genre,
         releaseDate: original.releaseDate,
         status: original.status,
-        coverUrl: original.coverUrl,
+        coverUrl: original.fileReferences?.cover ?? original.coverUrl,
+        wavUrl: original.fileReferences?.wav ?? original.wavUrl,
+        tracks: original.tracks,
         composers: original.composers?.length ? [...original.composers] : undefined,
         platformLinks: original.platformLinks?.length ? [...original.platformLinks] : undefined,
         isrc: original.isrc,
@@ -273,7 +277,7 @@ export default function LancamentosPage() {
       {/* Edit Modal */}
       <ReleaseModal
         open={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
+        onClose={() => { setEditModalOpen(false); clearLink() }}
         onSave={handleUpdateRelease}
         release={selectedRelease}
       />
@@ -289,4 +293,8 @@ export default function LancamentosPage() {
       />
     </div>
   )
+}
+
+export default function LancamentosPage() {
+  return <Suspense fallback={<div className="p-6 text-gray-400">Carregando lançamentos...</div>}><LancamentosContent /></Suspense>
 }

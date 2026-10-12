@@ -31,6 +31,7 @@ export type Database = {
           linked_task_id: string | null
           linked_ticket_id: string | null
           linked_release_id: string | null
+          generated_by_release: boolean
           generated_by_task: boolean
         }
         Insert: {
@@ -928,6 +929,7 @@ export type Database = {
           artist: string
           release_type: string
           genre: string | null
+          release_at: string | null
           release_date: string | null
           status: string
           cover_url: string | null
@@ -954,6 +956,7 @@ export type Database = {
           artist: string
           release_type?: string
           genre?: string | null
+          release_at?: string | null
           release_date?: string | null
           status?: string
           cover_url?: string | null
@@ -979,6 +982,7 @@ export type Database = {
           artist?: string
           release_type?: string
           genre?: string | null
+          release_at?: string | null
           release_date?: string | null
           status?: string
           cover_url?: string | null
@@ -1013,6 +1017,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      save_office_release: { Args: { release_id: string | null; changes: Json }; Returns: Json }
       save_office_task: { Args: { task_id: string | null; changes: Json }; Returns: Json }
       can_drive: { Args: { i: string; writing?: boolean }; Returns: boolean }
       can_manage_drive: { Args: { i: string }; Returns: boolean }

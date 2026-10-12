@@ -78,6 +78,7 @@ export function useCalendar(): UseCalendarReturn {
           updatedAt: new Date(event.created_at),
           linkedTaskId: event.linked_task_id || undefined,
           generatedByTask: event.generated_by_task ?? false,
+          generatedByRelease: event.generated_by_release ?? false,
           linkedTicketId: event.linked_ticket_id || undefined,
           linkedReleaseId: event.linked_release_id || undefined,
         }))
@@ -197,6 +198,20 @@ export function useCalendar(): UseCalendarReturn {
   const updateEvent = useCallback(
     async (id: string, updates: Partial<CalendarEvent>) => {
       const original = events.find(event => event.id === id)
+      if (original?.generatedByRelease && original.linkedReleaseId) {
+        if (!updates.startTime) throw new Error('Edite a data no lançamento vinculado.')
+        const chosen = updates.startTime
+        const { error } = await supabase.rpc('save_office_release', {
+          release_id: original.linkedReleaseId,
+          changes: {
+            release_date: `${chosen.getFullYear()}-${String(chosen.getMonth() + 1).padStart(2, '0')}-${String(chosen.getDate()).padStart(2, '0')}`,
+            release_at: chosen.toISOString(),
+          },
+        })
+        if (error) throw error
+        await fetchEvents()
+        return
+      }
       if (original?.generatedByTask && original.linkedTaskId) {
         if (!updates.startTime) throw new Error('Edite o prazo na tarefa vinculada.')
         const { error } = await supabase.rpc('save_office_task', {
@@ -253,6 +268,9 @@ export function useCalendar(): UseCalendarReturn {
   )
 
   const deleteEvent = useCallback(async (id: string) => {
+    if (events.find(event => event.id === id)?.generatedByRelease) {
+      throw new Error('Remova a data no lançamento vinculado.')
+    }
     if (events.find(event => event.id === id)?.generatedByTask) {
       throw new Error('Remova o prazo na tarefa vinculada.')
     }

@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { toast } from 'sonner'
 import { resolveStorageUrl, storageReference } from '@/lib/supabase/storage'
-import type { Release, ReleaseStatus, CreateReleaseInput, ReleaseFilters } from '@/types/releases'
-import type { CreateEventInput } from './useCalendar'
+import type { Release, ReleaseStatus, CreateReleaseInput, UpdateReleaseInput, ReleaseFilters } from '@/types/releases'
 
 function parseJsonb<T>(value: any, fallback: T[]): T[] {
   if (!value) return fallback
@@ -27,9 +26,10 @@ function mapDbToRelease(row: any): Release {
     artists: parseJsonb(row.artists, []),
     releaseType: row.release_type,
     genre: row.genre || undefined,
-    releaseDate: row.release_date ? new Date(row.release_date + 'T12:00:00') : undefined,
+    releaseDate: row.release_at ? new Date(row.release_at) : row.release_date ? new Date(row.release_date + 'T12:00:00') : undefined,
     status: row.status as ReleaseStatus,
     coverUrl: row.cover_url || undefined,
+    fileReferences: { cover: row.cover_url || undefined, wav: row.wav_url || undefined },
     wavUrl: row.wav_url || undefined,
     composers: parseJsonb(row.composers, []),
     tracks: parseJsonb(row.tracks, []),
@@ -47,14 +47,42 @@ function mapDbToRelease(row: any): Release {
   }
 }
 
-interface UseReleasesOptions {
-  createCalendarEvent?: (event: CreateEventInput) => Promise<void>
+async function mapReleaseWithFiles(row: any): Promise<Release> {
+  async function resolveFile(url: string | null | undefined, label: string) {
+    try {
+      return await resolveStorageUrl(url)
+    } catch (error) {
+      console.error('Error loading release file:', error)
+      toast.error(`Não foi possível carregar ${label} do lançamento.`)
+      return undefined
+    }
+  }
+  const [coverUrl, wavUrl] = await Promise.all([
+    resolveFile(row.cover_url, 'a capa'),
+    resolveFile(row.wav_url, 'o áudio'),
+  ])
+  return { ...mapDbToRelease(row), coverUrl, wavUrl }
 }
 
-export function useReleases(options?: UseReleasesOptions) {
+function releaseClock(date: Date | null, time?: string) {
+  if (!date) return { release_date: null, release_at: null }
+  const chosen = new Date(date)
+  if (time) {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Horário inválido')
+    const [hours, minutes] = time.split(':').map(Number)
+    chosen.setHours(hours, minutes, 0, 0)
+  }
+  return {
+    release_date: `${chosen.getFullYear()}-${String(chosen.getMonth() + 1).padStart(2, '0')}-${String(chosen.getDate()).padStart(2, '0')}`,
+    release_at: chosen.toISOString(),
+  }
+}
+
+export function useReleases() {
   const [releases, setReleases] = useState<Release[]>([])
   const [filters, setFilters] = useState<ReleaseFilters>({})
   const [isLoading, setIsLoading] = useState(true)
+  const readVersion = useRef(0)
   const { user } = useAuth()
   const supabase = createClient()
 
@@ -74,6 +102,7 @@ export function useReleases(options?: UseReleasesOptions) {
           } else if (payload.eventType === 'UPDATE') {
             void fetchReleases()
           } else if (payload.eventType === 'DELETE') {
+            invalidateReads()
             setReleases(prev => prev.filter(r => r.id !== payload.old.id))
           }
         }
@@ -85,7 +114,13 @@ export function useReleases(options?: UseReleasesOptions) {
     }
   }, [user])
 
+  function invalidateReads() {
+    readVersion.current += 1
+    setIsLoading(false)
+  }
+
   async function fetchReleases() {
+    const version = ++readVersion.current
     setIsLoading(true)
     try {
       const { data, error } = await supabase
@@ -95,11 +130,12 @@ export function useReleases(options?: UseReleasesOptions) {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setReleases(await Promise.all(data.map(async row => ({ ...mapDbToRelease(row), coverUrl: await resolveStorageUrl(row.cover_url), wavUrl: await resolveStorageUrl((row as unknown as { wav_url?: string }).wav_url) }))))
+      const mapped = await Promise.all((data || []).map(mapReleaseWithFiles))
+      if (version === readVersion.current) setReleases(mapped)
     } catch (error) {
       console.error('Error fetching releases:', error)
     } finally {
-      setIsLoading(false)
+      if (version === readVersion.current) setIsLoading(false)
     }
   }
 
@@ -119,19 +155,15 @@ export function useReleases(options?: UseReleasesOptions) {
   const createRelease = useCallback(async (input: CreateReleaseInput) => {
     if (!user) throw new Error('User not authenticated')
 
-    const maxPosition = releases
-      .filter(r => r.status === (input.status || 'scheduled'))
-      .reduce((max, r) => Math.max(max, r.position), -1)
-
-    const { data, error } = await supabase
-      .from('releases')
-      .insert({
+    const { data, error } = await supabase.rpc('save_office_release', {
+      release_id: null,
+      changes: {
         title: input.title,
         artist: input.artist,
         artists: (input.artists || []) as never,
         release_type: input.releaseType,
         genre: input.genre || null,
-        release_date: input.releaseDate ? `${input.releaseDate.getFullYear()}-${String(input.releaseDate.getMonth() + 1).padStart(2, '0')}-${String(input.releaseDate.getDate()).padStart(2, '0')}` : null,
+        ...releaseClock(input.releaseDate ?? null, input.releaseTime),
         status: input.status || 'scheduled',
         cover_url: input.coverUrl ? storageReference(input.coverUrl) : null,
         wav_url: input.wavUrl ? storageReference(input.wavUrl) : null,
@@ -144,53 +176,26 @@ export function useReleases(options?: UseReleasesOptions) {
         distributor: input.distributor || null,
         notes: input.notes || null,
         sector: input.sector || null,
-        created_by: user.id,
-        position: maxPosition + 1,
-      })
-      .select()
-      .single()
+      },
+    })
 
     if (error) throw error
 
-    const newRelease = mapDbToRelease(data)
-    await fetchReleases()
-
-    // Auto-create calendar event if release has a date
-    if (input.releaseDate && options?.createCalendarEvent) {
-      try {
-        const startTime = new Date(input.releaseDate)
-        if (input.releaseTime) {
-          const [hours, minutes] = input.releaseTime.split(':').map(Number)
-          startTime.setHours(hours, minutes, 0, 0)
-        }
-        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000) // +1h
-
-        await options.createCalendarEvent({
-          title: `${input.artist} - ${input.title}`,
-          description: `Lançamento: ${input.releaseType?.toUpperCase() || 'SINGLE'}${input.genre ? ` | ${input.genre}` : ''}`,
-          startTime,
-          endTime,
-          type: 'company',
-          sector: input.sector,
-          linkedReleaseId: newRelease.id,
-        })
-      } catch (calError) {
-        console.error('Error creating calendar event for release:', calError)
-        // Don't throw - release was created successfully
-      }
-    }
+    invalidateReads()
+    const newRelease = await mapReleaseWithFiles(data)
+    setReleases(prev => [...prev.filter(r => r.id !== newRelease.id), newRelease])
 
     return newRelease
-  }, [user, releases, options?.createCalendarEvent])
+  }, [user])
 
-  const updateRelease = useCallback(async (id: string, updates: Partial<Release>) => {
+  const updateRelease = useCallback(async (id: string, updates: UpdateReleaseInput) => {
     const updateData: Record<string, any> = {}
     if (updates.title !== undefined) updateData.title = updates.title
     if (updates.artist !== undefined) updateData.artist = updates.artist
     if (updates.artists !== undefined) updateData.artists = updates.artists || []
     if (updates.releaseType !== undefined) updateData.release_type = updates.releaseType
     if (updates.genre !== undefined) updateData.genre = updates.genre || null
-    if (updates.releaseDate !== undefined) updateData.release_date = updates.releaseDate ? `${updates.releaseDate.getFullYear()}-${String(updates.releaseDate.getMonth() + 1).padStart(2, '0')}-${String(updates.releaseDate.getDate()).padStart(2, '0')}` : null
+    if (updates.releaseDate !== undefined) Object.assign(updateData, releaseClock(updates.releaseDate, updates.releaseTime))
     if (updates.status !== undefined) updateData.status = updates.status
     if (updates.coverUrl !== undefined) updateData.cover_url = updates.coverUrl ? storageReference(updates.coverUrl) : null
     if (updates.wavUrl !== undefined) updateData.wav_url = updates.wavUrl ? storageReference(updates.wavUrl) : null
@@ -205,67 +210,16 @@ export function useReleases(options?: UseReleasesOptions) {
     if (updates.sector !== undefined) updateData.sector = updates.sector || null
     if (updates.position !== undefined) updateData.position = updates.position
 
-    const { data, error } = await supabase
-      .from('releases')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single()
+    const { data, error } = await supabase.rpc('save_office_release', { release_id: id, changes: updateData })
 
     if (error) throw error
 
-    const updated = { ...mapDbToRelease(data), coverUrl: await resolveStorageUrl(data.cover_url), wavUrl: await resolveStorageUrl(data.wav_url) }
+    invalidateReads()
+    const updated = await mapReleaseWithFiles(data)
     setReleases(prev => prev.map(r => r.id === id ? updated : r))
 
-    // Sync calendar event if date changed
-    if (updates.releaseDate !== undefined && options?.createCalendarEvent) {
-      try {
-        const { data: existingEvents } = await supabase
-          .from('calendar_events')
-          .select('id')
-          .eq('linked_release_id', id)
-          .limit(1)
-
-        if (updates.releaseDate && existingEvents && existingEvents.length > 0) {
-          const startTime = new Date(updates.releaseDate)
-          startTime.setHours(12, 0, 0, 0)
-          const endTime = new Date(startTime.getTime() + 60 * 60 * 1000)
-
-          await supabase
-            .from('calendar_events')
-            .update({
-              title: `${updated.artist} - ${updated.title}`,
-              start_time: startTime.toISOString(),
-              end_time: endTime.toISOString(),
-            })
-            .eq('id', existingEvents[0].id)
-        } else if (updates.releaseDate && (!existingEvents || existingEvents.length === 0)) {
-          const startTime = new Date(updates.releaseDate)
-          startTime.setHours(12, 0, 0, 0)
-          const endTime = new Date(startTime.getTime() + 60 * 60 * 1000)
-
-          await options.createCalendarEvent({
-            title: `${updated.artist} - ${updated.title}`,
-            description: `Lançamento: ${updated.releaseType?.toUpperCase() || 'SINGLE'}`,
-            startTime,
-            endTime,
-            type: 'company',
-            sector: updated.sector,
-            linkedReleaseId: id,
-          })
-        } else if (!updates.releaseDate && existingEvents && existingEvents.length > 0) {
-          await supabase
-            .from('calendar_events')
-            .delete()
-            .eq('id', existingEvents[0].id)
-        }
-      } catch (calError) {
-        console.error('Error syncing calendar event for release:', calError)
-      }
-    }
-
     return updated
-  }, [options?.createCalendarEvent])
+  }, [])
 
   const deleteRelease = useCallback(async (id: string) => {
     const { error } = await supabase
@@ -276,6 +230,7 @@ export function useReleases(options?: UseReleasesOptions) {
       .single()
 
     if (error) throw error
+    invalidateReads()
     setReleases(prev => prev.filter(r => r.id !== id))
   }, [])
 
@@ -283,16 +238,12 @@ export function useReleases(options?: UseReleasesOptions) {
     const updateData: Record<string, any> = { status }
     if (position !== undefined) updateData.position = position
 
-    const { data, error } = await supabase
-      .from('releases')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single()
+    const { data, error } = await supabase.rpc('save_office_release', { release_id: id, changes: updateData })
 
     if (error) throw error
 
-    const updated = { ...mapDbToRelease(data), coverUrl: await resolveStorageUrl(data.cover_url), wavUrl: await resolveStorageUrl(data.wav_url) }
+    invalidateReads()
+    const updated = await mapReleaseWithFiles(data)
     setReleases(prev => prev.map(r => r.id === id ? updated : r))
     return updated
   }, [])

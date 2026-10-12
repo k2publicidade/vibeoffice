@@ -45,6 +45,7 @@ export interface Release {
   releaseDate?: Date
   status: ReleaseStatus
   coverUrl?: string
+  fileReferences?: { cover?: string; wav?: string }
   wavUrl?: string
   composers: Composer[] // Used for singles
   tracks: Track[] // New: Used for EP/Albums
@@ -61,26 +62,22 @@ export interface Release {
   position: number
 }
 
-export interface CreateReleaseInput {
+type NullableReleaseField = 'genre' | 'releaseDate' | 'coverUrl' | 'wavUrl' | 'isrc' | 'upc' | 'label' | 'distributor' | 'notes' | 'sector'
+
+export type UpdateReleaseInput = Omit<Partial<Release>, NullableReleaseField | 'fileReferences'> & {
+  [K in NullableReleaseField]?: Release[K] | null
+} & { releaseTime?: string }
+
+export interface CreateReleaseInput extends Omit<UpdateReleaseInput, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'position'> {
   title: string
   artist: string
   artists?: ReleaseArtist[]
   releaseType: ReleaseType
-  genre?: string
-  releaseDate?: Date
   releaseTime?: string
   status?: ReleaseStatus
-  coverUrl?: string
-  wavUrl?: string
   composers?: Composer[]
   tracks?: Track[]
   platformLinks?: PlatformLink[]
-  isrc?: string
-  upc?: string
-  label?: string
-  distributor?: string
-  notes?: string
-  sector?: Sector
 }
 
 export interface ReleaseFilters {

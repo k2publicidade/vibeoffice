@@ -19,6 +19,30 @@ beforeEach(() => {
   ;(useAuth as jest.Mock).mockReturnValue({ user: { id: 'user-1' } })
 })
 
+it('moves the release date and time through its atomic transaction', async () => {
+  const releaseEvent = { ...row, generated_by_task: false, linked_task_id: null, generated_by_release: true, linked_release_id: 'release-1' }
+  fetchRows([releaseEvent])
+  const { result } = renderHook(useCalendar)
+  await waitFor(() => expect(result.current.events).toHaveLength(1))
+  const startTime = new Date(2035, 9, 21, 18, 40)
+  ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ error: null })
+  fetchRows([{ ...releaseEvent, start_time: startTime.toISOString() }])
+  await act(async () => { await result.current.updateEvent('event-1', { startTime }) })
+  expect(supabase.rpc).toHaveBeenCalledWith('save_office_release', { release_id: 'release-1', changes: { release_date: '2035-10-21', release_at: startTime.toISOString() } })
+  expect(result.current.events[0].startTime).toEqual(startTime)
+  await expect(result.current.deleteEvent('event-1')).rejects.toThrow('Remova a data no lançamento vinculado.')
+})
+
+it('preserves the release event when its atomic move fails and rejects duration-only changes', async () => {
+  fetchRows([{ ...row, generated_by_task: false, generated_by_release: true, linked_release_id: 'release-1' }])
+  const { result } = renderHook(useCalendar)
+  await waitFor(() => expect(result.current.events).toHaveLength(1))
+  ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ error: { message: 'Sem permissão' } })
+  await expect(result.current.updateEvent('event-1', { startTime: new Date('2035-10-22T12:00Z') })).rejects.toMatchObject({ message: 'Sem permissão' })
+  expect(result.current.events[0].startTime).toEqual(new Date(row.start_time))
+  await expect(result.current.updateEvent('event-1', { endTime: new Date('2035-10-22T13:00Z') })).rejects.toThrow('Edite a data no lançamento vinculado.')
+})
+
 it('moves the task deadline when its generated event is dragged', async () => {
   fetchRows([row])
   const { result } = renderHook(() => useCalendar())

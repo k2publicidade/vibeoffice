@@ -70,6 +70,13 @@ it('keeps details open when deletion is canceled', async () => {
   expect(close).not.toHaveBeenCalled()
 })
 
+it('opens the linked release instead of exposing manual edits on its generated event', () => {
+  render(<EventDetailsModal open event={{ ...event, generatedByRelease: true, linkedReleaseId: 'release-1' }} onUpdate={jest.fn()} onDelete={jest.fn()} onClose={jest.fn()} />)
+  expect(screen.queryByTitle('Editar evento')).not.toBeInTheDocument()
+  expect(screen.queryByTitle('Excluir evento')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Editar lançamento vinculado' })).toHaveAttribute('href', '/lancamentos?open=release-1')
+})
+
 it('keeps details open if duplication fails', async () => {
   const duplicate = pendingSave(), close = jest.fn()
   render(<EventDetailsModal open event={event} onUpdate={jest.fn()} onDelete={jest.fn()} onDuplicate={duplicate.callback} onClose={close} />)

@@ -79,6 +79,8 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
   const [status, setStatus] = useState<ReleaseStatus>('scheduled')
   const [coverUrl, setCoverUrl] = useState('')
   const [wavUrl, setWavUrl] = useState('')
+  const [coverEdited, setCoverEdited] = useState(false)
+  const [wavEdited, setWavEdited] = useState(false)
   const [isrc, setIsrc] = useState('')
   const [upc, setUpc] = useState('')
   const [label, setLabel] = useState('')
@@ -104,6 +106,8 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   useEffect(() => {
     if (open) {
+      setCoverEdited(false)
+      setWavEdited(false)
       if (release) {
         setTitle(release.title)
         // Initialize artists from release.artists if available, otherwise fallback to release.artist string
@@ -266,6 +270,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
       return
     }
     setCoverFile(file)
+    setCoverEdited(true)
     setCoverPreview(URL.createObjectURL(file))
     setCoverUrl('') // Clear URL since we're using file upload
   }
@@ -297,8 +302,12 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
 
   const handleSave = async () => {
     // Validate: At least one main artist
-    const validArtists = artists.filter(a => a.name.trim())
-    if (!title.trim() || validArtists.length === 0) return
+    const validArtists = artists.filter(a => a.name.trim()).map(a => ({ ...a, name: a.name.trim() }))
+    if (!title.trim()) return
+    if (!validArtists.some(a => a.role === 'main')) {
+      toast.error('Adicione pelo menos um artista principal.')
+      return
+    }
 
     setSaving(true)
     try {
@@ -336,21 +345,21 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
         artist: derivedArtistString,
         artists: validArtists,
         releaseType,
-        genre: genre.trim() || undefined,
-        releaseDate: releaseDate || undefined,
+        genre: genre.trim() || null,
+        releaseDate: releaseDate || null,
         releaseTime,
         status,
-        coverUrl: finalCoverUrl,
-        wavUrl: wavUrl.trim() || undefined,
-        composers: validComposers.length > 0 ? validComposers : undefined,
-        tracks: validTracks.length > 0 ? validTracks : undefined,
-        platformLinks: validLinks.length > 0 ? validLinks : undefined,
-        isrc: isrc.trim() || undefined,
-        upc: upc.trim() || undefined,
-        label: label.trim() || undefined,
-        distributor: distributor.trim() || undefined,
-        notes: notes.trim() || undefined,
-        sector: sector || undefined,
+        coverUrl: finalCoverUrl || (!coverEdited ? release?.fileReferences?.cover : undefined) || null,
+        wavUrl: wavUrl.trim() || (!wavEdited ? release?.fileReferences?.wav : undefined) || null,
+        composers: validComposers,
+        tracks: validTracks,
+        platformLinks: validLinks,
+        isrc: isrc.trim() || null,
+        upc: upc.trim() || null,
+        label: label.trim() || null,
+        distributor: distributor.trim() || null,
+        notes: notes.trim() || null,
+        sector: sector || null,
       })
       onClose()
     } catch (error) {
@@ -388,8 +397,10 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
   const handleDriveSelect = (url: string) => {
     if (drivePickerTarget === 'cover') {
       setCoverUrl(url)
+      setCoverEdited(true)
     } else if (drivePickerTarget === 'wav') {
       setWavUrl(url)
+      setWavEdited(true)
     }
     setDrivePickerOpen(false)
   }
@@ -886,6 +897,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                           onClick={() => {
                             removeCoverFile()
                             setCoverUrl('')
+                            setCoverEdited(true)
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -895,6 +907,12 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                   )}
 
                   {/* Upload + URL + Drive */}
+                  {!coverUrl && !coverFile && !coverEdited && release?.fileReferences?.cover && (
+                    <div className="text-xs text-gray-400 mb-2">
+                      Capa salva. Prévia indisponível.
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setCoverEdited(true)}>Remover capa</Button>
+                    </div>
+                  )}
                   <input
                     ref={coverInputRef}
                     type="file"
@@ -924,7 +942,7 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                   </div>
                   <Input
                     value={coverUrl}
-                    onChange={(e) => { setCoverUrl(e.target.value); removeCoverFile() }}
+                    onChange={(e) => { setCoverUrl(e.target.value); setCoverEdited(true); removeCoverFile() }}
                     placeholder="ou cole a URL da capa..."
                     className="bg-[#111] border-[#2a2a2a] text-white text-sm"
                     disabled={!!coverFile}
@@ -937,10 +955,16 @@ export function ReleaseModal({ open, onClose, onSave, release, initialStatus }: 
                 </div>
                 <div>
                   <Label className="text-gray-400 text-xs mb-1.5 block">URL do Audio (WAV)</Label>
+                  {!wavUrl && !wavEdited && release?.fileReferences?.wav && (
+                    <div className="text-xs text-gray-400 mb-2">
+                      Áudio salvo. Prévia indisponível.
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setWavEdited(true)}>Remover áudio</Button>
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Input
                       value={wavUrl}
-                      onChange={(e) => setWavUrl(e.target.value)}
+                      onChange={(e) => { setWavUrl(e.target.value); setWavEdited(true) }}
                       placeholder="https://..."
                       className="bg-[#111] border-[#2a2a2a] text-white text-sm flex-1"
                     />

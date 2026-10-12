@@ -217,7 +217,7 @@ export function EventDetailsModal({
                             <div className="flex items-center justify-between">
                                 <PremiumModalTitle>{event.title}</PremiumModalTitle>
                                 <div className="flex gap-2">
-                                    {!event.generatedByTask && <Button
+                                    {!event.generatedByTask && !event.generatedByRelease && <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => setIsEditing(true)}
@@ -239,7 +239,7 @@ export function EventDetailsModal({
                                             <Copy className="h-4 w-4" />
                                         </Button>
                                     )}
-                                    {!event.generatedByTask && <Button
+                                    {!event.generatedByTask && !event.generatedByRelease && <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={handleDelete}
@@ -275,6 +275,14 @@ export function EventDetailsModal({
                     </PremiumModalHeader>
 
                     <PremiumModalBody className="pl-8 space-y-6">
+                        {event.generatedByRelease && event.linkedReleaseId && (
+                            <p className="text-sm text-zinc-300">
+                                Este evento acompanha a data do lançamento.{' '}
+                                <Link href={`/lancamentos?open=${event.linkedReleaseId}`} className="block mt-2 text-orange-400 underline">
+                                    Editar lançamento vinculado
+                                </Link>
+                            </p>
+                        )}
                         {event.generatedByTask && event.linkedTaskId && (
                             <p className="text-sm text-zinc-300">
                                 Este evento acompanha o prazo da tarefa.{' '}
