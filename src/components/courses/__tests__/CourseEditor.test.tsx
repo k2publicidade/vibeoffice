@@ -4,6 +4,7 @@ import CourseEditorPage from '@/app/(dashboard)/courses/manage/[id]/page'
 import { useAuth } from '@/hooks/useAuth'
 import { useCourses } from '@/hooks/useCourses'
 import { uploadFile, resolveStorageUrl } from '@/lib/supabase/storage'
+import { toast } from 'sonner'
 
 jest.mock('@/hooks/useAuth')
 jest.mock('@/hooks/useCourses')
@@ -27,4 +28,21 @@ it('uploads an edited cover into course assets and previews its signed URL', asy
   await waitFor(() => expect(uploadFile).toHaveBeenCalled())
   expect(uploadFile).toHaveBeenCalledWith(expect.objectContaining({ bucket: 'course-assets' }))
   await waitFor(() => expect(screen.getByRole('img', { name: 'Capa do curso' })).toHaveAttribute('src', 'https://example.test/signed-cover.png'))
+})
+
+it('keeps a blank title draft in the editor and reports validation before saving', async () => {
+  jest.clearAllMocks()
+  const course = { id: 'course', title: 'Curso', description: '', tags: [], difficulty: 'beginner', modules: [] }
+  const updateCourse = jest.fn().mockResolvedValue(undefined)
+  ;(useAuth as jest.Mock).mockReturnValue({ user: { id: 'admin', role: 'Admin' }, isLoading: false })
+  ;(useCourses as jest.Mock).mockReturnValue({ getCourseById: () => course, updateCourse })
+  render(<CourseEditorPage />)
+  await userEvent.click(screen.getByRole('tab', { name: 'Informações' }))
+  const title = screen.getByDisplayValue('Curso')
+  await userEvent.clear(title)
+  await userEvent.click(screen.getByRole('button', { name: /Salvar/ }))
+  expect(updateCourse).not.toHaveBeenCalled()
+  expect(title).toHaveValue('')
+  expect(toast.error).toHaveBeenCalledWith('Informe um título para o curso.')
+  expect(toast.success).not.toHaveBeenCalled()
 })

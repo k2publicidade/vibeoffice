@@ -38,6 +38,13 @@ try {
   courseId = course.id;
   const courseModule = checked(await admin.from('modules').insert({ course_id: courseId, title: 'Módulo' }).select().single(), 'create module');
   const lesson = checked(await admin.from('lessons').insert({ course_id: courseId, module_id: courseModule.id, title: 'Aula', type: 'html', content: 'Teste', order: 0 }).select().single(), 'create lesson');
+  checked(await admin.from('lessons').update({ chapter: 'Original', content_url: 'https://example.test/video', type: 'video' }).eq('id', lesson.id).select().single(), 'prepare editable video');
+  const omitted = checked(await admin.from('lessons').update({ title: 'Aula editada', chapter: undefined, content_url: undefined }).eq('id', lesson.id).select().single(), 'partial lesson edit');
+  assert.equal(omitted.chapter, 'Original'); assert.equal(omitted.content_url, 'https://example.test/video');
+  checked(await admin.from('lessons').update({ chapter: null, content_url: null, type: 'html' }).eq('id', lesson.id).select('id').single(), 'clear video and chapter');
+  const cleared = checked(await student.from('lessons').select('chapter,content_url,type').eq('id', lesson.id).single(), 'learner reads cleared lesson');
+  assert.equal(cleared.chapter, null); assert.equal(cleared.content_url, null); assert.equal(cleared.type, 'html');
+  console.log('PASS omitted lesson fields persist; explicit removals are visible to learner');
   checked(await student.from('courses').select('id').eq('id', courseId).single(), 'learner reads published course');
   const signed = checked(await student.storage.from('course-assets').createSignedUrl(path, 60), 'learner signs edited course image');
   const response = await fetch(signed.signedUrl);

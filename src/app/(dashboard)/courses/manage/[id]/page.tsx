@@ -155,6 +155,10 @@ export default function CourseEditorPage() {
     }
 
     const handleSaveMetadata = async () => {
+        if (!formData.title.trim()) {
+            toast.error('Informe um título para o curso.')
+            return
+        }
         setSaving(true)
         try {
             await updateCourse(id, {

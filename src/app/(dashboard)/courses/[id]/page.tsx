@@ -119,7 +119,7 @@ export default function CoursePlayerPage() {
                     <FileText size={48} className="text-zinc-600 mb-4" />
                     <p className="text-zinc-400 mb-2">URL do vídeo inválida ou não suportada.</p>
                     <a
-                        href={currentLesson.content_url}
+                        href={currentLesson.content_url ?? undefined}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-red-400 hover:text-red-300 text-sm underline break-all"

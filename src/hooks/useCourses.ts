@@ -326,9 +326,11 @@ export function useCourses() {
 
   const updateCourse = async (id: string, courseData: Partial<Course>) => {
     try {
+      const title = courseData.title?.trim()
+      if (courseData.title !== undefined && !title) throw new Error('Título é obrigatório')
       const { data, error } = await supabase
         .from('courses' as any)
-        .update({ ...courseData, ...(courseData.thumbnail !== undefined ? { thumbnail: storageReference(courseData.thumbnail || '') } : {}) })
+        .update({ ...courseData, ...(title !== undefined ? { title } : {}), ...(courseData.thumbnail !== undefined ? { thumbnail: storageReference(courseData.thumbnail || '') } : {}) })
         .eq('id', id)
         .select()
         .single()

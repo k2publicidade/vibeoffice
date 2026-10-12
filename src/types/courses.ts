@@ -12,9 +12,9 @@ export interface Lesson {
   title: string
   description?: string
   type: LessonType
-  content_url?: string // YouTube or File URL
+  content_url?: string | null // YouTube or File URL; null removes a saved value
   content?: string // HTML rich-text
-  chapter?: string // Capítulo dentro do módulo (ex: "Módulo 1: Introdução")
+  chapter?: string | null // Capítulo dentro do módulo; null removes a saved value
   materials?: LessonMaterial[]
   duration?: number // Minutes
   order: number

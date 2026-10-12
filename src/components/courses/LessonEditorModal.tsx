@@ -99,7 +99,7 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
                 title: lesson?.title || '',
                 chapter: lesson?.chapter || '',
                 content_url: lesson?.content_url || '',
-                content: lesson?.content || defaultState.content,
+                content: lesson ? lesson.content ?? '' : defaultState.content,
                 materials: (lesson?.materials as LessonMaterial[]) || [],
             })
         }
@@ -257,9 +257,9 @@ export function LessonEditorModal({ open, onClose, moduleName, lesson, onSave }:
             await onSave({
                 ...(lesson?.id ? { id: lesson.id } : {}),
                 title: state.title.trim(),
-                chapter: state.chapter.trim() || undefined,
+                chapter: state.chapter.trim() || null,
                 type: hasVideo ? 'video' : 'html',
-                content_url: storageReference(state.content_url.trim()) || undefined,
+                content_url: storageReference(state.content_url.trim()) || null,
                 content: state.content,
                 materials: state.materials.map(m => ({ ...m, url: storageReference(m.url) })),
             })

@@ -111,6 +111,26 @@ describe('useCourses persistence', () => {
     expect(result.current.courses).toHaveLength(1)
   })
 
+  it('rejects a blank title during course editing before writing', async () => {
+    const { state, writes } = database()
+    const { result } = await loaded()
+    state.response = { data: { ...courseRow, title: '  ' }, error: null }
+    await expect(result.current.updateCourse('course', { title: '  ' })).rejects.toThrow('Título é obrigatório')
+    expect(writes).not.toHaveBeenCalled()
+    expect(result.current.courses[0].title).toBe('Curso')
+  })
+
+  it('trims an edited title while keeping partial edits without a title valid', async () => {
+    const { state, writes } = database()
+    const { result } = await loaded()
+    state.response = { data: { ...courseRow, title: 'Novo título' }, error: null }
+    await act(async () => { await result.current.updateCourse('course', { title: '  Novo título  ' }) })
+    expect(writes).toHaveBeenCalledWith('courses', 'update', { title: 'Novo título' })
+    state.response = { data: { ...courseRow, description: '' }, error: null }
+    await act(async () => { await result.current.updateCourse('course', { description: '' }) })
+    expect(writes).toHaveBeenLastCalledWith('courses', 'update', { description: '' })
+  })
+
   it('reports a rejected creation once and retains the existing courses', async () => {
     const { state } = database()
     const { result } = await loaded()
