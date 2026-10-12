@@ -67,6 +67,31 @@ function isErrorWithMessage(e: unknown): e is { message: string } {
     typeof (e as { message: unknown }).message === 'string'
 }
 
+async function mapCourseRow(row: CourseRow, modules: Module[] = [], lessonsCount = 0): Promise<Course> {
+  let thumbnail: string | undefined
+  try {
+    thumbnail = await resolveStorageUrl(row.thumbnail)
+  } catch (error) {
+    console.error('Error loading course thumbnail:', error)
+    toast.error('Não foi possível carregar a capa do curso.')
+  }
+  return {
+    ...row,
+    slug: row.slug ?? undefined,
+    subtitle: row.subtitle ?? undefined,
+    thumbnail,
+    instructor: row.instructor ?? undefined,
+    duration: row.duration ?? undefined,
+    description: row.description ?? '',
+    difficulty: row.difficulty ?? 'beginner',
+    tags: row.tags ?? [],
+    updated_at: row.updated_at ?? row.created_at,
+    is_published: row.is_published ?? true,
+    modules,
+    lessons_count: lessonsCount,
+  }
+}
+
 export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,14 +127,13 @@ export function useCourses() {
 
       if (lessonsError) throw lessonsError
       const lessonsData = (lessonsDataRaw ?? []) as unknown as LessonRow[]
-      await Promise.all(coursesData.map(async course => { course.thumbnail = await resolveStorageUrl(course.thumbnail) }))
       await Promise.all(lessonsData.map(async lesson => {
         lesson.content_url = await resolveStorageUrl(lesson.content_url)
         lesson.materials = await Promise.all((lesson.materials || []).map(async material => ({ ...material, url: (await resolveStorageUrl(material.url))! })))
       }))
 
       // 3. Assemble Structure
-      const fullCourses: Course[] = coursesData.map((course) => {
+      const fullCourses = await Promise.all(coursesData.map(async (course) => {
         const courseModules: Module[] = modulesData
           .filter((m) => m.course_id === course.id)
           .map((m) => ({
@@ -117,17 +141,8 @@ export function useCourses() {
             lessons: lessonsData.filter((l) => l.module_id === m.id) as Lesson[],
           }))
 
-        return {
-          ...course,
-          description: course.description ?? '',
-          difficulty: course.difficulty ?? 'beginner',
-          tags: course.tags ?? [],
-          updated_at: course.updated_at ?? course.created_at,
-          is_published: course.is_published ?? true,
-          modules: courseModules,
-          lessons_count: lessonsData.filter((l) => l.course_id === course.id).length,
-        } as Course
-      })
+        return mapCourseRow(course, courseModules, lessonsData.filter((l) => l.course_id === course.id).length)
+      }))
 
       setCourses(fullCourses)
     } catch (error) {
@@ -214,7 +229,8 @@ export function useCourses() {
   const getProgressStats = useCallback(
     (courseId: string): CourseProgress => {
       const course = courses.find((c) => c.id === courseId)
-      const completed = progressData[courseId] || []
+      const lessonIds = new Set(course?.modules?.flatMap(module => module.lessons.map(lesson => lesson.id)))
+      const completed = (progressData[courseId] || []).filter(id => lessonIds.has(id))
       const total = course?.lessons_count || 0
 
       return {
@@ -292,23 +308,10 @@ export function useCourses() {
           hint: error.hint,
           code: error.code,
         })
-        toast.error(`Erro ao criar curso: ${error.message || 'Erro desconhecido'}`, {
-          description:
-            error.details || error.hint || `Código: ${error.code} - Verifique o console (F12)`,
-        })
         throw error
       }
 
-      const newCourse = data as unknown as CourseRow
-      const courseResult: Course = {
-        ...newCourse,
-        description: newCourse.description ?? '',
-        difficulty: newCourse.difficulty ?? 'beginner',
-        tags: newCourse.tags ?? [],
-        updated_at: newCourse.updated_at ?? newCourse.created_at,
-        modules: [],
-        lessons_count: 0,
-      } as Course
+      const courseResult = await mapCourseRow(data as unknown as CourseRow)
 
       setCourses((prev) => [courseResult, ...prev])
       toast.success('Curso criado com sucesso!')
@@ -316,9 +319,7 @@ export function useCourses() {
     } catch (error: unknown) {
       console.error('Error creating course:', error)
       const message = isErrorWithMessage(error) ? error.message : 'Erro desconhecido'
-      if (!message.includes('Erro ao criar curso')) {
-        toast.error('Falha ao criar curso', { description: message })
-      }
+      toast.error('Falha ao criar curso', { description: message })
       throw error
     }
   }
@@ -334,23 +335,15 @@ export function useCourses() {
 
       if (error) throw error
 
-      const updatedCourse = data as unknown as CourseRow
+      const updatedCourse = await mapCourseRow(data as unknown as CourseRow)
       setCourses((prev) =>
         prev.map((c): Course =>
           c.id === id
             ? {
                 ...c,
                 ...updatedCourse,
-                slug: updatedCourse.slug ?? c.slug,
-                subtitle: updatedCourse.subtitle ?? c.subtitle,
-                thumbnail: updatedCourse.thumbnail ?? c.thumbnail,
-                instructor: updatedCourse.instructor ?? c.instructor,
-                duration: updatedCourse.duration ?? c.duration,
-                difficulty: updatedCourse.difficulty ?? c.difficulty,
-                tags: updatedCourse.tags ?? c.tags,
-                is_published: updatedCourse.is_published ?? c.is_published,
-                updated_at: updatedCourse.updated_at ?? c.updated_at,
-                description: updatedCourse.description || c.description,
+                modules: c.modules,
+                lessons_count: c.lessons_count,
               }
             : c
         )

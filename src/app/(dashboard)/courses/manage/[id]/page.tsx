@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCourses } from '@/hooks/useCourses'
 import { useAuth } from '@/hooks/useAuth'
-import { uploadFile } from '@/lib/supabase/storage'
+import { uploadFile, resolveStorageUrl } from '@/lib/supabase/storage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -143,8 +143,9 @@ export default function CourseEditorPage() {
         try {
             const ext = file.name.split('.').pop() || 'png'
             const path = `course-thumbnails/${Date.now()}-${slugify(formData.title)}.${ext}`
-            const result = await uploadFile({ file, bucket: 'drive-files', path })
-            setFormData(prev => ({ ...prev, thumbnail: result.url }))
+            const result = await uploadFile({ file, bucket: 'course-assets', path })
+            const previewUrl = await resolveStorageUrl(result.url)
+            setFormData(prev => ({ ...prev, thumbnail: previewUrl || '' }))
             toast.success('Capa atualizada.')
         } catch (err: any) {
             toast.error('Falha no upload.', { description: err.message })
@@ -408,7 +409,7 @@ export default function CourseEditorPage() {
                                         <div className="relative w-full aspect-[5/3] rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden flex items-center justify-center">
                                             {formData.thumbnail ? (
                                                 <>
-                                                    <img src={formData.thumbnail} className="w-full h-full object-cover" alt="" />
+                                                    <img src={formData.thumbnail} className="w-full h-full object-cover" alt="Capa do curso" />
                                                     <Button
                                                         type="button"
                                                         size="icon"
