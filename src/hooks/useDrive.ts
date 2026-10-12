@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { DriveItem, SharedAccess, SharePermission, SharedWithMe } from '@/types/drive'
@@ -56,6 +56,7 @@ export interface UseDriveReturn {
 }
 
 export function useDrive(): UseDriveReturn {
+  const readVersion = useRef(0)
   const [items, setItems] = useState<DriveItem[]>([])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
   const [availableUsers, setAvailableUsers] = useState<any[]>([])
@@ -66,6 +67,7 @@ export function useDrive(): UseDriveReturn {
   const supabase = useMemo(() => createClient(), [])
 
   const fetchItems = useCallback(async () => {
+    const version = ++readVersion.current
     setIsLoading(true)
     try {
       const { data, error } = await supabase
@@ -101,11 +103,11 @@ export function useDrive(): UseDriveReturn {
           ancestor = mappedItems.find(candidate => candidate.id === ancestor?.parentId)
         }
       }
-      setItems(mappedItems)
+      if (version === readVersion.current) setItems(mappedItems)
     } catch (error) {
       console.error('Error fetching drive items:', error)
     } finally {
-      setIsLoading(false)
+      if (version === readVersion.current) setIsLoading(false)
     }
   }, [supabase, user])
 
@@ -379,45 +381,27 @@ export function useDrive(): UseDriveReturn {
     return newFolder
   }, [user, supabase, fetchItems])
 
-  // Deletar item
+  // Metadata deletion and its durable cleanup request commit in one transaction.
   const deleteItem = useCallback(async (itemId: string) => {
-    const item = items.find(i => i.id === itemId)
-    if (!item) return
-
-    try {
-      const writable = await supabase.rpc('can_drive', { i: itemId, writing: true })
-      if (writable.error || !writable.data) throw new Error('Você não tem permissão para excluir este item')
-      const descendants = new Set([itemId])
-      for (let changed = true; changed;) {
-        changed = false
-        for (const child of items) if (child.parentId && descendants.has(child.parentId) && !descendants.has(child.id)) { descendants.add(child.id); changed = true }
-      }
-      const paths = items.filter(child => descendants.has(child.id) && child.type === 'file' && child.url).map(child => child.url!)
-      if (paths.length) {
-        const { error: storageError } = await supabase.storage
-          .from('drive-files')
-          .remove(paths)
-
-        if (storageError) throw storageError
-      }
-
-      // Deletar do banco (CASCADE vai deletar filhos automaticamente)
-      const { error } = await supabase
-        .from('drive_items')
-        .delete()
-        .eq('id', itemId)
-        .select('id')
-        .single()
-
-      if (error) throw error
-
-      // Atualizar estado local
-      await fetchItems()
-    } catch (error) {
-      console.error('Error deleting item:', error)
-      throw error
+    const { data, error } = await supabase.rpc('delete_office_drive_item', { item_id: itemId })
+    if (error) throw error
+    const result = data as { deletion_id: string; deleted_ids: string[]; cleanup_count: number; parent_id?: string | null } | null
+    if (!result?.deleted_ids?.includes(itemId)) throw new Error('Exclusão não confirmada')
+    readVersion.current += 1
+    setIsLoading(false)
+    setItems(prev => prev.filter(item => !result.deleted_ids.includes(item.id)))
+    setCurrentFolderId(prev => prev && result.deleted_ids.includes(prev) ? result.parent_id ?? null : prev)
+    if (result.cleanup_count) {
+      try {
+        const response = await fetch('/api/drive/cleanup', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deletionId: result.deletion_id }), signal: AbortSignal.timeout(10000),
+        })
+        if (!response.ok) console.error('Drive cleanup remains queued')
+      } catch { console.error('Drive cleanup remains queued') }
     }
-  }, [items, supabase, fetchItems])
+    await fetchItems()
+  }, [supabase, fetchItems])
 
   // Renomear item
   const renameItem = useCallback(async (itemId: string, newName: string) => {

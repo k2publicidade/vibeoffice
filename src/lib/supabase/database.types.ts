@@ -252,6 +252,12 @@ export type Database = {
         }
         Relationships: []
       }
+      drive_cleanup_jobs: {
+        Row: { id: string; deletion_id: string; deleted_item_id: string; storage_path: string; requested_by: string | null; created_at: string; completed_at: string | null; attempts: number; next_attempt_at: string; locked_until: string | null; claim_token: string | null; last_error: string | null }
+        Insert: { deletion_id: string; deleted_item_id: string; storage_path: string; requested_by?: string | null }
+        Update: { completed_at?: string | null; next_attempt_at?: string; locked_until?: string | null; claim_token?: string | null; last_error?: string | null }
+        Relationships: []
+      }
       drive_items: {
         Row: {
           id: string
@@ -1017,11 +1023,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_office_drive_item: { Args: { item_id: string }; Returns: Json }
+      claim_drive_cleanup: { Args: { deletion_id?: string | null }; Returns: Database['public']['Tables']['drive_cleanup_jobs']['Row'][] }
+      finish_drive_cleanup: { Args: { claims: Json; succeeded: boolean }; Returns: number }
       save_office_release: { Args: { release_id: string | null; changes: Json }; Returns: Json }
       save_office_task: { Args: { task_id: string | null; changes: Json }; Returns: Json }
       can_drive: { Args: { i: string; writing?: boolean }; Returns: boolean }
       can_manage_drive: { Args: { i: string }; Returns: boolean }
       office_mfa_ok: { Args: Record<string, never>; Returns: boolean }
+      office_role: { Args: Record<string, never>; Returns: Database['public']['Enums']['role_type'] | null }
       drive_is_public: { Args: { i: string }; Returns: boolean }
       manage_group_member: { Args: { room_id: string; member_id: string; adding: boolean }; Returns: Database['public']['Tables']['chat_rooms']['Row'] }
       toggle_message_reaction: { Args: { message_id: string; emoji: string }; Returns: undefined }
