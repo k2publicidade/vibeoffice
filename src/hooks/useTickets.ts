@@ -434,7 +434,7 @@ export function useTickets(): UseTicketsReturn {
 
   // Deletar ticket
   const deleteTicket = useCallback(async (id: string) => {
-    const { error } = await supabase.from('tickets').delete().eq('id', id)
+    const { error } = await supabase.from('tickets').delete().eq('id', id).select('id').single()
 
     if (error) throw error
 
@@ -508,6 +508,8 @@ export function useTickets(): UseTicketsReturn {
       .from('ticket_comments')
       .delete()
       .eq('id', commentId)
+      .select('id')
+      .single()
 
     if (error) throw error
 

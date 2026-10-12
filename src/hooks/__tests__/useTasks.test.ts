@@ -191,10 +191,12 @@ describe('useTasks', () => {
       .mockReturnValueOnce({
         delete: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: { id: 'task-1' }, error: null }),
       })
       .mockReturnValueOnce({
         delete: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockResolvedValue({ error: null }),
+        eq: jest.fn().mockReturnThis(),
       })
 
     await act(async () => {

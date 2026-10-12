@@ -364,7 +364,7 @@ export function useCourses() {
 
   const deleteCourse = async (id: string) => {
     try {
-      const { error } = await supabase.from('courses' as any).delete().eq('id', id)
+      const { error } = await supabase.from('courses' as any).delete().eq('id', id).select('id').single()
       if (error) throw error
       setCourses((prev) => prev.filter((c) => c.id !== id))
     } catch (error) {
@@ -393,7 +393,7 @@ export function useCourses() {
 
   const deleteModule = async (moduleId: string) => {
     try {
-      const { error } = await supabase.from('modules' as any).delete().eq('id', moduleId)
+      const { error } = await supabase.from('modules' as any).delete().eq('id', moduleId).select('id').single()
       if (error) throw error
       await fetchCourses()
     } catch (error) {
@@ -440,7 +440,7 @@ export function useCourses() {
 
   const deleteLesson = async (id: string) => {
     try {
-      const { error } = await supabase.from('lessons' as any).delete().eq('id', id)
+      const { error } = await supabase.from('lessons' as any).delete().eq('id', id).select('id').single()
       if (error) throw error
       await fetchCourses()
     } catch (error) {

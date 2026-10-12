@@ -272,6 +272,8 @@ export function useReleases(options?: UseReleasesOptions) {
       .from('releases')
       .delete()
       .eq('id', id)
+      .select('id')
+      .single()
 
     if (error) throw error
     setReleases(prev => prev.filter(r => r.id !== id))

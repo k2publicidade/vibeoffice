@@ -345,6 +345,8 @@ export function useAnnouncements(): UseAnnouncementsReturn {
           .from('company_announcements')
           .delete()
           .eq('id', id)
+          .select('id')
+          .single()
 
         if (error) throw error
 
