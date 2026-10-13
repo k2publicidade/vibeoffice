@@ -49,3 +49,11 @@ Registros públicos exibidos pelo Resend (DNS only, TTL Auto):
 | CNAME | send | send.forge.rmta.net |
 
 Os registros devem ser conferidos contra o painel antes de salvar. Não alterar registros existentes de web ou recebimento. Criação da chave de envio limitada ao domínio e autorização DNS aguardam confirmação exigida pela ferramenta de navegador. A chave será configurada apenas no SMTP Supabase e nas variáveis privadas de Production da Vercel. Testar entrega somente no endereço autorizado pelo titular.
+
+## Conferência de acesso em 13/10/2026
+
+O Resend continua conectado à conta k2publicidade e o domínio `91af9ba6-1196-48c5-ac70-5c33a72a6dab` permanece Not Started. Os valores pedidos pelo painel são os mesmos documentados acima. A consulta pública encontrou um TXT em `resend._domainkey.vibedistro.com` com chave diferente; `rsend` e `send` não retornaram os CNAMEs solicitados. Nenhum registro foi alterado: substituir o DKIM existente pode afetar outro envio já configurado. O SMTP personalizado do Supabase continua desativado.
+
+A sessão Cloudflare atual tem uma única conta, K2publicidade2@gmail.com, e três zonas (americanmining.site, nexfit.site, sendcsh.shop); ela não contém vibedistro.com. Nameservers atuais: `emerie.ns.cloudflare.com` e `armando.ns.cloudflare.com`. O RDAP público da Verisign identifica GoDaddy.com, LLC (IANA 146) como registrador. Os MX atuais são do Google. O titular informou não lembrar a conta Cloudflare; aguarda-se a escolha entre recuperação dessa conta e acesso ao domínio na GoDaddy para preparar uma eventual migração. A consulta foi feita sem enviar e-mails de recuperação, criar chaves ou alterar nameservers/DNS.
+
+A [Cloudflare orienta recuperar o e-mail usando o domínio](https://developers.cloudflare.com/fundamentals/user-profiles/change-password-or-email/#forgot-your-email-address); isso envia o lembrete ao titular. Usar outra conta exige [migrar a zona e ajustar nameservers no registrador](https://developers.cloudflare.com/fundamentals/manage-domains/move-domain/), preservando a configuração atual. Isso ainda não foi autorizado/executado. Remetente, chave privada e destinatário do teste continuam pendentes.

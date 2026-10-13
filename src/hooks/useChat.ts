@@ -14,6 +14,16 @@ import {
   type CreateProjectGroupData
 } from '@/types/chat'
 import { toast } from 'sonner'
+import type { Database } from '@/lib/supabase/database.types'
+type MessageRow = Database['public']['Tables']['messages']['Row']
+type RoomRow = Database['public']['Tables']['chat_rooms']['Row']
+function mapRoom(row: RoomRow): ChatRoom {
+  return { id: row.id, name: row.name, type: row.type, sector: row.sector || undefined, description: row.description || undefined, createdBy: row.created_by || undefined, participants: row.participants, createdAt: new Date(row.created_at), updatedAt: new Date(row.updated_at) }
+}
+function mapMessage(row: MessageRow): Message {
+  return { id: row.id, roomId: row.room_id, userId: row.user_id, content: row.content, type: row.type, reactions: row.reactions as Message['reactions'], readBy: row.read_by as Message['readBy'], mentionedUsers: row.mentioned_users, timestamp: new Date(row.timestamp) }
+}
+const orderMessages = (messages: Message[]) => messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime() || a.id.localeCompare(b.id))
 
 export interface ChatUser {
   id: string
@@ -64,6 +74,46 @@ export function useChat(): UseChatReturn {
   // [C05] Client criado por hook para evitar sessão stale
   const supabase = useMemo(() => createClient(), [])
   const { isRoomArchived, unarchiveRoom } = useArchiveChat(user?.id)
+  const archiveActions = useRef({ isRoomArchived, unarchiveRoom })
+  useEffect(() => { archiveActions.current = { isRoomArchived, unarchiveRoom } }, [isRoomArchived, unarchiveRoom])
+  const context = useRef({ id: user?.id, role: user?.role, sector: user?.sector, generation: 0 })
+  const roomReadVersion = useRef(0)
+  const userReadVersion = useRef(0)
+  const groupReadVersions = useRef(new Map<string, number>())
+  const activeRoomId = useRef<string | null>(null)
+  const messageJournal = useRef<{ roomId: string; revision: number; events: Map<string, { message: Message | null; revision: number }> } | null>(null)
+  const validSession = () => Boolean(user && context.current.id === user.id && context.current.role === user.role && context.current.sector === user.sector)
+  const commitRooms = (generation: number, update: (previous: ChatRoom[]) => ChatRoom[]) => {
+    if (generation !== context.current.generation) return
+    roomReadVersion.current += 1
+    setRooms(update)
+    setIsLoading(false)
+  }
+  async function syncGroup(roomId: string, generation: number) {
+    if (generation !== context.current.generation) return
+    const version = (groupReadVersions.current.get(roomId) || 0) + 1
+    groupReadVersions.current.set(roomId, version)
+    const listingVersion = ++roomReadVersion.current
+    try {
+      const { data, error } = await supabase.from('chat_rooms').select('*').eq('id', roomId).maybeSingle()
+      if (generation !== context.current.generation || groupReadVersions.current.get(roomId) !== version) return
+      if (error) throw error
+      const fresh = data ? mapRoom(data) : null
+      commitRooms(generation, previous => fresh ? previous.map(room => room.id === roomId ? fresh : room) : previous.filter(room => room.id !== roomId))
+      setCurrentRoom(previous => previous?.id === roomId ? fresh : previous)
+    } finally {
+      if (generation === context.current.generation && roomReadVersion.current === listingVersion) setIsLoading(false)
+    }
+  }
+  useEffect(() => {
+    context.current = { id: user?.id, role: user?.role, sector: user?.sector, generation: context.current.generation + 1 }
+    roomReadVersion.current += 1; userReadVersion.current += 1
+    activeRoomId.current = null
+    setRooms([]); setCurrentRoom(null); setMessages([]); setAvailableUsers([]); setRoomSummaries({}); setTypingUsers([])
+    setIsLoading(Boolean(user))
+    return () => { context.current.generation += 1; roomReadVersion.current += 1; userReadVersion.current += 1 }
+  }, [user?.id, user?.role, user?.sector])
+
 
   // Fetch inicial de salas e usuários
   useEffect(() => {
@@ -71,9 +121,11 @@ export function useChat(): UseChatReturn {
 
     fetchRooms()
     fetchUsers()
-  }, [user])
+  }, [user?.id, user?.role, user?.sector])
 
   async function fetchRooms() {
+    if (!validSession()) return
+    const version = ++roomReadVersion.current, generation = context.current.generation
     setIsLoading(true)
     try {
       const { data, error } = await supabase
@@ -95,23 +147,26 @@ export function useChat(): UseChatReturn {
           createdAt: new Date(r.created_at),
           updatedAt: new Date(r.updated_at),
         }))
+      if (generation !== context.current.generation || version !== roomReadVersion.current) return
       setRooms(mappedRooms)
       setCurrentRoom(previous => {
         if (!previous) return null
         const fresh = mappedRooms.find(room => room.id === previous.id)
         if (!fresh) return null
         // Message timestamps must not restart the room subscription.
-        return fresh.name === previous.name && fresh.description === previous.description &&
+        return fresh.name === previous.name && fresh.description === previous.description && fresh.type === previous.type && fresh.sector === previous.sector && fresh.createdBy === previous.createdBy &&
           fresh.participants.join(',') === previous.participants.join(',') ? previous : fresh
       })
     } catch (error) {
       console.error('Error fetching rooms:', error)
     } finally {
-      setIsLoading(false)
+      if (generation === context.current.generation && version === roomReadVersion.current) setIsLoading(false)
     }
   }
 
   async function fetchUsers() {
+    if (!validSession()) return
+    const version = ++userReadVersion.current, generation = context.current.generation
     try {
       const { data, error } = await supabase
         .from('users')
@@ -121,6 +176,7 @@ export function useChat(): UseChatReturn {
 
       if (error) throw error
 
+      if (generation !== context.current.generation || version !== userReadVersion.current) return
       setAvailableUsers(
         data.map((u) => ({
           id: u.id,
@@ -142,10 +198,11 @@ export function useChat(): UseChatReturn {
 
   useEffect(() => {
     if (!user) return
-    let disposed = false
+    let disposed = false, revision = 0
     const refresh = async () => {
+      const version = ++revision
       const { data, error } = await supabase.rpc('chat_room_summaries' as never)
-      if (error || disposed) return
+      if (error || disposed || version !== revision) return
       const summaries: typeof roomSummaries = {}
       for (const item of (data || []) as { room_id: string; content: string; timestamp: string; unread: number }[]) {
         summaries[item.room_id] = { content: item.content, timestamp: new Date(item.timestamp), unread: Number(item.unread) }
@@ -158,7 +215,7 @@ export function useChat(): UseChatReturn {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => { void fetchRooms(); void refresh() })
       .subscribe()
     return () => { disposed = true; void supabase.removeChannel(channel) }
-  }, [user?.id, supabase])
+  }, [user?.id, user?.role, user?.sector, supabase])
 
   // [M03] Corrigido: usar user?.id ao invés de 'current-user' hardcoded
   const getExistingDMUserIds = useCallback(() => {
@@ -197,7 +254,8 @@ export function useChat(): UseChatReturn {
 
   // Criar nova conversa DM
   const createDM = useCallback(async (userId: string, userName: string): Promise<ChatRoom> => {
-    if (!user) throw new Error('User not authenticated')
+    if (!user || !validSession()) throw new Error('User not authenticated')
+    const generation = context.current.generation
 
     // Verificar se já existe DM
     const existingDM = rooms.find(
@@ -237,46 +295,38 @@ export function useChat(): UseChatReturn {
       updatedAt: new Date(data.updated_at),
     }
 
-    setRooms(prev => [...prev.filter(room => room.id !== newRoom.id), newRoom])
+    commitRooms(generation, prev => [...prev.filter(room => room.id !== newRoom.id), newRoom])
     return newRoom
   }, [rooms, user, supabase])
 
   // Fetch mensagens + subscribe Realtime quando trocar de sala
   useEffect(() => {
+    activeRoomId.current = currentRoom?.id || null
+    setMessages([])
     if (!currentRoom || !user) return
 
     let channel: RealtimeChannel
     let disposed = false
-    setMessages([])
 
-    async function setupMessages() {
-      // Fetch mensagens da sala
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('room_id', currentRoom!.id)
-        .order('timestamp', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching messages:', error)
-        return
-      }
-
-      if (disposed) return
-      setMessages(
-        data.map((m) => ({
-          id: m.id,
-          roomId: m.room_id,
-          userId: m.user_id,
-          content: m.content,
-          type: m.type,
-          reactions: m.reactions as Message['reactions'],
-          readBy: m.read_by as Message['readBy'],
-          mentionedUsers: m.mentioned_users,
-          timestamp: new Date(m.timestamp),
-        }))
-      )
-
+    const journal = { roomId: currentRoom.id, revision: 0, events: new Map<string, { message: Message | null; revision: number }>() }
+    messageJournal.current = journal
+    let historyVersion = 0
+    async function syncMessages() {
+      const version = ++historyVersion
+      const startingRevision = journal.revision
+      try {
+        const { data, error } = await supabase.from('messages').select('*').eq('room_id', currentRoom!.id).order('timestamp', { ascending: true })
+        if (error) throw error
+        if (disposed || version !== historyVersion) return
+        const merged = new Map((data || []).map(row => [row.id, mapMessage(row)]))
+        for (const [id, event] of journal.events) {
+          if (event.revision <= startingRevision) continue
+          if (event.message) merged.set(id, event.message); else merged.delete(id)
+        }
+        setMessages(orderMessages([...merged.values()]))
+      } catch (error) { if (!disposed) console.error('Error fetching messages:', error) }
+    }
+    function setupMessages() {
       // Subscribe para novas mensagens em tempo real
       channel = supabase
         .channel(`office-room:${currentRoom!.id}`, { config: { private: true, presence: { key: user!.id } } })
@@ -289,27 +339,14 @@ export function useChat(): UseChatReturn {
             filter: `room_id=eq.${currentRoom!.id}`,
           },
           async (payload) => {
-            const newMessage: Message = {
-              id: payload.new.id,
-              roomId: payload.new.room_id,
-              userId: payload.new.user_id,
-              content: payload.new.content,
-              type: payload.new.type,
-              reactions: payload.new.reactions,
-              readBy: payload.new.read_by,
-              mentionedUsers: payload.new.mentioned_users,
-              timestamp: new Date(payload.new.timestamp),
-            }
-            // [M12] Prevenir duplicatas de mensagens via race condition Realtime
-            setMessages((prev) => {
-              if (prev.some(m => m.id === newMessage.id)) return prev
-              return [...prev, newMessage]
-            })
-
+            if (disposed) return
+            const newMessage = mapMessage(payload.new as MessageRow)
+            journal.events.set(newMessage.id, { message: newMessage, revision: ++journal.revision })
+            setMessages(previous => orderMessages([...previous.filter(message => message.id !== newMessage.id), newMessage]))
             // Auto-unarchive: if message is from someone else and room is archived, unarchive it
-            if (newMessage.userId !== user?.id && isRoomArchived(currentRoom!.id)) {
+            if (newMessage.userId !== user?.id && archiveActions.current.isRoomArchived(currentRoom!.id)) {
               try {
-                await unarchiveRoom(currentRoom!.id)
+                await archiveActions.current.unarchiveRoom(currentRoom!.id)
                 if (process.env.NODE_ENV === 'development') console.log('Auto-unarchived room:', currentRoom!.name)
               } catch (error) {
                 console.error('Failed to auto-unarchive room:', error)
@@ -318,21 +355,29 @@ export function useChat(): UseChatReturn {
           }
         )
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${currentRoom!.id}` }, payload => {
-          setMessages(previous => previous.map(message => message.id === payload.new.id ? { ...message, content: payload.new.content, reactions: payload.new.reactions, readBy: payload.new.read_by } : message))
+          if (disposed) return
+          const updated = mapMessage(payload.new as MessageRow)
+          journal.events.set(updated.id, { message: updated, revision: ++journal.revision })
+          setMessages(previous => orderMessages([...previous.filter(message => message.id !== updated.id), updated]))
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+          if (disposed) return
+          journal.events.set(payload.old.id, { message: null, revision: ++journal.revision })
           setMessages(previous => previous.filter(message => message.id !== payload.old.id))
         })
         .on('presence', { event: 'sync' }, () => {
+          if (disposed) return
           const state = channel.presenceState<{ userId: string; name: string; typing: boolean; at: number }>()
           setTypingUsers(Array.from(new Set(Object.values(state).flat().filter(member => member.userId !== user!.id && member.typing && member.at > Date.now() - 5000).map(member => member.name))))
         })
         .subscribe(status => {
-          if (status === 'SUBSCRIBED') { roomChannel.current = channel; void channel.track({ userId: user!.id, name: user!.name, typing: false, at: Date.now() }) }
+          if (disposed) return
+          if (status === 'SUBSCRIBED') { roomChannel.current = channel; void channel.track({ userId: user!.id, name: user!.name, typing: false, at: Date.now() }); void syncMessages() }
         })
     }
 
     setupMessages()
+    void syncMessages()
 
     return () => {
       disposed = true
@@ -343,7 +388,7 @@ export function useChat(): UseChatReturn {
         supabase.removeChannel(channel)
       }
     }
-  }, [currentRoom, user, supabase, isRoomArchived, unarchiveRoom])
+  }, [currentRoom?.id, user?.id, user?.role, user?.sector, supabase])
 
   const setTyping = useCallback((typing: boolean) => {
     const channel = roomChannel.current
@@ -356,6 +401,8 @@ export function useChat(): UseChatReturn {
 
   const sendMessage = useCallback(async (content: string) => {
     if (!currentRoom || !content.trim() || !user) return
+    if (!validSession()) throw new Error('Sessão alterada')
+    const generation = context.current.generation
 
     try {
       const { data, error } = await supabase
@@ -376,8 +423,14 @@ export function useChat(): UseChatReturn {
         throw new Error('Mensagem não foi salva')
       }
 
-      setMessages(previous => previous.some(message => message.id === data.id) ? previous : [...previous, { id: data.id, roomId: data.room_id, userId: data.user_id, content: data.content, timestamp: new Date(data.timestamp), type: data.type, readBy: {}, reactions: {} }])
-
+      if (generation === context.current.generation && activeRoomId.current === currentRoom.id) {
+        const journal = messageJournal.current
+        if (journal?.roomId === currentRoom.id && !journal.events.has(data.id)) {
+          const saved = mapMessage(data)
+          journal.events.set(saved.id, { message: saved, revision: ++journal.revision })
+          setMessages(previous => orderMessages([...previous.filter(message => message.id !== saved.id), saved]))
+        }
+      }
       // Notifications and room timestamps are generated atomically by the database.
     } catch (error) {
       console.error('Error sending message:', error)
@@ -404,11 +457,12 @@ export function useChat(): UseChatReturn {
   const createProjectGroup = async (
     data: CreateProjectGroupData
   ): Promise<ChatRoom | null> => {
-    if (!user?.id) {
+    if (!user?.id || !validSession()) {
       toast.error('Você precisa estar autenticado')
       return null
     }
 
+    const generation = context.current.generation
     // Validar dados
     const validation = validateProjectGroup(data)
     if (!validation.valid) {
@@ -435,6 +489,7 @@ export function useChat(): UseChatReturn {
         .single()
 
       if (error) throw error
+      if (!newRoom) throw new Error('Criação não confirmada')
 
       // Mapear para ChatRoom interface
       const mappedRoom: ChatRoom = {
@@ -450,7 +505,8 @@ export function useChat(): UseChatReturn {
       }
 
       // Atualizar estado local
-      setRooms(prev => [mappedRoom, ...prev])
+      if (generation !== context.current.generation) return mappedRoom
+      commitRooms(generation, prev => [mappedRoom, ...prev.filter(room => room.id !== mappedRoom.id)])
       setCurrentRoom(mappedRoom)
 
       toast.success('Grupo de projeto criado!')
@@ -461,7 +517,7 @@ export function useChat(): UseChatReturn {
       toast.error('Erro ao criar grupo')
       return null
     } finally {
-      setIsLoading(false)
+      if (generation === context.current.generation) setIsLoading(false)
     }
   }
 
@@ -475,7 +531,8 @@ export function useChat(): UseChatReturn {
     roomId: string,
     updates: { name?: string; description?: string }
   ): Promise<boolean> => {
-    if (!user?.id) return false
+    if (!user?.id || !validSession()) return false
+    const generation = context.current.generation
 
     const room = rooms.find(r => r.id === roomId)
     if (!room || !canManageGroup(room, user.id)) {
@@ -483,8 +540,9 @@ export function useChat(): UseChatReturn {
       return false
     }
 
+    let confirmed = false
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chat_rooms')
         .update({
           ...updates,
@@ -493,24 +551,22 @@ export function useChat(): UseChatReturn {
         .eq('id', roomId)
         .eq('created_by', user.id)
         .eq('type', 'project')
+        .select('*')
+        .single()
 
       if (error) throw error
+      if (!data) throw new Error('Alteração não confirmada')
+      confirmed = true
+      if (generation !== context.current.generation) return true
 
-      // Atualizar estado local
-      setRooms(prev => prev.map(r =>
-        r.id === roomId ? { ...r, ...updates } : r
-      ))
-
-      if (currentRoom?.id === roomId) {
-        setCurrentRoom(prev => prev ? { ...prev, ...updates } : null)
-      }
+      await syncGroup(roomId, generation)
 
       toast.success('Grupo atualizado!')
       return true
 
     } catch (error) {
       console.error('Error updating project group:', error)
-      toast.error('Erro ao atualizar grupo')
+      toast.error(confirmed ? 'Alteração registrada, mas não foi possível atualizar a conversa. Tente novamente.' : 'Erro ao atualizar grupo')
       return false
     }
   }
@@ -525,7 +581,8 @@ export function useChat(): UseChatReturn {
     roomId: string,
     userId: string
   ): Promise<boolean> => {
-    if (!user?.id) return false
+    if (!user?.id || !validSession()) return false
+    const generation = context.current.generation
 
     const room = rooms.find(r => r.id === roomId)
     if (!room || !canManageGroup(room, user.id)) {
@@ -539,32 +596,22 @@ export function useChat(): UseChatReturn {
       return false
     }
 
+    let confirmed = false
     try {
       const { data, error } = await supabase.rpc('manage_group_member', { room_id: roomId, member_id: userId, adding: true })
 
       if (error) throw error
-      const newParticipants = data.participants
-
-      // Atualizar estado local
-      setRooms(prev => prev.map(r =>
-        r.id === roomId
-          ? { ...r, participants: newParticipants }
-          : r
-      ))
-
-      if (currentRoom?.id === roomId) {
-        setCurrentRoom(prev => prev
-          ? { ...prev, participants: newParticipants }
-          : null
-        )
-      }
+      if (!data || !Array.isArray(data.participants)) throw new Error('Alteração não confirmada')
+      confirmed = true
+      if (generation !== context.current.generation) return true
+      await syncGroup(roomId, generation)
 
       toast.success('Membro adicionado!')
       return true
 
     } catch (error) {
       console.error('Error adding member:', error)
-      toast.error('Erro ao adicionar membro')
+      toast.error(confirmed ? 'Alteração registrada, mas não foi possível atualizar a conversa. Tente novamente.' : 'Erro ao adicionar membro')
       return false
     }
   }
@@ -579,7 +626,8 @@ export function useChat(): UseChatReturn {
     roomId: string,
     userId: string
   ): Promise<boolean> => {
-    if (!user?.id) return false
+    if (!user?.id || !validSession()) return false
+    const generation = context.current.generation
 
     const room = rooms.find(r => r.id === roomId)
     if (!room || !canManageGroup(room, user.id)) {
@@ -593,32 +641,22 @@ export function useChat(): UseChatReturn {
       return false
     }
 
+    let confirmed = false
     try {
       const { data, error } = await supabase.rpc('manage_group_member', { room_id: roomId, member_id: userId, adding: false })
 
       if (error) throw error
-      const newParticipants = data.participants
-
-      // Atualizar estado local
-      setRooms(prev => prev.map(r =>
-        r.id === roomId
-          ? { ...r, participants: newParticipants }
-          : r
-      ))
-
-      if (currentRoom?.id === roomId) {
-        setCurrentRoom(prev => prev
-          ? { ...prev, participants: newParticipants }
-          : null
-        )
-      }
+      if (!data || !Array.isArray(data.participants)) throw new Error('Alteração não confirmada')
+      confirmed = true
+      if (generation !== context.current.generation) return true
+      await syncGroup(roomId, generation)
 
       toast.success('Membro removido!')
       return true
 
     } catch (error) {
       console.error('Error removing member:', error)
-      toast.error('Erro ao remover membro')
+      toast.error(confirmed ? 'Alteração registrada, mas não foi possível atualizar a conversa. Tente novamente.' : 'Erro ao remover membro')
       return false
     }
   }
@@ -629,7 +667,12 @@ export function useChat(): UseChatReturn {
     dmRooms,
     currentRoom,
     messages,
-    setCurrentRoom,
+    setCurrentRoom: (room: ChatRoom) => {
+      if (!validSession()) return
+      if (activeRoomId.current !== room.id) setMessages([])
+      activeRoomId.current = room.id
+      setCurrentRoom(room)
+    },
     sendMessage,
     sendAttachment,
     unreadCounts: Object.fromEntries(Object.entries(roomSummaries).map(([id, summary]) => [id, summary.unread])),
