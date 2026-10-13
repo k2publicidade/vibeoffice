@@ -28,6 +28,20 @@ describe('protected notification links across authentication', () => {
     expect(location.searchParams.get('next')).toBe(destination)
   })
 
+  it.each(['/api/drive/cleanup', '/api/notifications/deliver'])('lets %s authenticate the worker in its route without a browser session', async path => {
+    const response = await proxy(new NextRequest('https://office.vibedistro.com' + path, {
+      method: 'POST', headers: { authorization: 'Bearer worker-test' }, body: '{}',
+    }))
+    expect(response.headers.get('location')).toBeNull()
+    expect(response.headers.get('x-middleware-next')).toBe('1')
+    expect(mockGetUser).not.toHaveBeenCalled()
+  })
+
+  it.each(['/api/drive/cleanup/other', '/api/drive/other'])('keeps adjacent route %s protected', async path => {
+    const response = await proxy(new NextRequest('https://office.vibedistro.com' + path))
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/login')
+  })
+
   it('preserves the requested record when MFA is required', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'admin' } } })
     mockAssurance.mockResolvedValue({ data: { currentLevel: 'aal1', nextLevel: 'aal2' } })
