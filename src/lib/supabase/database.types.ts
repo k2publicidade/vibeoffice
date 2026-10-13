@@ -1046,6 +1046,7 @@ export type Database = {
       manage_group_member: { Args: { room_id: string; member_id: string; adding: boolean }; Returns: Database['public']['Tables']['chat_rooms']['Row'] }
       toggle_message_reaction: { Args: { message_id: string; emoji: string }; Returns: undefined }
       mark_messages_read: { Args: { message_ids: string[] }; Returns: undefined }
+      mark_office_messages_read: { Args: { message_ids: string[] }; Returns: string[] }
       chat_room_summaries: { Args: Record<string, never>; Returns: { room_id: string; content: string; timestamp: string; unread: number }[] }
     }
     Enums: {

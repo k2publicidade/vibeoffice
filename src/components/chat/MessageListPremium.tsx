@@ -100,7 +100,7 @@ export function MessageListPremium({
                 id={`message-${message.id}`}
                 ref={(el) => {
                   if (el && !isOwn) {
-                    observeMessage(el, message.id, message.userId)
+                    return observeMessage(el, message.id, message.userId)
                   }
                 }}
                 initial={{ opacity: 0, y: 10 }}

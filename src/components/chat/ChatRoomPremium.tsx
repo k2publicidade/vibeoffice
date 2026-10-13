@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo } from 'react'
 import { ChatRoom as ChatRoomType, Message } from '@/types/chat'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useArchiveChat } from '@/hooks/useArchiveChat'
 import { toast } from 'sonner'
 import { useRoomPreferences } from '@/hooks/useRoomPreferences'
+import { ChatPreferenceContextChangedError } from '@/hooks/useChatPreferences'
 
 interface ChatUser {
   id: string
@@ -67,7 +68,13 @@ export function ChatRoomPremium({
   const { users } = useUsers()
   const { user } = useAuth()
   const roomPreferences = useRoomPreferences(room?.id, user?.id)
-  const { isRoomArchived, toggleArchive } = useArchiveChat(user?.id)
+  const archives = useArchiveChat(user?.id)
+  const { isRoomArchived, toggleArchive } = archives
+  const actionScope = useMemo(() => ({ active: true }), [room?.id, user?.id])
+  useLayoutEffect(() => {
+    actionScope.active = true; setPeopleOpen(false); setSearchDialogOpen(false); setCallKind(null)
+    return () => { actionScope.active = false }
+  }, [actionScope])
 
   // Keyboard shortcut: Ctrl+F to open search
   useEffect(() => {
@@ -112,6 +119,7 @@ export function ChatRoomPremium({
   const handleToggleArchive = async () => {
     try {
       await toggleArchive(room.id)
+      if (!actionScope.active) return
       toast.success(isArchived ? 'Sala desarquivada' : 'Sala arquivada')
 
       // If archiving, call onBack to return to room list
@@ -119,7 +127,7 @@ export function ChatRoomPremium({
         onBack()
       }
     } catch (error) {
-      toast.error('Erro ao arquivar sala')
+      if (actionScope.active && !(error instanceof ChatPreferenceContextChangedError)) toast.error(error instanceof Error ? error.message : 'Erro ao arquivar sala')
     }
   }
 
@@ -160,8 +168,8 @@ export function ChatRoomPremium({
           </div>
         </div>
         <div className="flex items-center gap-1 md:gap-2 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => setCallKind('audio')} disabled={roomPreferences.blocked || roomPreferences.loading} aria-label="Convidar para chamada de áudio" className="text-[#fc7a67] hover:bg-[#ff0300]/20"><Phone className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" onClick={() => setCallKind('video')} disabled={roomPreferences.blocked || roomPreferences.loading} aria-label="Convidar para chamada de vídeo" className="text-[#fc7a67] hover:bg-[#ff0300]/20"><Video className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCallKind('audio')} disabled={roomPreferences.blocked || roomPreferences.loading || !!roomPreferences.error} aria-label="Convidar para chamada de áudio" className="text-[#fc7a67] hover:bg-[#ff0300]/20"><Phone className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCallKind('video')} disabled={roomPreferences.blocked || roomPreferences.loading || !!roomPreferences.error} aria-label="Convidar para chamada de vídeo" className="text-[#fc7a67] hover:bg-[#ff0300]/20"><Video className="h-5 w-5" /></Button>
           <Button
             variant="ghost"
             size="icon"
@@ -177,6 +185,7 @@ export function ChatRoomPremium({
                 variant="ghost"
                 size="icon"
                 className="text-[#fc7a67] hover:bg-[#ff0300]/20"
+                aria-label="Menu da conversa"
               >
                 <MoreVertical className="h-5 w-5" />
               </Button>
@@ -185,11 +194,12 @@ export function ChatRoomPremium({
               <DropdownMenuItem onSelect={() => setPeopleOpen(true)} className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20">
                 {room.type === 'dm' ? 'Ver perfil' : 'Ver participantes'}
               </DropdownMenuItem>
-              <DropdownMenuItem disabled={roomPreferences.loading || roomPreferences.saving} onSelect={() => { void roomPreferences.update('is_muted', !roomPreferences.muted).then(() => toast.success(roomPreferences.muted ? 'Notificações da sala ativadas' : 'Sala silenciada')).catch(() => toast.error('Não foi possível salvar a preferência')) }}>{roomPreferences.muted ? 'Ativar notificações da sala' : 'Silenciar'}</DropdownMenuItem>
-              {room.type === 'dm' && <DropdownMenuItem disabled={roomPreferences.loading || roomPreferences.saving} onSelect={() => { void roomPreferences.update('is_blocked', !roomPreferences.blocked).then(() => toast.success(roomPreferences.blocked ? 'Conversa desbloqueada' : 'Conversa bloqueada')).catch(() => toast.error('Não foi possível salvar a preferência')) }}>{roomPreferences.blocked ? 'Desbloquear' : 'Bloquear'}</DropdownMenuItem>}
+              <DropdownMenuItem disabled={roomPreferences.loading || roomPreferences.saving || !!roomPreferences.error} onSelect={() => { void roomPreferences.update('is_muted', !roomPreferences.muted).then(() => { if (actionScope.active) toast.success('Preferência atualizada') }).catch(error => { if (actionScope.active && !(error instanceof ChatPreferenceContextChangedError)) toast.error(error instanceof Error ? error.message : 'Não foi possível salvar a preferência') }) }}>{roomPreferences.muted ? 'Ativar notificações da sala' : 'Silenciar'}</DropdownMenuItem>
+              {room.type === 'dm' && <DropdownMenuItem disabled={roomPreferences.loading || roomPreferences.saving || !!roomPreferences.error} onSelect={() => { void roomPreferences.update('is_blocked', !roomPreferences.blocked).then(() => { if (actionScope.active) toast.success('Preferência atualizada') }).catch(error => { if (actionScope.active && !(error instanceof ChatPreferenceContextChangedError)) toast.error(error instanceof Error ? error.message : 'Não foi possível salvar a preferência') }) }}>{roomPreferences.blocked ? 'Desbloquear' : 'Bloquear'}</DropdownMenuItem>}
               <DropdownMenuSeparator className="bg-[#ff0300]/20" />
               <DropdownMenuItem
                 className="hover:bg-[#ff0300]/20 focus:bg-[#ff0300]/20"
+                disabled={archives.isLoading || archives.saving || !!archives.error}
                 onClick={handleToggleArchive}
               >
                 {isArchived ? (
@@ -217,8 +227,10 @@ export function ChatRoomPremium({
       />
 
       {/* Input */}
+      {roomPreferences.error && <div role="alert" className="px-4 py-2 text-sm text-orange-300 flex items-center justify-between gap-2"><span>{roomPreferences.error}</span><Button variant="ghost" size="sm" disabled={roomPreferences.loading} onClick={() => void roomPreferences.refresh()}>Tentar novamente</Button></div>}
+      {archives.error && !roomPreferences.error && <div role="alert" className="px-4 py-2 text-sm text-orange-300 flex items-center justify-between gap-2"><span>{archives.error}</span><Button variant="ghost" size="sm" disabled={archives.isLoading} onClick={() => void archives.refresh()}>Tentar novamente</Button></div>}
       {roomPreferences.blocked && <p className="px-4 py-2 text-sm text-orange-300">Conversa bloqueada. Desbloqueie no menu para enviar e receber novas mensagens.</p>}
-      <MessageInputPremium key={room.id} disabled={roomPreferences.loading || roomPreferences.blocked} onSendMessage={onSendMessage} onSendAttachment={onSendAttachment} onTypingChange={onTypingChange} />
+      <MessageInputPremium key={room.id} disabled={roomPreferences.loading || roomPreferences.blocked || !!roomPreferences.error} onSendMessage={onSendMessage} onSendAttachment={onSendAttachment} onTypingChange={onTypingChange} />
       <ChatPeopleDialog room={room} users={users || []} currentUserId={user?.id} open={peopleOpen} onOpenChange={setPeopleOpen} onUpdateGroup={onUpdateGroup} onAddMember={onAddMember} onRemoveMember={onRemoveMember} />
       <ChatCallDialog kind={callKind} onClose={() => setCallKind(null)} onSendMessage={onSendMessage} />
 

@@ -56,13 +56,15 @@ export function ChatListPremium({
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false)
 
   const { user } = useAuth()
-  const { isRoomArchived, archivedRoomIds } = useArchiveChat(user?.id)
+  const archives = useArchiveChat(user?.id)
+  const { isRoomArchived, archivedRoomIds } = archives
 
   const sectorRooms = rooms.filter(isSectorRoom)
   const projectRooms = rooms.filter(isProjectGroup)
   const dmRooms = rooms.filter(isDM)
 
   const filterFn = (room: ChatRoom) => {
+    if (!archives.ready) return false
     const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase())
     const isArchived = isRoomArchived(room.id)
 
@@ -241,6 +243,8 @@ export function ChatListPremium({
       </div>
 
       {/* List */}
+      {archives.error && <div role="alert" className="px-4 py-2 text-xs text-orange-300"><p>{archives.error}</p><Button variant="ghost" size="sm" disabled={archives.isLoading} onClick={() => void archives.refresh()}>Tentar novamente</Button></div>}
+      {archives.isLoading && !archives.ready && <p className="px-4 py-2 text-xs text-gray-400">Carregando preferências...</p>}
       <ScrollArea className="flex-1">
         {/* Seção 1: Salas de Setor */}
         <CollapsibleSection
@@ -277,7 +281,7 @@ export function ChatListPremium({
             </Button>
           }
         >
-          {filteredProjects.length > 0 ? (
+          {archives.ready && (filteredProjects.length > 0 ? (
             filteredProjects.map((room) => (
               <RoomItem
                 key={room.id}
@@ -295,7 +299,7 @@ export function ChatListPremium({
                 Criar primeiro grupo
               </button>
             </div>
-          )}
+          ))}
         </CollapsibleSection>
 
         {/* Seção 3: Conversas Diretas */}
@@ -306,7 +310,7 @@ export function ChatListPremium({
           isOpen={showDMs}
           onToggle={() => setShowDMs(!showDMs)}
         >
-          {filteredDMs.length > 0 ? (
+          {archives.ready && (filteredDMs.length > 0 ? (
             filteredDMs.map((room) => {
               const isSelected = selectedRoom?.id === room.id
               const unreadCount = unreadCounts[room.id] || 0
@@ -365,7 +369,7 @@ export function ChatListPremium({
                 </button>
               )}
             </div>
-          )}
+          ))}
         </CollapsibleSection>
       </ScrollArea>
 
