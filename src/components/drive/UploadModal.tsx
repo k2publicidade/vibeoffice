@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { DriveUploadBatchError } from '@/types/drive'
 
 interface UploadModalProps {
   open: boolean
@@ -54,13 +54,17 @@ export function UploadModal({
   const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const busy = uploading || isUploading
+  const remaining = files.filter(file => file.status !== 'completed')
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
 
   // Reset state when opening
   useEffect(() => {
-    if (open && !uploading) {
+    if (open) {
       setFiles([])
     }
-  }, [open, uploading])
+  }, [open])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -73,6 +77,7 @@ export function UploadModal({
   }, [])
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
+    if (busy) return
     const fileArray = Array.from(newFiles)
     // Prevent huge number of files? No, let user decide.
     // Check duplicates? Maybe.
@@ -83,7 +88,7 @@ export function UploadModal({
       status: 'pending',
     }))
     setFiles((prev) => [...prev, ...newFileItems])
-  }, [])
+  }, [busy])
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -112,35 +117,15 @@ export function UploadModal({
   }, [])
 
   const handleUpload = async () => {
-    if (files.length === 0) return
+    if (remaining.length === 0 || busy) return
 
     setUploading(true)
 
-    // Simula progresso visual (já que o supabase upload é uma Promise única por arquivo)
-    // Na vida real, o onUpload deveria reportar progresso
-    // Aqui vamos 'faking' um pouco para UX
-    const updateProgress = () => {
-      setFiles((prev) =>
-        prev.map((f) => {
-          if (f.status === 'pending' || f.status === 'uploading') {
-            const newProgress = Math.min(f.progress + Math.random() * 15, 95)
-            return {
-              ...f,
-              progress: newProgress,
-              status: 'uploading',
-            }
-          }
-          return f
-        })
-      )
-    }
-
-    const interval = setInterval(updateProgress, 300)
+    const selectedIds = new Set(remaining.map(file => file.id))
+    setFiles(prev => prev.map(file => selectedIds.has(file.id) ? { ...file, status: 'uploading', progress: 0 } : file))
 
     try {
-      await onUpload(files.map((f) => f.file))
-
-      clearInterval(interval)
+      await onUpload(remaining.map((f) => f.file))
 
       // Mark all as 100%
       setFiles((prev) =>
@@ -148,25 +133,27 @@ export function UploadModal({
       )
 
       // Close after delay
-      setTimeout(() => {
+      closeTimer.current = setTimeout(() => {
         onClose()
         setFiles([])
         setUploading(false)
       }, 1500)
 
     } catch (error) {
-      clearInterval(interval)
       setUploading(false)
+      const completed = error instanceof DriveUploadBatchError ? error.completedFiles : 0
+      const confirmedIds = new Set(remaining.slice(0, completed).map(file => file.id))
       setFiles((prev) =>
         prev.map((f) =>
-          f.status !== 'completed' ? { ...f, status: 'error' } : f
+          confirmedIds.has(f.id) ? { ...f, progress: 100, status: 'completed' }
+            : selectedIds.has(f.id) ? { ...f, progress: 0, status: 'error' } : f
         )
       )
     }
   }
 
   const handleClose = () => {
-    if (!uploading) {
+    if (!busy) {
       setFiles([])
       onClose()
     }
@@ -185,7 +172,7 @@ export function UploadModal({
               </div>
               Upload de Arquivos
             </DialogTitle>
-            {!uploading && (
+            {!busy && (
               <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 text-zinc-500 hover:text-white">
                 <X className="h-4 w-4" />
               </Button>
@@ -203,12 +190,12 @@ export function UploadModal({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => !uploading && fileInputRef.current?.click()}
+            onClick={() => !busy && fileInputRef.current?.click()}
             className={cn(
               'relative border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-300 group overflow-hidden',
               isDragging
                 ? 'border-[#fc7a67] bg-[#fc7a67]/5 scale-[1.02]'
-                : uploading
+                : busy
                   ? 'border-zinc-800 bg-zinc-900/20 cursor-default opacity-50'
                   : 'border-zinc-800 bg-zinc-900/20 hover:border-zinc-700 hover:bg-zinc-900/50 cursor-pointer'
             )}
@@ -219,10 +206,11 @@ export function UploadModal({
             <input
               ref={fileInputRef}
               type="file"
+              aria-label="Selecionar arquivos"
               multiple
               onChange={handleFileSelect}
               className="hidden"
-              disabled={uploading}
+              disabled={busy}
             />
 
             <motion.div
@@ -266,7 +254,7 @@ export function UploadModal({
                   <h4 className="text-sm font-medium text-zinc-400">
                     Arquivos ({files.length})
                   </h4>
-                  {!uploading && (
+                  {!busy && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -327,7 +315,7 @@ export function UploadModal({
                             </p>
                             {fileItem.status === 'uploading' && (
                               <span className="text-xs font-mono text-[#fc7a67] shrink-0">
-                                {Math.round(fileItem.progress)}%
+                                Enviando...
                               </span>
                             )}
                           </div>
@@ -339,10 +327,11 @@ export function UploadModal({
                             {fileItem.status === 'error' && (
                               <span className="text-xs text-red-500">Erro no upload</span>
                             )}
+                            {fileItem.status === 'completed' && <span className="text-xs text-green-500">Enviado</span>}
                           </div>
                         </div>
 
-                        {!uploading && fileItem.status === 'pending' && (
+                        {!busy && fileItem.status !== 'completed' && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -362,7 +351,7 @@ export function UploadModal({
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
-            {!uploading && (
+            {!busy && (
               <Button
                 variant="ghost"
                 onClick={handleClose}
@@ -373,15 +362,15 @@ export function UploadModal({
             )}
             <Button
               onClick={handleUpload}
-              disabled={files.length === 0 || uploading}
+              disabled={remaining.length === 0 || busy}
               className={cn(
                 "min-w-[140px] transition-all duration-300",
-                uploading
+                busy
                   ? "bg-zinc-800 text-zinc-400"
                   : "bg-gradient-to-r from-[#fc7a67] to-[#ff0300] hover:shadow-lg hover:shadow-orange-500/20 text-white"
               )}
             >
-              {uploading ? (
+              {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Enviando...

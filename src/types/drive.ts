@@ -8,6 +8,13 @@ import { Sector } from './auth'
 export type ItemType = 'file' | 'folder'
 export type SharePermission = 'view' | 'edit' | 'manage'
 
+export class DriveUploadBatchError extends Error {
+  constructor(public readonly completedFiles: number, cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'Erro ao enviar arquivo', { cause })
+    this.name = 'DriveUploadBatchError'
+  }
+}
+
 export interface DriveItem {
   id: string
   name: string

@@ -3,7 +3,23 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
-import { DriveItem, SharedAccess, SharePermission, SharedWithMe } from '@/types/drive'
+import { DriveItem, SharedAccess, SharePermission, SharedWithMe, DriveUploadBatchError } from '@/types/drive'
+
+function withPermissions(items: DriveItem[], user: { id: string; role: string } | null): DriveItem[] {
+  const byId = new Map(items.map(item => [item.id, item]))
+  return items.map(item => {
+    const result = { ...item, canManage: user?.role === 'Admin', inheritsPublic: false }
+    const visited = new Set<string>()
+    let ancestor: DriveItem | undefined = item
+    while (ancestor && !visited.has(ancestor.id)) {
+      visited.add(ancestor.id)
+      if (user && (ancestor.uploadedBy === user.id || ancestor.sharedWith?.some(share => share.userId === user.id && share.permission === 'manage'))) result.canManage = true
+      if (ancestor.id !== item.id && ancestor.isPublic) result.inheritsPublic = true
+      ancestor = ancestor.parentId ? byId.get(ancestor.parentId) : undefined
+    }
+    return result
+  })
+}
 
 export interface UploadFileInput {
   file: File
@@ -57,16 +73,38 @@ export interface UseDriveReturn {
 
 export function useDrive(): UseDriveReturn {
   const readVersion = useRef(0)
-  const [items, setItems] = useState<DriveItem[]>([])
+  const [storedItems, setItems] = useState<DriveItem[]>([])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
   const [availableUsers, setAvailableUsers] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isUploading, setIsUploading] = useState(false)
+  const [pendingUploads, setPendingUploads] = useState(0)
   const { user } = useAuth()
+  const items = useMemo(() => withPermissions(storedItems, user), [storedItems, user])
+  const isUploading = pendingUploads > 0
+  const context = useRef({ id: user?.id, role: user?.role, generation: 0 })
   // [C05] Client criado por hook para evitar sessão stale
   const supabase = useMemo(() => createClient(), [])
 
+  useEffect(() => {
+    context.current = { id: user?.id, role: user?.role, generation: context.current.generation + 1 }
+    readVersion.current += 1
+    setItems([])
+    setAvailableUsers([])
+    setCurrentFolderId(null)
+    setPendingUploads(0)
+    setIsLoading(Boolean(user))
+    return () => { context.current.generation += 1; readVersion.current += 1 }
+  }, [user?.id, user?.role])
+
+  const commitItems = useCallback((generation: number, update: (previous: DriveItem[]) => DriveItem[]) => {
+    if (generation !== context.current.generation) return
+    readVersion.current += 1
+    setIsLoading(false)
+    setItems(update)
+  }, [])
+
   const fetchItems = useCallback(async () => {
+    if (user?.id !== context.current.id || user?.role !== context.current.role) return
     const version = ++readVersion.current
     setIsLoading(true)
     try {
@@ -91,18 +129,6 @@ export function useDrive(): UseDriveReturn {
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at),
         }))
-      for (const item of mappedItems) {
-        const visited = new Set<string>()
-        let ancestor: DriveItem | undefined = item
-        item.canManage = user?.role === 'Admin'
-        item.inheritsPublic = false
-        while (ancestor && !visited.has(ancestor.id)) {
-          visited.add(ancestor.id)
-          if (ancestor.uploadedBy === user?.id || ancestor.sharedWith?.some(share => share.userId === user?.id && share.permission === 'manage')) item.canManage = true
-          if (ancestor.id !== item.id && ancestor.isPublic) item.inheritsPublic = true
-          ancestor = mappedItems.find(candidate => candidate.id === ancestor?.parentId)
-        }
-      }
       if (version === readVersion.current) setItems(mappedItems)
     } catch (error) {
       console.error('Error fetching drive items:', error)
@@ -113,6 +139,7 @@ export function useDrive(): UseDriveReturn {
 
   const fetchUsers = useCallback(async () => {
     if (!user) return
+    const generation = context.current.generation
     try {
       const { data, error } = await supabase
         .from('users')
@@ -122,6 +149,7 @@ export function useDrive(): UseDriveReturn {
 
       if (error) throw error
 
+      if (generation !== context.current.generation) return
       setAvailableUsers(
         data.map((u) => ({
           id: u.id,
@@ -185,9 +213,11 @@ export function useDrive(): UseDriveReturn {
   // Construir breadcrumbs (caminho)
   const breadcrumbs = useMemo(() => {
     const path: DriveItem[] = []
+    const visited = new Set<string>()
     let currentId = currentFolderId
 
-    while (currentId) {
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId)
       const folder = items.find(i => i.id === currentId)
       if (folder) {
         path.unshift(folder)
@@ -236,9 +266,11 @@ export function useDrive(): UseDriveReturn {
 
   const getFolderPath = useCallback((folderId: string | null) => {
     const path: DriveItem[] = []
+    const visited = new Set<string>()
     let currentId = folderId
 
-    while (currentId) {
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId)
       const folder = items.find(i => i.id === currentId)
       if (folder) {
         path.unshift(folder)
@@ -259,12 +291,14 @@ export function useDrive(): UseDriveReturn {
   // Upload de um único arquivo
   const uploadFile = useCallback(async (input: UploadFileInput): Promise<DriveItem> => {
     if (!user) throw new Error('User not authenticated')
+    if (user.id !== context.current.id || user.role !== context.current.role) throw new Error('Sessão alterada durante o envio')
 
-    setIsUploading(true)
+    const generation = context.current.generation
+    setPendingUploads(count => count + 1)
 
     try {
       // 1. Upload para o Supabase Storage
-      const fileName = `${Date.now()}-${input.file.name}`
+      const fileName = `${crypto.randomUUID()}-${input.file.name}`
       const storagePath = input.parentId
         ? `${input.parentId}/${fileName}`
         : fileName
@@ -310,38 +344,42 @@ export function useDrive(): UseDriveReturn {
         updatedAt: new Date(data.updated_at),
       }
 
-      setItems(prev => prev.some(item => item.id === newItem.id) ? prev : [...prev, newItem])
-      return newItem
+      commitItems(generation, prev => prev.some(item => item.id === newItem.id) ? prev : [...prev, newItem])
+      return withPermissions([...items.filter(item => item.id !== newItem.id), newItem], user).find(item => item.id === newItem.id)!
     } catch (error) {
       console.error('Error uploading file:', error)
       throw error
     } finally {
-      setIsUploading(false)
+      if (generation === context.current.generation) setPendingUploads(count => count - 1)
     }
-  }, [user, supabase])
+  }, [user, supabase, items, commitItems])
 
   // Upload de múltiplos arquivos
   const uploadFiles = useCallback(async (files: File[], parentId?: string | null): Promise<DriveItem[]> => {
-    setIsUploading(true)
+    const generation = context.current.generation
+    setPendingUploads(count => count + 1)
     const uploadedItems: DriveItem[] = []
 
     try {
       for (const file of files) {
+        if (generation !== context.current.generation) throw new Error('Sessão alterada durante o envio')
         const item = await uploadFile({ file, parentId })
         uploadedItems.push(item)
       }
       return uploadedItems
     } catch (error) {
       console.error('Error uploading files:', error)
-      throw error
+      throw new DriveUploadBatchError(uploadedItems.length, error)
     } finally {
-      setIsUploading(false)
+      if (generation === context.current.generation) setPendingUploads(count => count - 1)
     }
   }, [uploadFile])
 
   // Criar nova pasta
   const createFolder = useCallback(async (input: CreateFolderInput): Promise<DriveItem> => {
     if (!user) throw new Error('User not authenticated')
+    if (user.id !== context.current.id || user.role !== context.current.role) throw new Error('Sessão alterada')
+    const generation = context.current.generation
 
     // Normalizar parentId: undefined -> null para consistência
     const normalizedParentId = input.parentId === undefined ? null : input.parentId
@@ -373,23 +411,23 @@ export function useDrive(): UseDriveReturn {
     }
 
     // Atualizar estado local imediatamente
-    setItems(prev => prev.some(item => item.id === newFolder.id) ? prev : [...prev, newFolder])
+    commitItems(generation, prev => prev.some(item => item.id === newFolder.id) ? prev : [...prev, newFolder])
 
     // Recarregar dados do servidor para garantir consistência
     await fetchItems()
 
-    return newFolder
-  }, [user, supabase, fetchItems])
+    return withPermissions([...items.filter(item => item.id !== newFolder.id), newFolder], user).find(item => item.id === newFolder.id)!
+  }, [user, supabase, fetchItems, items, commitItems])
 
   // Metadata deletion and its durable cleanup request commit in one transaction.
   const deleteItem = useCallback(async (itemId: string) => {
+    const generation = context.current.generation
     const { data, error } = await supabase.rpc('delete_office_drive_item', { item_id: itemId })
     if (error) throw error
     const result = data as { deletion_id: string; deleted_ids: string[]; cleanup_count: number; parent_id?: string | null } | null
     if (!result?.deleted_ids?.includes(itemId)) throw new Error('Exclusão não confirmada')
-    readVersion.current += 1
-    setIsLoading(false)
-    setItems(prev => prev.filter(item => !result.deleted_ids.includes(item.id)))
+    if (generation !== context.current.generation) return
+    commitItems(generation, prev => prev.filter(item => !result.deleted_ids.includes(item.id)))
     setCurrentFolderId(prev => prev && result.deleted_ids.includes(prev) ? result.parent_id ?? null : prev)
     if (result.cleanup_count) {
       try {
@@ -401,10 +439,11 @@ export function useDrive(): UseDriveReturn {
       } catch { console.error('Drive cleanup remains queued') }
     }
     await fetchItems()
-  }, [supabase, fetchItems])
+  }, [supabase, fetchItems, commitItems])
 
   // Renomear item
   const renameItem = useCallback(async (itemId: string, newName: string) => {
+    const generation = context.current.generation
     const { data, error } = await supabase
       .from('drive_items')
       .update({ name: newName })
@@ -413,26 +452,31 @@ export function useDrive(): UseDriveReturn {
       .single()
 
     if (error) throw error
+    if (!data || data.id !== itemId) throw new Error('Alteração não confirmada')
 
-    setItems(prev =>
+    commitItems(generation, prev =>
       prev.map(item =>
         item.id === itemId
-          ? { ...item, name: newName, updatedAt: new Date(data.updated_at) }
+          ? { ...item, name: data.name, updatedAt: new Date(data.updated_at) }
           : item
       )
     )
-  }, [supabase])
+  }, [supabase, commitItems])
 
   // Mover item para outra pasta (ou raiz se targetFolderId === null)
   const moveItem = useCallback(async (itemId: string, targetFolderId: string | null) => {
+    const generation = context.current.generation
     const item = items.find(i => i.id === itemId)
     if (!item) throw new Error('Item not found')
 
     // Não mover pasta para dentro de si mesma ou de seus filhos
     if (item.type === 'folder' && targetFolderId) {
       let checkId: string | null = targetFolderId
+      const visited = new Set<string>()
       while (checkId) {
         if (checkId === itemId) throw new Error('Cannot move folder into itself')
+        if (visited.has(checkId)) throw new Error('Invalid folder hierarchy')
+        visited.add(checkId)
         const parent = items.find(i => i.id === checkId)
         checkId = parent?.parentId || null
       }
@@ -442,24 +486,25 @@ export function useDrive(): UseDriveReturn {
     const currentParent = item.parentId || null
     if (currentParent === targetFolderId) return
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('drive_items')
       .update({ parent_id: targetFolderId })
       .eq('id', itemId)
-      .select('id')
+      .select()
       .single()
 
     if (error) throw error
+    if (!data || data.id !== itemId) throw new Error('Alteração não confirmada')
 
     // Atualizar estado local
-    setItems(prev =>
+    commitItems(generation, prev =>
       prev.map(i =>
         i.id === itemId
-          ? { ...i, parentId: targetFolderId || undefined, updatedAt: new Date() }
+          ? { ...i, parentId: data.parent_id ?? undefined, updatedAt: new Date(data.updated_at) }
           : i
       )
     )
-  }, [items, supabase])
+  }, [items, supabase, commitItems])
 
   // Compartilhar item com usuário
   const shareItem = useCallback(async (input: ShareItemInput) => {
@@ -570,28 +615,30 @@ export function useDrive(): UseDriveReturn {
 
   // Toggle acesso público
   const togglePublicAccess = useCallback(async (itemId: string) => {
+    const generation = context.current.generation
     const item = items.find(i => i.id === itemId)
     if (!item) return
 
     const newPublicState = !item.isPublic
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('drive_items')
       .update({ is_public: newPublicState })
       .eq('id', itemId)
-      .select('id')
+      .select()
       .single()
 
     if (error) throw error
+    if (!data || data.id !== itemId) throw new Error('Alteração não confirmada')
 
-    setItems(prev =>
+    commitItems(generation, prev =>
       prev.map(item =>
         item.id === itemId
-          ? { ...item, isPublic: newPublicState, updatedAt: new Date() }
+          ? { ...item, isPublic: data.is_public, updatedAt: new Date(data.updated_at) }
           : item
       )
     )
-  }, [items, supabase])
+  }, [items, supabase, commitItems])
 
   // Gerar link de compartilhamento
   const copyShareLink = useCallback((itemId: string): string => {
