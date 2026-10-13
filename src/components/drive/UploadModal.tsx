@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { DriveUploadBatchError } from '@/types/drive'
+import { DriveUploadBatchError, DriveUploadPendingError } from '@/types/drive'
 
 interface UploadModalProps {
   open: boolean
@@ -25,7 +25,7 @@ interface FileWithProgress {
   file: File
   id: string
   progress: number
-  status: 'pending' | 'uploading' | 'completed' | 'error'
+  status: 'pending' | 'uploading' | 'completed' | 'error' | 'unconfirmed'
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -142,11 +142,12 @@ export function UploadModal({
     } catch (error) {
       setUploading(false)
       const completed = error instanceof DriveUploadBatchError ? error.completedFiles : 0
+      const pending = error instanceof DriveUploadPendingError || (error instanceof DriveUploadBatchError && error.cause instanceof DriveUploadPendingError)
       const confirmedIds = new Set(remaining.slice(0, completed).map(file => file.id))
       setFiles((prev) =>
         prev.map((f) =>
           confirmedIds.has(f.id) ? { ...f, progress: 100, status: 'completed' }
-            : selectedIds.has(f.id) ? { ...f, progress: 0, status: 'error' } : f
+            : selectedIds.has(f.id) ? { ...f, progress: 0, status: pending ? 'unconfirmed' : 'error' } : f
         )
       )
     }
@@ -328,6 +329,7 @@ export function UploadModal({
                               <span className="text-xs text-red-500">Erro no upload</span>
                             )}
                             {fileItem.status === 'completed' && <span className="text-xs text-green-500">Enviado</span>}
+                            {fileItem.status === 'unconfirmed' && <span className="text-xs text-orange-400">Confirmação pendente</span>}
                           </div>
                         </div>
 

@@ -8,6 +8,13 @@ import { Sector } from './auth'
 export type ItemType = 'file' | 'folder'
 export type SharePermission = 'view' | 'edit' | 'manage'
 
+export class DriveUploadPendingError extends Error {
+  constructor() {
+    super('Ainda não foi possível confirmar o envio. Tente novamente para conferir o resultado.')
+    this.name = 'DriveUploadPendingError'
+  }
+}
+
 export class DriveUploadBatchError extends Error {
   constructor(public readonly completedFiles: number, cause: unknown) {
     super(cause instanceof Error ? cause.message : 'Erro ao enviar arquivo', { cause })

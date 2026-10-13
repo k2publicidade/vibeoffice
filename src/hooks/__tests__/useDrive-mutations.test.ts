@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { supabase } from '@/lib/supabase/client'
 import { useDrive } from '../useDrive'
 import { useAuth } from '../useAuth'
+import { DriveUploadPendingError } from '@/types/drive'
 
 jest.mock('../useAuth')
 const user = { id: 'owner', role: 'Colaborador' }
@@ -27,7 +28,22 @@ function database(rows = [row('parent', { is_public: true })]) {
     };return query
   })
   const upload=jest.fn().mockResolvedValue({data:{},error:null}),remove=jest.fn().mockResolvedValue({data:[],error:null})
-  ;(supabase.storage.from as jest.Mock).mockReturnValue({upload,remove})
+  const uploaded=new Set<string>(),attempts=new Map<string,Record<string,unknown>>()
+  ;(supabase.storage.from as jest.Mock).mockReturnValue({upload:async(path:string,...args:unknown[])=>{const response=await upload(path,...args);if(!response.error)uploaded.add(path);return response},remove})
+  ;(supabase.rpc as jest.Mock).mockImplementation(async(name,args)=>{
+    if(name==='begin_office_drive_upload'){
+      const path=`drive-uploads/${user.id}/${args.upload_id}`
+      if(!attempts.has(args.upload_id))attempts.set(args.upload_id,{...args,path,state:'pending',item:null})
+    }
+    const attempt=attempts.get(args.upload_id)!
+    if(name==='complete_office_drive_upload' && uploaded.has(String(attempt.path))){
+      const saved=await supabase.from('drive_items').insert({id:args.upload_id,name:attempt.file_name,type:'file',parent_id:attempt.target_parent,uploaded_by:user.id,storage_path:attempt.path,size:attempt.file_size,mime_type:attempt.file_mime} as never).select().single()
+      if(saved.error)return saved
+      attempt.state='committed';attempt.item=saved.data
+    }
+    if(name==='abort_office_drive_upload' && attempt.state!=='committed')attempt.state='aborted'
+    return {data:{upload_id:args.upload_id,storage_path:attempt.path,state:attempt.state,item:attempt.item},error:null}
+  })
   let receive!: () => void
   const channel={on:jest.fn((_event,_filter,handler)=>{receive=handler;return channel}),subscribe:jest.fn(()=>channel)}
   ;(supabase.channel as jest.Mock).mockReturnValue(channel)
@@ -120,10 +136,11 @@ it('keeps failed Storage uploads out of metadata and restores the indicator',asy
   expect(insert).not.toHaveBeenCalled();expect(result.current.isUploading).toBe(false)
 })
 
-it('cleans the uploaded object and preserves the tree if metadata creation fails',async()=>{
+it('queues cleanup and preserves the tree if metadata creation fails, without directly removing an uncertain object',async()=>{
   const {state,upload,remove}=database();const {result}=await loaded();state.mutation={data:null,error:new Error('metadata denied')}
   await act(async()=>{await expect(result.current.uploadFile({file:file()})).rejects.toThrow('metadata denied')})
-  expect(remove).toHaveBeenCalledWith([upload.mock.calls[0][0]])
+  expect(supabase.rpc).toHaveBeenCalledWith('abort_office_drive_upload',{upload_id:upload.mock.calls[0][0].split('/').at(-1)})
+  expect(remove).not.toHaveBeenCalled()
   expect(result.current.items).toHaveLength(1);expect(result.current.isUploading).toBe(false)
 })
 
@@ -177,4 +194,24 @@ it('rejects an upload or folder callback retained from the previous account',asy
   await expect(oldUpload({file:file()})).rejects.toThrow('Sessão alterada')
   await expect(oldFolder({name:'old callback'})).rejects.toThrow('Sessão alterada')
   expect(upload).not.toHaveBeenCalled();expect(insert).not.toHaveBeenCalled()
+})
+
+it('retains an unconfirmed attempt across retries and never sends the same File twice after a lost commit receipt',async()=>{
+  const {state,upload}=database();const {result}=await loaded();const input=file()
+  const original=(supabase.rpc as jest.Mock).getMockImplementation()!
+  let committed=false
+  ;(supabase.rpc as jest.Mock).mockImplementation(async(name,args)=>{
+    if(name==='complete_office_drive_upload'){
+      if(!committed){await original(name,args);committed=true;state.mutation={data:null,error:new Error('reads offline')}}
+      return {data:null,error:new Error('receipt offline')}
+    }
+    if(name==='abort_office_drive_upload')return {data:null,error:new Error('receipt offline')}
+    return original(name,args)
+  })
+  await act(async()=>{await expect(result.current.uploadFile({file:input})).rejects.toBeInstanceOf(DriveUploadPendingError)})
+  expect(result.current.isUploading).toBe(false)
+  state.mutation=undefined;(supabase.rpc as jest.Mock).mockImplementation(original)
+  await act(async()=>{await result.current.uploadFile({file:input})})
+  expect(upload).toHaveBeenCalledTimes(1)
+  expect(result.current.items.filter(item=>item.type==='file')).toHaveLength(1)
 })

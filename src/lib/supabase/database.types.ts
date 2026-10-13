@@ -252,6 +252,12 @@ export type Database = {
         }
         Relationships: []
       }
+      drive_uploads: {
+        Row: { id: string; owner_id: string; storage_path: string; parent_id: string | null; name: string; size: number; mime_type: string; state: string; created_at: string; expires_at: string; finished_at: string | null }
+        Insert: { id: string; owner_id: string; storage_path: string; parent_id?: string | null; name: string; size: number; mime_type: string }
+        Update: { state?: string; expires_at?: string; finished_at?: string | null }
+        Relationships: []
+      }
       drive_cleanup_jobs: {
         Row: { id: string; deletion_id: string; deleted_item_id: string; storage_path: string; requested_by: string | null; created_at: string; completed_at: string | null; attempts: number; next_attempt_at: string; locked_until: string | null; claim_token: string | null; last_error: string | null }
         Insert: { deletion_id: string; deleted_item_id: string; storage_path: string; requested_by?: string | null }
@@ -1023,6 +1029,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_office_drive_upload: { Args: { upload_id: string; file_name: string; file_size: number; file_mime: string; target_parent?: string | null }; Returns: Json }
+      complete_office_drive_upload: { Args: { upload_id: string }; Returns: Json }
+      abort_office_drive_upload: { Args: { upload_id: string }; Returns: Json }
+      expire_drive_uploads: { Args: Record<string, never>; Returns: number }
       delete_office_drive_item: { Args: { item_id: string }; Returns: Json }
       claim_drive_cleanup: { Args: { deletion_id?: string | null }; Returns: Database['public']['Tables']['drive_cleanup_jobs']['Row'][] }
       finish_drive_cleanup: { Args: { claims: Json; succeeded: boolean }; Returns: number }

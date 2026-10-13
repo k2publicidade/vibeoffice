@@ -26,7 +26,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
 import { DeleteConfirmModal, SuccessModal, ErrorModal } from '@/components/drive/AlertModal'
-import { DriveItem, SharePermission, DriveUploadBatchError } from '@/types/drive'
+import { DriveItem, SharePermission, DriveUploadBatchError, DriveUploadPendingError } from '@/types/drive'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -222,10 +222,13 @@ export default function DrivePage() {
       })
     } catch (error) {
       console.error('Upload error:', error)
+      const pending = error instanceof DriveUploadBatchError && error.cause instanceof DriveUploadPendingError
       setErrorModal({
         open: true,
-        title: 'Erro no upload',
-        description: error instanceof DriveUploadBatchError && error.completedFiles > 0
+        title: pending ? 'Confirmação pendente' : 'Erro no upload',
+        description: pending
+          ? `${error.completedFiles} arquivo(s) confirmado(s). Tente novamente para conferir os envios restantes sem duplicá-los.`
+          : error instanceof DriveUploadBatchError && error.completedFiles > 0
           ? `${error.completedFiles} arquivo(s) enviado(s). Você pode tentar novamente os arquivos restantes.`
           : 'Não foi possível enviar os arquivos. Tente novamente.'
       })

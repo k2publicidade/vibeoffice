@@ -3,7 +3,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
-import { DriveItem, SharedAccess, SharePermission, SharedWithMe, DriveUploadBatchError } from '@/types/drive'
+import { DriveItem, SharedAccess, SharePermission, SharedWithMe, DriveUploadBatchError, DriveUploadPendingError } from '@/types/drive'
+import { uploadDriveFile, type DriveUploadAttempt } from '@/lib/drive-upload'
 
 function withPermissions(items: DriveItem[], user: { id: string; role: string } | null): DriveItem[] {
   const byId = new Map(items.map(item => [item.id, item]))
@@ -73,6 +74,7 @@ export interface UseDriveReturn {
 
 export function useDrive(): UseDriveReturn {
   const readVersion = useRef(0)
+  const uploadAttempts = useRef(new WeakMap<File, DriveUploadAttempt>())
   const [storedItems, setItems] = useState<DriveItem[]>([])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
   const [availableUsers, setAvailableUsers] = useState<any[]>([])
@@ -283,11 +285,6 @@ export function useDrive(): UseDriveReturn {
     return path
   }, [items])
 
-  // Função para obter o mimeType do arquivo
-  const getMimeType = (file: File): string => {
-    return file.type || 'application/octet-stream'
-  }
-
   // Upload de um único arquivo
   const uploadFile = useCallback(async (input: UploadFileInput): Promise<DriveItem> => {
     if (!user) throw new Error('User not authenticated')
@@ -297,37 +294,13 @@ export function useDrive(): UseDriveReturn {
     setPendingUploads(count => count + 1)
 
     try {
-      // 1. Upload para o Supabase Storage
-      const fileName = `${crypto.randomUUID()}-${input.file.name}`
-      const storagePath = input.parentId
-        ? `${input.parentId}/${fileName}`
-        : fileName
-
-      const { error: storageError } = await supabase.storage
-        .from('drive-files')
-        .upload(storagePath, input.file, {
-          cacheControl: '3600',
-          upsert: false,
-        })
-
-      if (storageError) throw storageError
-
-      // 2. Inserir metadata no banco
-      const { data, error } = await supabase
-        .from('drive_items')
-        .insert({
-          name: input.file.name,
-          type: 'file',
-          parent_id: input.parentId || null,
-          size: input.file.size,
-          mime_type: getMimeType(input.file),
-          storage_path: storagePath,
-          uploaded_by: user.id,
-        })
-        .select()
-        .single()
-
-      if (error) { await supabase.storage.from('drive-files').remove([storagePath]); throw error }
+      let attempt = uploadAttempts.current.get(input.file)
+      if (!attempt || attempt.ownerId !== user.id) {
+        attempt = { id: crypto.randomUUID(), ownerId: user.id, parentId: input.parentId || null }
+        uploadAttempts.current.set(input.file, attempt)
+      }
+      const data = await uploadDriveFile(supabase, input.file, attempt, input.parentId || null)
+      if (uploadAttempts.current.get(input.file) === attempt) uploadAttempts.current.delete(input.file)
 
       const newItem: DriveItem = {
         id: data.id,
@@ -345,14 +318,16 @@ export function useDrive(): UseDriveReturn {
       }
 
       commitItems(generation, prev => prev.some(item => item.id === newItem.id) ? prev : [...prev, newItem])
+      await fetchItems()
       return withPermissions([...items.filter(item => item.id !== newItem.id), newItem], user).find(item => item.id === newItem.id)!
     } catch (error) {
+      if (!(error instanceof DriveUploadPendingError)) uploadAttempts.current.delete(input.file)
       console.error('Error uploading file:', error)
       throw error
     } finally {
       if (generation === context.current.generation) setPendingUploads(count => count - 1)
     }
-  }, [user, supabase, items, commitItems])
+  }, [user, supabase, items, commitItems, fetchItems])
 
   // Upload de múltiplos arquivos
   const uploadFiles = useCallback(async (files: File[], parentId?: string | null): Promise<DriveItem[]> => {
