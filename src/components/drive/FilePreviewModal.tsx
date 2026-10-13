@@ -26,7 +26,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
+import { driveContentUrl, downloadDriveFile } from '@/lib/drive-download'
 import {
   Dialog,
   DialogContent,
@@ -39,7 +39,7 @@ interface FilePreviewModalProps {
   open: boolean
   onClose: () => void
   file: DriveItem | null
-  onDownload?: (file: DriveItem) => void
+  onDownload?: (file: DriveItem) => void | Promise<void>
   onShare?: (file: DriveItem) => void
   onDelete?: (file: DriveItem) => void
 }
@@ -86,51 +86,6 @@ const getFileInfo = (mimeType?: string) => {
   return { icon: File, color: 'text-gray-400', bgColor: 'bg-gray-500/20', label: 'Arquivo' }
 }
 
-// [C05] Função para obter URL pública do Supabase Storage — cria client por chamada
-const getPublicUrl = (storagePath: string | undefined): string | null => {
-  if (!storagePath) return null
-
-  const supabase = createClient()
-  const { data } = supabase.storage
-    .from('drive-files')
-    .getPublicUrl(storagePath)
-
-  return data?.publicUrl || null
-}
-
-// [C05] Função para fazer download do arquivo — cria client por chamada
-const downloadFile = async (file: DriveItem) => {
-  if (!file.url) {
-    toast.error('Arquivo não disponível para download')
-    return
-  }
-
-  try {
-    const supabase = createClient()
-    const { data, error } = await supabase.storage
-      .from('drive-files')
-      .download(file.url)
-
-    if (error) throw error
-
-    // Criar blob URL e fazer download
-    const blob = new Blob([data], { type: file.mimeType || 'application/octet-stream' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-
-    toast.success(`${file.name} baixado com sucesso!`)
-  } catch (error) {
-    console.error('Download error:', error)
-    toast.error('Erro ao baixar arquivo')
-  }
-}
-
 export function FilePreviewModal({
   open,
   onClose,
@@ -139,8 +94,9 @@ export function FilePreviewModal({
   onShare,
   onDelete,
 }: FilePreviewModalProps) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [isLoadingImage, setIsLoadingImage] = useState(false)
+  const fileId = file?.id
+  const filePath = file?.url
+  const imageUrl = useMemo(() => open && fileId && filePath ? driveContentUrl(fileId) : null, [open, fileId, filePath])
   const [imageError, setImageError] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -155,43 +111,10 @@ export function FilePreviewModal({
   const isAudio = file?.mimeType?.startsWith('audio/')
   const isPdf = file?.mimeType?.includes('pdf')
 
-  // Carregar URL do arquivo (Signed URL)
   useEffect(() => {
-    if (open && file && file.url) {
-      const fetchUrl = async () => {
-        setIsLoadingImage(true)
-        setImageError(false)
-        setImageUrl(null)
-
-        try {
-          // [C05] Gerar URL assinada válida por 1 hora
-          const supabase = createClient()
-          const { data, error } = await supabase.storage
-            .from('drive-files')
-            .createSignedUrl(file.url!, 3600)
-
-          if (error) throw error
-
-          if (data?.signedUrl) {
-            setImageUrl(data.signedUrl)
-          } else {
-            console.error('No signed URL returned')
-            setImageError(true)
-          }
-        } catch (error) {
-          console.error('Error fetching signed URL:', error)
-          setImageError(true)
-        } finally {
-          setIsLoadingImage(false)
-        }
-      }
-
-      fetchUrl()
-    } else {
-      setImageUrl(null)
-      setZoom(1)
-    }
-  }, [open, file])
+    setImageError(false)
+    setZoom(1)
+  }, [open, file?.id])
 
   // Handler de download
   const handleDownload = async () => {
@@ -200,7 +123,9 @@ export function FilePreviewModal({
     setIsDownloading(true)
     try {
       if (onDownload) await onDownload(file)
-      else await downloadFile(file)
+      else await downloadDriveFile(file)
+    } catch {
+      toast.error('Erro ao baixar arquivo. Verifique se ainda possui acesso.')
     } finally {
       setIsDownloading(false)
     }
@@ -276,18 +201,7 @@ export function FilePreviewModal({
         {/* Preview Area */}
         <div className="flex-1 bg-[#0a0a0a] flex items-center justify-center overflow-hidden relative">
           <AnimatePresence mode="wait">
-            {isLoadingImage ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center p-8 absolute inset-0"
-              >
-                <Loader2 className="h-10 w-10 text-purple-400 animate-spin mb-4" />
-                <p className="text-gray-400">Carregando preview...</p>
-              </motion.div>
-            ) : isImage ? (
+            {isImage ? (
               imageUrl && !imageError ? (
                 <motion.div
                   key="image"
@@ -298,6 +212,7 @@ export function FilePreviewModal({
                   style={{ cursor: zoom > 1 ? 'move' : 'default' }}
                 >
                   <img
+                    key={file.id}
                     src={imageUrl}
                     alt={file.name}
                     className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-200"
@@ -340,6 +255,7 @@ export function FilePreviewModal({
                   className="w-full h-full"
                 >
                   <iframe
+                    key={file.id}
                     src={`${imageUrl}#toolbar=0`}
                     className="w-full h-full border-0 bg-white/5"
                     title={file.name}

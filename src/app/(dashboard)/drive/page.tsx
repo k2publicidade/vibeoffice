@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
+import { downloadDriveFile } from '@/lib/drive-download'
 
 type ViewMode = 'grid' | 'list'
 
@@ -92,6 +92,7 @@ export default function DrivePage() {
   const [shareItem_, setShareItem] = useState<DriveItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [sharingBusy, setSharingBusy] = useState(false)
+  const livePreviewFile = previewFile ? getItemById(previewFile.id) : null
   const liveShareItem = shareItem_ ? getItemById(shareItem_.id) : null
   const [successModal, setSuccessModal] = useState<{ open: boolean; title: string; description?: string }>({ open: false, title: '' })
   const [errorModal, setErrorModal] = useState<{ open: boolean; title: string; description?: string }>({ open: false, title: '' })
@@ -171,25 +172,7 @@ export default function DrivePage() {
     if (!item || item.type !== 'file') return
 
     try {
-      const supabase = createClient()
-      // No useDrive, o `storage_path` do banco é mapeado para `item.url`
-      const path = item.url
-      if (!path) throw new Error('Caminho do arquivo não encontrado')
-
-      const { data, error } = await supabase.storage
-        .from('drive-files')
-        .download(path)
-      if (error) throw error
-
-      // Criar link e disparar download
-      const url = URL.createObjectURL(data)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = item.name
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      await downloadDriveFile(item)
 
       toast.success(`Download iniciado: ${item.name}`)
     } catch (e) {
@@ -577,13 +560,10 @@ export default function DrivePage() {
       />
 
       <FilePreviewModal
-        open={!!previewFile}
+        open={!!livePreviewFile}
         onClose={() => setPreviewFile(null)}
-        file={previewFile}
-        onDownload={(file) => {
-          handleDownload(file.id)
-          setPreviewFile(null)
-        }}
+        file={livePreviewFile}
+        onDownload={(file) => handleDownload(file.id)}
         onShare={(file) => {
           handleShare(file.id)
           setPreviewFile(null)

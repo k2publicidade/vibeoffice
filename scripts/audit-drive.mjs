@@ -73,7 +73,7 @@ try {
   if (origin) {
     await expectStatus('/drive/share/' + file.id, 307, null, 'private link requires login');
     await expectStatus('/drive/share/' + file.id, 404, manager, 'signed-in outsider cannot open private link');
-    await expectStatus('/drive/share/' + file.id + '/download', 404, null, 'anonymous private download blocked');
+    await expectStatus('/drive/share/' + file.id + '/download', 401, null, 'anonymous private download blocked');
     await expectStatus('/drive/share/not-a-uuid', 404, null, 'malformed link rejected');
   }
   await share(admin.client, file.id, accounts[1].id, accounts[0].id, 'view');
@@ -87,7 +87,7 @@ try {
   pass('file-level grants returned with permission');
   if (origin) {
     await expectStatus('/drive/share/' + file.id, 200, manager, 'authorized private page works');
-    await expectStatus('/drive/share/' + file.id + '/download', 307, manager, 'authorized private download works');
+    await expectStatus('/drive/share/' + file.id + '/download', 200, manager, 'authorized private download works');
   }
   await share(admin.client, file.id, accounts[1].id, accounts[0].id, 'edit');
   data(await manager.client.from('drive_items').update({ name: tag + ' editado.txt' }).eq('id', file.id).select().single(), 'editor rename');
@@ -119,8 +119,8 @@ try {
     const page = await expectStatus('/drive/share/' + folder.id, 200, null, 'public folder page works');
     if (!(await page.text()).includes(nested.id)) throw Error('Public folder child missing');
     await expectStatus('/drive/share/' + file.id, 200, null, 'nested public file page works');
-    const download = await expectStatus('/drive/share/' + file.id + '/download', 307, null, 'public download authorized');
-    const bytes = await fetch(download.headers.get('location'));
+    const download = await expectStatus('/drive/share/' + file.id + '/download', 200, null, 'public download authorized');
+    const bytes = download;
     if (bytes.status !== 200 || await bytes.text() !== content) throw Error('Public download content incorrect');
     pass('public download returns exact uploaded content');
   }
@@ -128,7 +128,7 @@ try {
   if (data(await service.rpc('drive_is_public', { i: file.id }), 'private inheritance')) throw Error('Public access not revoked');
   if (origin) {
     await expectStatus('/drive/share/' + file.id, 307, null, 'revoked public link requires login');
-    await expectStatus('/drive/share/' + file.id + '/download', 404, null, 'revoked public download blocked');
+    await expectStatus('/drive/share/' + file.id + '/download', 401, null, 'revoked public download blocked');
   }
   const removed = data(await manager.client.storage.from('drive-files').remove([path]), 'editor deletes authorized stored bytes');
   if (removed.length !== 1) throw Error('Authorized Storage deletion silently skipped');
