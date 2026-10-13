@@ -40,6 +40,7 @@ it('streams authorized bytes without bearer redirects or cacheable responses', a
   expect(result.headers.get('location')).toBeNull()
   expect(result.headers.get('vercel-cdn-cache-control')).toBe('no-store')
   expect(result.headers.get('vary')).toBe('Cookie')
+  expect(result.headers.get('x-frame-options')).toBe('SAMEORIGIN')
   expect(result.headers.get('content-disposition')).toContain("filename*=UTF-8''a%C3%A7%C3%A3o%27%3B.pdf")
   const [url, options] = storage.mock.calls[0]
   expect(url.pathname).toBe('/storage/v1/object/authenticated/drive-files/private/document.pdf')
@@ -84,6 +85,15 @@ it('never renders active HTML content inline on the application origin', async (
   expect(result.headers.get('content-disposition')).toMatch(/^attachment/)
   expect(result.headers.get('x-content-type-options')).toBe('nosniff')
   expect(result.headers.get('content-security-policy')).toContain("default-src 'none'")
+})
+
+it('cancels the upstream body if permission revalidation fails', async () => {
+  select.mockResolvedValueOnce({ data: item, error: null }).mockResolvedValueOnce({ data: null, error: new Error('Database unavailable') })
+  const upstream = new Response('secret')
+  const cancel = jest.spyOn(upstream.body!, 'cancel')
+  storage.mockResolvedValue(upstream)
+  expect((await serveDriveContent(request(), id)).status).toBe(503)
+  expect(cancel).toHaveBeenCalled()
 })
 
 it('uses the public reader only while the sharing resolver confirms publication', async () => {

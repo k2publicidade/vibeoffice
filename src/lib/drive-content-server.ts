@@ -10,6 +10,7 @@ const cacheHeaders = {
   'Vercel-CDN-Cache-Control': 'no-store',
   Vary: 'Cookie',
   'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
   'Referrer-Policy': 'no-referrer',
 }
 
@@ -33,6 +34,7 @@ function unavailable(status: number) {
 }
 
 export async function serveDriveContent(request: Request, id: string, shared = false) {
+  let upstream: Response | undefined
   try {
     const access = await resolve(id, shared)
     if (access.status !== 'ok') return unavailable(access.status === 'login' ? 401 : access.status === 'mfa' ? 403 : 404)
@@ -49,7 +51,7 @@ export async function serveDriveContent(request: Request, id: string, shared = f
     url.searchParams.set('cacheNonce', randomUUID())
     const headers = new Headers({ Authorization: `Bearer ${token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY! })
     if (range) headers.set('Range', range)
-    const upstream = await fetch(url, { headers, cache: 'no-store', redirect: 'error', signal: request.signal, method: request.method === 'HEAD' ? 'HEAD' : 'GET' })
+    upstream = await fetch(url, { headers, cache: 'no-store', redirect: 'error', signal: request.signal, method: request.method === 'HEAD' ? 'HEAD' : 'GET' })
     if (upstream.status !== 200 && upstream.status !== 206) {
       const status = upstream.status === 416 ? 416 : upstream.status === 404 || upstream.status === 400 ? 404 : 503
       await upstream.body?.cancel()
@@ -74,6 +76,7 @@ export async function serveDriveContent(request: Request, id: string, shared = f
     // Stream without buffering: large files and Range requests retain backpressure.
     return new Response(request.method === 'HEAD' ? null : upstream.body, { status: upstream.status, headers: output })
   } catch {
+    await upstream?.body?.cancel().catch(() => {})
     return unavailable(503)
   }
 }
