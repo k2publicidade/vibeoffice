@@ -32,7 +32,11 @@ try {
   if(process.argv.includes('--verify')){
     const jobs=checked(await service.from('drive_cleanup_jobs').select('completed_at').eq('deletion_id',fixture.deletionId),'completed jobs');
     assert.equal(jobs.length,2);assert.ok(jobs.every(job=>job.completed_at),'Worker must confirm all jobs');
-    for(const path of fixture.paths)assert.equal((await freshDownload(path)).ok,false,'An uncached origin download must confirm physical removal');
+    for(const path of fixture.paths){
+      const response=await freshDownload(path),body=await response.json();
+      assert.ok([400,404].includes(response.status),'Origin must return a missing-object response, not an authorization or server failure');
+      assert.equal(String(body.statusCode),'404');assert.equal(body.code,'NoSuchKey');
+    }
     assert.equal(checked(await service.from('drive_items').select('id').eq('id',fixture.rootId),'removed root').length,0);
     console.log('PASS worker/cron completed both jobs and physically removed both files');
   }else{
