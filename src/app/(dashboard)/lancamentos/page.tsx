@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useReleases } from '@/hooks/useReleases'
 import { useRecordLink } from '@/hooks/useRecordLink'
 import { ReleasesKanbanBoard, ReleaseColumnData } from '@/components/releases/ReleasesKanbanBoard'
+import { ReleaseOperations } from '@/components/releases/ReleaseOperations'
 import { ReleasesDashboard } from '@/components/releases/ReleasesDashboard'
 import { ReleaseModal } from '@/components/releases/ReleaseModal'
 import { ReleaseDetailsModal } from '@/components/releases/ReleaseDetailsModal'
@@ -227,7 +228,9 @@ function LancamentosContent() {
       {/* Tabs: Dashboard + Kanban */}
       <Tabs defaultValue="dashboard" className="flex-1 flex flex-col overflow-hidden">
         <div className="px-4 sm:px-6 lg:px-8 pt-3 border-b border-[#2a2a2a]">
-          <TabsList className="bg-[#111] border border-[#2a2a2a]">
+          <TabsList className="bg-[#111] border border-[#2a2a2a] flex-wrap h-auto max-w-full gap-1">
+            <TabsTrigger value="distribution">Distribuição</TabsTrigger>
+            <TabsTrigger value="analytics">Análise de lançamentos</TabsTrigger>
             <TabsTrigger value="dashboard" className="gap-1.5 data-[state=active]:bg-[#1a1a1a] data-[state=active]:text-white text-gray-400">
               <LayoutDashboard className="w-3.5 h-3.5" />
               Dashboard
@@ -238,6 +241,13 @@ function LancamentosContent() {
             </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="distribution" className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-5 mt-0">
+          {isLoading ? <p>Carregando lançamentos…</p> : <ReleaseOperations releases={filteredReleases} mode="distribution" onEdit={handleEditRelease} />}
+        </TabsContent>
+        <TabsContent value="analytics" className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-5 mt-0">
+          {isLoading ? <p>Carregando lançamentos…</p> : <ReleaseOperations releases={filteredReleases} mode="analytics" onEdit={handleEditRelease} />}
+        </TabsContent>
 
         <TabsContent value="dashboard" className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 mt-0">
           {isLoading ? (
