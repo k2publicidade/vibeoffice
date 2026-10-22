@@ -13,3 +13,7 @@ Página /update-password aberta com error_code=otp_expired continuava exibindo o
 ## Verificação
 
 Cinco testes de interface: token expirado, sessão ausente, mínimo de caracteres e confirmação, ausência de consumo automático em StrictMode e erro na verificação. Suíte de 428 testes/50 suítes passou; testes direcionados passaram novamente após ajuste de StrictMode. TypeScript passou. Lint sem erros, dois avisos de estado em efeito. Build precisou de retry devido ao alerta existente Next.js registrado em vibeoffice-bzc.
+
+## Publicação e entrega ao usuário
+
+95648252540b6fa569d379c0a74bacb80d04f06a confirmado no domínio oficial e deployment dpl_8p6xPFAyk2vk58yXQi75dkYfHmDz READY/production. Browser confirmou fragmento removido e botão Continuar recuperação; verificação com token inválido exibiu erro. Nova recuperação da conta explicitamente indicada aberta no navegador e entregue ao usuário, aguardando clique e definição da própria senha. Nenhum email enviado e nenhuma senha alterada pelo agente.
