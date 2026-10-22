@@ -20,3 +20,7 @@ Migração `202610220001_collaborator_calendar_genres.sql` aplicada no banco con
 ## Limites das cores
 
 As cores são organização pessoal da agenda. Filtros Pessoal, Setor e Empresa continuam controlando quais eventos são mostrados; uma cor de data substitui a cor visual desses eventos para aquele usuário.
+
+## Publicação conferida
+
+Commit b3b716f9be0a51c1aba275289d2b6ca474de4d82 enviado para origin/master. Vercel dpl_Ga9z2smtu5ngxZDQ8BmUn4ABPVzq READY/production e domínio office.vibedistro.com conferidos com SHA exato. Suíte completa: 404 testes em 46 suítes passaram. Interface publicada conferida em sessão Admin: cadastro só email/senha, seletor de data e seis cores; catálogo carregado e seleção simultânea Pop + Rock; painel Gerenciar estilos musicais disponível. O rascunho de conferência não foi salvo. Alterações locais anteriores de chat e documentação foram preservadas.
