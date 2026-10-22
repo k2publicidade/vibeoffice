@@ -29,3 +29,9 @@ Testes de parser, agregações monetárias, permissões e transições; auditori
 - Receitas visíveis somente a Admin/Gerente, inclusive em acesso direto à tabela; snapshot de colaborador proprietário remove receitas e não expõe lançamentos alheios. Dados de consumo são acessíveis ao proprietário.
 - 19 testes direcionados e suíte completa com 423 testes/49 suítes passaram. TypeScript e lint sem erros. Build concluiu no retry; primeira execução emitiu alerta de segurança do Next.js 16.4, registrado em tarefa própria.
 - Integração automática Revelator pendente de acesso parceiro (usuário informou que ainda solicitará). Não há credenciais nem chamadas automáticas de entrega. Follow-up vibeoffice-0iz.
+
+## Publicação e auditoria HTTP
+
+Código 6034966d878788fde9e7b449b3627f2b270ed6c3 publicado no domínio oficial; deployment dpl_FsY31irazsrwY7B6PcXDytfqiyHw confirmado READY/production e SHA exato. Auditoria scripts/audit-release-operations-http.mjs executou chamadas reais com contas descartáveis: página autenticada, envio para revisão, rejeição de aprovação por colaborador, aprovação por admin, importação CSV, consulta de métricas e ocultação de receitas para colaborador. Lançamento, relatório, histórico e contas temporárias removidos. Nenhuma entrega Revelator foi acionada.
+
+A conferência visual em navegador encontrou a sessão desconectada e foi solicitada ao usuário nova autenticação; os componentes foram verificados pelos testes de interface e os endpoints em produção pela auditoria HTTP. Alterações locais anteriores de chat, tipos e documentação foram preservadas.
