@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useCalendarDayColors } from '@/hooks/useCalendarDayColors'
+import { DAY_COLORS } from '@/lib/office-preferences'
+import { format } from 'date-fns'
 import { Plus } from 'lucide-react'
 import { useCalendar } from '@/hooks/useCalendar'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -30,6 +33,7 @@ export default function CalendarPage() {
     duplicateEvent,
     getUpcomingEvents
   } = useCalendar()
+  const dayColors = useCalendarDayColors()
   const { users } = useUsers()
   const isMobile = useIsMobile()
 
@@ -81,11 +85,11 @@ export default function CalendarPage() {
         title: event.title,
         startTime: event.startTime,
         endTime: event.endTime,
-        color: event.type === 'personal'
+        color: dayColors.colors[format(event.startTime, 'yyyy-MM-dd')] || (event.type === 'personal'
           ? 'hsl(218, 100%, 52%)'
           : event.type === 'sector'
             ? 'hsl(22, 94%, 48%)'
-            : 'hsl(142, 76%, 36%)',
+            : 'hsl(142, 76%, 36%)'),
         attendees: event.attendees
           .map(id => users?.find(u => u.id === id))
           .filter(Boolean)
@@ -93,7 +97,7 @@ export default function CalendarPage() {
         linkedTaskId: event.linkedTaskId,
         linkedTicketId: event.linkedTicketId,
       }))
-  }, [events, filters, users])
+  }, [events, filters, users, dayColors.colors])
 
   const handleFilterChange = (id: string, checked: boolean) => {
     setFilterSelections(prev =>
@@ -323,9 +327,20 @@ export default function CalendarPage() {
         </div>
 
         {/* Main Calendar */}
-        <div className="flex-1 min-w-0 overflow-auto">
+        <div className="flex-1 min-w-0 overflow-auto" style={{ borderTop: dayColors.colors[format(selectedDate, 'yyyy-MM-dd')] ? `4px solid ${dayColors.colors[format(selectedDate, 'yyyy-MM-dd')]}` : undefined }}>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3 mb-4" aria-label="Cores dos dias">
+            <label className="flex items-center gap-2">Cor do dia
+              <input aria-label="Data para marcar com cor" type="date" value={format(selectedDate, 'yyyy-MM-dd')} onChange={e => { if (e.target.value) setSelectedDate(new Date(e.target.value + 'T12:00:00')) }} className="bg-background border rounded p-1" />
+            </label>
+            {DAY_COLORS.map(color => <button key={color.value} type="button" title={color.label} aria-label={`Marcar dia em ${color.label.toLowerCase()}`} aria-pressed={dayColors.colors[format(selectedDate, 'yyyy-MM-dd')] === color.value} disabled={dayColors.saving || dayColors.loading || !!dayColors.error} onClick={() => dayColors.save(format(selectedDate, 'yyyy-MM-dd'), color.value)} className="w-8 h-8 rounded-full border-2 aria-pressed:ring-2 aria-pressed:ring-offset-2 aria-pressed:ring-white" style={{ backgroundColor: color.value }} />)}
+            <button type="button" disabled={dayColors.saving || dayColors.loading || !!dayColors.error} onClick={() => dayColors.save(format(selectedDate, 'yyyy-MM-dd'), null)}>Sem cor</button>
+            <span className="text-xs text-muted-foreground">Marcações pessoais</span>
+            {dayColors.error && <span role="alert">{dayColors.error} <button onClick={dayColors.reload}>Tentar novamente</button></span>}
+          </div>
+
           {view === 'week' && (
             <WeekView
+              dayColors={dayColors.colors}
               selectedDate={selectedDate}
               events={weekEvents}
               onDateChange={setSelectedDate}
@@ -338,6 +353,7 @@ export default function CalendarPage() {
           )}
           {view === 'month' && (
             <MonthView
+              dayColors={dayColors.colors}
               selectedDate={selectedDate}
               events={weekEvents}
               onDateChange={setSelectedDate}

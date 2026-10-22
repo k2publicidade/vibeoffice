@@ -1,7 +1,8 @@
+import { MusicGenrePicker } from './MusicGenrePicker';
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { GenerationConfig, MusicGenre, AlbumMood, VISUAL_STYLE_CATEGORIES, VisualStyle, FontStyle, TextEffect } from '@/types/vibecanvas';
+import { GenerationConfig, AlbumMood, VISUAL_STYLE_CATEGORIES, VisualStyle, FontStyle, TextEffect } from '@/types/vibecanvas';
 import { ChevronRight, ChevronLeft, Flag, Info, Camera, Image as ImageIcon, Music, Palette, Type, Check, Sparkles, Upload, X } from 'lucide-react';
 
 interface WizardProps {
@@ -44,6 +45,7 @@ const Wizard: React.FC<WizardProps> = ({ config, setConfig, onComplete }) => {
     };
 
     const handleNext = () => {
+        if (currentStep === 2 && !config.musicGenre) { toast.error("Selecione o estilo musical principal"); return; }
         if (currentStep < STEPS.length - 1) {
             setCurrentStep(prev => prev + 1);
         } else {
@@ -163,22 +165,7 @@ const Wizard: React.FC<WizardProps> = ({ config, setConfig, onComplete }) => {
                             <p className="text-zinc-400">Qual a sonoridade desse projeto? Isso ajuda a definir a estética visual correta (ex: Rock pede algo mais sujo, Pop algo mais limpo).</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                            {Object.values(MusicGenre).map((genre) => (
-                                <button
-                                    key={genre}
-                                    onClick={() => updateConfig('musicGenre', genre)}
-                                    className={`
-                                    text-left px-4 py-3 rounded-xl border transition-all duration-200
-                                    ${config.musicGenre === genre
-                                            ? 'bg-blue-500/20 border-blue-500 text-white shadow-lg shadow-blue-900/20'
-                                            : 'bg-zinc-800/30 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800 hover:border-zinc-600'}
-                                `}
-                                >
-                                    {genre}
-                                </button>
-                            ))}
-                        </div>
+                        <MusicGenrePicker config={config} setConfig={setConfig} />
                     </div>
                 );
 
@@ -417,7 +404,7 @@ const Wizard: React.FC<WizardProps> = ({ config, setConfig, onComplete }) => {
                             </div>
                             <div className="flex justify-between border-b border-white/5 pb-2">
                                 <span className="text-zinc-500">Gênero</span>
-                                <span className="text-white font-medium">{config.musicGenre}</span>
+                                <span className="text-white font-medium">{[config.musicGenre, config.secondaryMusicGenre].filter(Boolean).join(' + ')}</span>
                             </div>
                             <div className="flex justify-between border-b border-white/5 pb-2">
                                 <span className="text-zinc-500">Vibe</span>

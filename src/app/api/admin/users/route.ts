@@ -4,8 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const input = z.object({
-  name: z.string().trim().min(2).max(100),
-  email: z.email(),
+  email: z.email().trim().toLowerCase(),
   password: z.string().min(12).max(128),
   role: z.enum(['Admin', 'Gerente', 'Colaborador']),
   sector: z.enum(['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']),
@@ -18,18 +17,24 @@ export async function POST(request: Request) {
   const session = await createServerSupabaseClient()
   const { data: { user } } = await session.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Sessão expirada' }, { status: 401 })
-  const { data: profile } = await session.from('users').select('role, active').eq('id', user.id).single()
-  if (profile?.role !== 'Admin' || !profile.active) return NextResponse.json({ error: 'Apenas o ADMIN pode cadastrar funcionários' }, { status: 403 })
-  const parsed = input.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Confira nome, e-mail, setor, cargo e senha (mínimo 12 caracteres)' }, { status: 400 })
+  const { data: roleAccess } = await session.rpc('office_role')
+  if (roleAccess !== 'Admin') return NextResponse.json({ error: 'Apenas o ADMIN pode cadastrar funcionários' }, { status: 403 })
+  const parsed = input.pick({ email: true, password: true }).safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: 'Confira o e-mail e a senha (mínimo 12 caracteres)' }, { status: 400 })
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!key) return NextResponse.json({ error: 'Cadastro indisponível: configuração administrativa ausente' }, { status: 503 })
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false, autoRefreshToken: false } })
-  const { name, email, password, role, sector } = parsed.data
+  const { email, password } = parsed.data
+  const name = email.split('@')[0]
+  const role = 'Colaborador'
+  const sector = 'Administrativo'
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, app_metadata: { office_enabled: true }, user_metadata: { name } })
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  const { error: profileError } = await admin.from('users').update({ name, role, sector, active: true } as never).eq('id', data.user.id)
-  if (profileError) return NextResponse.json({ error: 'Conta criada, mas o perfil exige revisão do administrador' }, { status: 500 })
+  const { data: savedProfile, error: profileError } = await admin.from('users').update({ name, role, sector, active: true }).eq('id', data.user.id).select('id').single()
+  if (profileError || !savedProfile) {
+    const { error: rollbackError } = await admin.auth.admin.deleteUser(data.user.id)
+    return NextResponse.json({ error: rollbackError ? 'Conta criada parcialmente. Contate o suporte antes de tentar novamente.' : 'Não foi possível criar o perfil. Tente novamente.' }, { status: 500 })
+  }
   return NextResponse.json({ id: data.user.id, email }, { status: 201 })
 }
 

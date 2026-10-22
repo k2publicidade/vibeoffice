@@ -39,14 +39,12 @@ export default function EmployeesPage() {
     finally { setSaving(false) }
   }
   return <div className="max-w-4xl mx-auto space-y-6 p-6">
-    <h1 className="text-2xl font-bold">Funcionários</h1>
+    <h1 className="text-2xl font-bold">Colaboradores</h1>
+    <p>Cadastre o e-mail e a senha de acesso. O colaborador já poderá entrar no sistema. Cargo e setor podem ser ajustados abaixo.</p>
     <form onSubmit={createEmployee} className="grid md:grid-cols-2 gap-4 rounded-xl border p-6">
-      <div><Label htmlFor="name">Nome</Label><Input id="name" name="name" required minLength={2} /></div>
       <div><Label htmlFor="email">E-mail</Label><Input id="email" name="email" type="email" required /></div>
       <div><Label htmlFor="password">Senha inicial (mínimo 12 caracteres)</Label><Input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} /></div>
-      <div><Label htmlFor="role">Cargo</Label><select id="role" name="role" defaultValue="Colaborador" className="w-full rounded-md border bg-background p-2">{['Colaborador', 'Gerente', 'Admin'].map(role => <option key={role}>{role}</option>)}</select></div>
-      <div><Label htmlFor="sector">Setor</Label><select id="sector" name="sector" defaultValue="Administrativo" className="w-full rounded-md border bg-background p-2">{sectors.map(sector => <option key={sector}>{sector}</option>)}</select></div>
-      <Button disabled={saving} className="self-end">{saving ? 'Cadastrando…' : 'Cadastrar funcionário'}</Button>
+      <Button disabled={saving} className="self-end">{saving ? 'Cadastrando…' : 'Cadastrar colaborador'}</Button>
     </form>
     <div className="rounded-xl border overflow-x-auto"><table className="w-full text-left"><thead><tr>{['Nome', 'E-mail', 'Cargo', 'Setor'].map(label => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{users?.map(user => <tr key={user.id} className="border-t"><td className="p-3">{user.name}</td><td className="p-3">{user.email}</td><td className="p-3">{user.role}</td><td className="p-3">{user.sector}</td></tr>)}</tbody></table></div>
     {created.map(email => <p key={email}>Novo acesso criado: {email}</p>)}

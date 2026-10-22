@@ -50,6 +50,7 @@ export interface CalendarEvent {
 }
 
 interface WeekViewProps {
+  dayColors?: Record<string, string>
   selectedDate: Date
   events: CalendarEvent[]
   onDateChange: (date: Date) => void
@@ -63,6 +64,7 @@ interface WeekViewProps {
 const HOURS = Array.from({ length: 24 }, (_, i) => i) // 0am to 11pm (full day)
 
 export function WeekView({
+  dayColors = {},
   selectedDate,
   events,
   onDateChange,
@@ -204,6 +206,7 @@ export function WeekView({
                   <button
                     key={day.toISOString()}
                     onClick={() => onDateChange(day)}
+                style={{ borderBottom: dayColors[format(day, 'yyyy-MM-dd')] ? `5px solid ${dayColors[format(day, 'yyyy-MM-dd')]}` : undefined }}
                     className={cn(
                       'flex flex-col items-center py-2 px-3 rounded-xl transition-all min-w-[48px]',
                       isSelected &&
@@ -394,6 +397,7 @@ export function WeekView({
               <button
                 key={day.toISOString()}
                 onClick={() => onDateChange(day)}
+                style={{ borderBottom: dayColors[format(day, 'yyyy-MM-dd')] ? `5px solid ${dayColors[format(day, 'yyyy-MM-dd')]}` : undefined }}
                 className={cn(
                   'flex flex-col items-center py-3 rounded-xl transition-all duration-200',
                   isSelected &&

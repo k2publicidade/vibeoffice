@@ -46,6 +46,7 @@ export interface CalendarEvent {
 }
 
 interface MonthViewProps {
+  dayColors?: Record<string, string>
   selectedDate: Date
   events: CalendarEvent[]
   onDateChange: (date: Date) => void
@@ -59,6 +60,7 @@ interface MonthViewProps {
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 export function MonthView({
+  dayColors = {},
   selectedDate,
   events,
   onDateChange,
@@ -160,7 +162,7 @@ export function MonthView({
               const hasEvents = dayEvents.length > 0
 
               // Pular dias vazios exceto hoje
-              if (!hasEvents && !isTodayDate) return null
+              if (!hasEvents && !isTodayDate && !dayColors[format(day, 'yyyy-MM-dd')]) return null
 
               return (
                 <motion.div
@@ -170,6 +172,7 @@ export function MonthView({
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.02 }}
                   className="border-b border-[#262626]"
+                  style={{ borderLeft: dayColors[format(day, 'yyyy-MM-dd')] ? `6px solid ${dayColors[format(day, 'yyyy-MM-dd')]}` : undefined }}
                 >
                   {/* Day Header */}
                   <button
@@ -367,6 +370,7 @@ export function MonthView({
               <DroppableMonthDay
                 key={day.toISOString()}
                 day={day}
+                color={dayColors[format(day, 'yyyy-MM-dd')]}
                 onClick={() => onDayClick?.(day)}
                 className={cn(
                   'min-h-[100px] p-2 border-b border-r border-[#262626] cursor-pointer transition-colors',
@@ -460,11 +464,13 @@ function DraggableMonthEvent({
 
 function DroppableMonthDay({
   day,
+  color,
   children,
   onClick,
   className,
 }: {
   day: Date
+  color?: string
   children: React.ReactNode
   onClick?: () => void
   className?: string
@@ -477,6 +483,7 @@ function DroppableMonthDay({
     <motion.div
       ref={setNodeRef}
       className={cn(className, isOver && 'bg-[#fc7a67]/20')}
+      style={{ backgroundColor: color ? `${color}25` : undefined, borderTop: color ? `4px solid ${color}` : undefined }}
       onClick={onClick}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

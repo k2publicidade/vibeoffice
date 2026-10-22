@@ -26,7 +26,7 @@ export const generateBriefing = (config: GenerationConfig): string => {
     const _mood = mood === AlbumMood.NONE ? "neutro" : mood;
 
     // The approved template
-    const template = `Crie uma capa quadrada 1:1 (single/álbum) em alta resolução e aparência profissional, no estilo visual ${visualStyle} e com a temática baseada em ${musicGenre}, transmitindo o mood ${_mood}.
+    const template = `Crie uma capa quadrada 1:1 (single/álbum) em alta resolução e aparência profissional, no estilo visual ${visualStyle} e com a temática baseada em ${[musicGenre, config.secondaryMusicGenre].filter(Boolean).join(' e ')}, transmitindo o mood ${_mood}.
 
 A cena deve mostrar ${_scenario} com ${_elements} e iluminação ${_lighting} (com profundidade de campo moderada para separar o fundo do primeiro plano), mantendo o fundo realista/cinematográfico e sem poluir a leitura do texto.
 

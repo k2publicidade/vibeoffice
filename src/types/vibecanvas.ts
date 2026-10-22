@@ -296,7 +296,8 @@ export enum Contrast {
 
 export interface GenerationConfig {
     visualStyle: VisualStyle;
-    musicGenre: MusicGenre;
+    musicGenre: string;
+    secondaryMusicGenre?: string;
     mood: AlbumMood;
     details: string; // Used for "Cenário Principal" in new pattern if not empty
     scenario: string;

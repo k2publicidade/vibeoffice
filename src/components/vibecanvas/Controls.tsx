@@ -1,7 +1,8 @@
+import { MusicGenrePicker } from './MusicGenrePicker';
 
 import React, { useRef } from 'react';
 import Image from 'next/image';
-import { VisualStyle, MusicGenre, FontStyle, TextEffect, GenerationConfig, AlbumMood, VISUAL_STYLE_CATEGORIES } from '@/types/vibecanvas';
+import { VisualStyle, FontStyle, TextEffect, GenerationConfig, AlbumMood, VISUAL_STYLE_CATEGORIES } from '@/types/vibecanvas';
 import { Palette, Music, Type, Upload, X, Image as ImageIcon, ChevronDown, Plus, Heart } from 'lucide-react';
 
 interface ControlsProps {
@@ -85,18 +86,7 @@ const Controls: React.FC<ControlsProps> = ({ config, setConfig, className = "" }
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                    <InputWrapper label="Gênero">
-                        <div className="relative">
-                            <select
-                                className={SelectStyle}
-                                value={config.musicGenre}
-                                onChange={(e) => updateConfig('musicGenre', e.target.value)}
-                            >
-                                {Object.values(MusicGenre).map(g => <option key={g} value={g}>{g}</option>)}
-                            </select>
-                            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
-                        </div>
-                    </InputWrapper>
+                    <MusicGenrePicker config={config} setConfig={setConfig} />
 
                     <InputWrapper label="Humor / Sentimento (Vibe)" icon={Heart}>
                         <div className="relative">

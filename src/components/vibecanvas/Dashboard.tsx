@@ -131,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onEdit, onCreateNew }) => {
 
                                 <div className="flex flex-wrap gap-2">
                                     <span className="px-2 py-1 rounded-md bg-zinc-800 text-zinc-400 text-xs border border-zinc-700">
-                                        {project.config.musicGenre}
+                                        {[project.config.musicGenre, project.config.secondaryMusicGenre].filter(Boolean).join(' + ')}
                                     </span>
                                     <span className="px-2 py-1 rounded-md bg-zinc-800 text-zinc-400 text-xs border border-zinc-700">
                                         {project.config.visualStyle}

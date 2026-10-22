@@ -3,14 +3,14 @@
 import React, { useState } from 'react';
 import Wizard from '@/components/vibecanvas/Wizard';
 import Dashboard from '@/components/vibecanvas/Dashboard';
-import { VisualStyle, MusicGenre, FontStyle, TextEffect, GenerationConfig, AlbumMood, SavedProject } from '@/types/vibecanvas';
+import { VisualStyle, FontStyle, TextEffect, GenerationConfig, AlbumMood, SavedProject } from '@/types/vibecanvas';
 import { generateBriefing } from '@/lib/vibecanvas/briefingGenerator';
 import { saveProject, updateProject } from '@/lib/vibecanvas/storageService';
 import { Sparkles, AlertCircle, Disc, X, Copy, Check, RefreshCcw, LayoutGrid, ArrowLeft, FileText } from 'lucide-react';
 
 const INITIAL_CONFIG: GenerationConfig = {
     visualStyle: VisualStyle.DIGITAL_ART,
-    musicGenre: MusicGenre.POP,
+    musicGenre: '',
     mood: AlbumMood.ENERGETIC,
     details: '',
     scenario: '',
@@ -67,6 +67,7 @@ export default function VibeCanvasPage() {
     };
 
     const handleGenerate = async () => {
+        if (!config.musicGenre) { setError('Selecione o estilo musical principal.'); return; }
         setView('loading');
         setError(null);
         setGeneratedBriefing(null);
