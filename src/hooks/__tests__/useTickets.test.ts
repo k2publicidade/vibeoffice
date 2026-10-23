@@ -231,4 +231,18 @@ describe('useTickets', () => {
 
     consoleErrorSpy.mockRestore()
   })
+  it('supports multiple priorities, categories and assignees together',async()=>{
+    mockTicketAndCommentFetch([
+      {...mockTicketData,id:'high',priority:'high',category:'Bug',assigned_to:userId},
+      {...mockTicketData,id:'medium',priority:'medium',category:'Feature',assigned_to:user2Id},
+      {...mockTicketData,id:'low',priority:'low',category:'Bug',assigned_to:userId},
+    ])
+    const {result}=renderHook(()=>useTickets())
+    await waitFor(()=>expect(result.current.tickets).toHaveLength(3))
+    act(()=>result.current.setFilters({priority:['high','medium'],category:['Bug','Feature'],assignedTo:[userId,user2Id]}))
+    expect(result.current.filteredTickets.map(t=>t.id)).toEqual(['high','medium'])
+    act(()=>result.current.setFilters({priority:[],category:[],assignedTo:[]}))
+    expect(result.current.filteredTickets).toHaveLength(3)
+  })
+
 })

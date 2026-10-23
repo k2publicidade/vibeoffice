@@ -23,7 +23,7 @@ const statusConfig = {
 const priorityConfig = {
   low: { label: 'Baixa', color: 'text-zinc-400', icon: ShieldAlert },
   medium: { label: 'Média', color: 'text-blue-400', icon: ShieldAlert },
-  high: { label: 'Alta', color: 'text-orange-400', icon: AlertCircle },
+  high: { label: 'Alta', color: 'text-red-400', icon: AlertCircle },
 }
 
 export function TicketList({ tickets, onSelectTicket, view = 'grid' }: TicketListProps) {
@@ -47,7 +47,7 @@ export function TicketList({ tickets, onSelectTicket, view = 'grid' }: TicketLis
             <div
               key={ticket.id}
               onClick={() => onSelectTicket?.(ticket)}
-              className="group flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 hover:bg-gradient-to-br hover:from-[#fc7a67]/25 hover:to-transparent hover:border-zinc-600/50 transition-all cursor-pointer"
+              className={cn("group flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 hover:bg-gradient-to-br hover:from-[#fc7a67]/25 hover:to-transparent hover:border-zinc-600/50 transition-all cursor-pointer", ticket.priority === 'high' && 'border-red-500/70 bg-red-950/25 hover:border-red-400 hover:from-red-500/15')}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", status.bg)}>
@@ -77,7 +77,7 @@ export function TicketList({ tickets, onSelectTicket, view = 'grid' }: TicketLis
                   <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Prioridade</span>
                   <div className="flex items-center gap-1.5">
                     <priority.icon className={cn("h-3.5 w-3.5", priority.color)} />
-                    <span className="text-xs font-medium text-zinc-300">{priority.label}</span>
+                    <span className={cn("text-xs font-medium", ticket.priority === 'high' ? 'text-red-400' : 'text-zinc-300')}>{priority.label}</span>
                   </div>
                 </div>
 
@@ -108,6 +108,8 @@ export function TicketList({ tickets, onSelectTicket, view = 'grid' }: TicketLis
 
     return {
       id: ticket.id,
+      className: ticket.priority === 'high' ? 'border-red-500/70 bg-red-950/25' : undefined,
+      tagClassNames: ticket.priority === 'high' ? { 'Alta Prioridade': 'text-red-300 border-red-500/50 bg-red-500/15 group-hover/spotlight:text-red-200' } : undefined,
       title: ticket.title,
       description: ticket.description || '',
       meta: ticket.id,

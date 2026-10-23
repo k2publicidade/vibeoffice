@@ -61,7 +61,7 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
                 isDragging && "opacity-50 z-50"
             )}
         >
-            <Card className="bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative">
+            <Card data-priority={task.priority} className={cn("bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#fc7a67] transition-all duration-300 p-4 shadow-lg group-hover:shadow-[#fc7a67]/10 relative", task.priority === 'high' && 'border-red-500/70 bg-red-950/25 hover:border-red-400')}>
                 {/* Botões de ação - aparecem no hover */}
                 {(onClick || onDelete) && (
                     <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -93,6 +93,7 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
                 )}
 
                 <div className="space-y-3">
+                    {task.priority === 'high' && <Badge className="bg-red-500/15 text-red-300 border-red-500/50 text-[10px]"><AlertCircle className="w-3 h-3 mr-1"/>Prioridade Alta</Badge>}
                     {/* Tags/Labels e Badge de Ticket Vinculado */}
                     {(task.tags && task.tags.length > 0) || task.linkedTicketId ? (
                         <div className="flex flex-wrap gap-1.5">
@@ -105,7 +106,7 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
                                 </Badge>
                             ))}
                             {task.linkedTicketId && (
-                                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-[10px] px-2 py-0.5 font-medium">
+                                <Badge className={cn("text-[10px] px-2 py-0.5 font-medium", task.priority === 'high' ? "bg-red-500/15 text-red-300 border-red-500/50" : "bg-blue-500/10 text-blue-400 border-blue-500/30")}>
                                     🎫 Ticket
                                 </Badge>
                             )}

@@ -1,4 +1,5 @@
 'use client'
+import { matchesFilterSelection, selectedFilterValues, type FilterSelection } from '@/lib/filter-selection'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -18,11 +19,11 @@ export type DateFilter = 'all' | 'overdue' | 'today' | 'tomorrow' | 'this_week' 
 
 
 export interface TaskFilters {
-  sector?: string
-  priority?: string
-  status?: string
+  sector?: FilterSelection
+  priority?: FilterSelection
+  status?: FilterSelection
   assignees?: string[]
-  dateFilter?: DateFilter
+  dateFilter?: DateFilter | DateFilter[]
   searchQuery?: string
 }
 
@@ -271,28 +272,24 @@ export function useTasks(): UseTasksReturn {
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       // Filtro de setor
-      if (filters.sector && task.sector !== filters.sector) return false
+      if (!matchesFilterSelection(task.sector, filters.sector)) return false
 
       // Filtro de prioridade
-      if (filters.priority && task.priority !== filters.priority) return false
+      if (!matchesFilterSelection(task.priority, filters.priority)) return false
 
       // Filtro de status
-      if (filters.status && task.status !== filters.status) return false
+      if (!matchesFilterSelection(task.status, filters.status)) return false
 
 
       // Filtro de responsável (agora verifica se o filtro está incluso na lista de assignees)
       if (filters.assignees && filters.assignees.length > 0) {
-        // Se o filtro fosse multi-select também, seria interseção. 
-        // Mas o filtro atual parece ser single select no visual, vamos assumir que queremos tasks que contenham QUALQUER um dos selecionados no filtro.
-        // Se filtro.assignees for array de strings.
         const hasMatch = task.assignees.some(assigneeId => filters.assignees?.includes(assigneeId))
         if (!hasMatch) return false
       }
 
       // Filtro de data
-      if (filters.dateFilter && filters.dateFilter !== 'all') {
-        if (!matchesDateFilter(task, filters.dateFilter)) return false
-      }
+      const selectedDates = selectedFilterValues(filters.dateFilter)
+      if (selectedDates.length && !selectedDates.some(date => matchesDateFilter(task, date as DateFilter))) return false
 
       // Filtro de busca
       if (filters.searchQuery) {

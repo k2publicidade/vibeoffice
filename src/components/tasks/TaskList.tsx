@@ -73,7 +73,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
               .toUpperCase() || '?'
 
             return (
-              <TableRow key={task.id} className="hover:bg-muted/50">
+              <TableRow key={task.id} className={task.priority === 'high' ? 'bg-red-950/20 border-red-500/50 hover:bg-red-950/30' : 'hover:bg-muted/50'}>
                 <TableCell className="font-medium max-w-xs truncate">
                   {task.title}
                 </TableCell>

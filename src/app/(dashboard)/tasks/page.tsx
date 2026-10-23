@@ -18,6 +18,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { toast } from 'sonner'
@@ -219,11 +220,12 @@ function TasksPageContent() {
                 Filtros
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="bg-[#0a0a0a] border-[#2a2a2a] text-white">
+            <SheetContent side="right" className="bg-[#0a0a0a] border-[#2a2a2a] text-white w-full sm:max-w-md min-h-0">
               <SheetHeader>
                 <SheetTitle className="text-white">Filtros de Busca</SheetTitle>
+                <SheetDescription>Selecione uma ou mais opções em cada filtro. Role o painel para ver o resumo.</SheetDescription>
               </SheetHeader>
-              <div className="mt-8">
+              <div role="region" aria-label="Filtros de tarefas" tabIndex={0} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-8">
                 <TaskFilters filters={filters} onFiltersChange={setFilters} stats={stats} />
               </div>
             </SheetContent>

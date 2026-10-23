@@ -288,4 +288,26 @@ describe('useTasks', () => {
       })
     ).rejects.toEqual(expect.objectContaining({ message: 'Insert failed' }))
   })
+  it('combines multiple values with OR within each filter and AND across filters', async () => {
+    mockTaskFetch([
+      {...mockTaskData,id:'high',priority:'high',status:'todo',sector:'Marketing'},
+      {...mockTaskData,id:'medium',priority:'medium',status:'in_progress',sector:'TI/Suporte'},
+      {...mockTaskData,id:'low',priority:'low',status:'todo',sector:'Marketing'},
+      {...mockTaskData,id:'done',priority:'high',status:'done',sector:'Marketing'},
+    ])
+    const {result}=renderHook(()=>useTasks())
+    await waitFor(()=>expect(result.current.tasks).toHaveLength(4))
+    act(()=>result.current.setFilters({priority:['high','medium'],status:['todo','in_progress'],sector:['Marketing','TI/Suporte']}))
+    expect(result.current.filteredTasks.map(t=>t.id)).toEqual(['high','medium'])
+    act(()=>result.current.setFilters({priority:[],status:[],sector:[]}))
+    expect(result.current.filteredTasks).toHaveLength(4)
+  })
+  it('combines due-date choices, including undated and dated tasks', async () => {
+    mockTaskFetch([{...mockTaskData,id:'today',due_date:new Date().toISOString()}, {...mockTaskData,id:'undated'}, {...mockTaskData,id:'future',due_date:'2099-01-01T12:00:00Z'}])
+    const {result}=renderHook(()=>useTasks())
+    await waitFor(()=>expect(result.current.tasks).toHaveLength(3))
+    act(()=>result.current.setFilters({dateFilter:['today','no_date']}))
+    expect(result.current.filteredTasks.map(t=>t.id)).toEqual(['today','undated'])
+  })
+
 })

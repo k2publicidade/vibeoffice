@@ -41,7 +41,7 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
 
   return (
     <Card
-      className="cursor-pointer transition-all hover:shadow-lg"
+      className={`cursor-pointer transition-all hover:shadow-lg ${ticket.priority === 'high' ? 'border-red-500/70 bg-red-950/25' : ''}`}
       onClick={onClick}
     >
       <CardHeader className="pb-3">

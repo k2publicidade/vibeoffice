@@ -69,7 +69,7 @@ const statusConfig = {
 const priorityConfig = {
   low: { label: 'Baixa', color: 'text-zinc-400', icon: ShieldAlert },
   medium: { label: 'Média', color: 'text-blue-400', icon: ShieldAlert },
-  high: { label: 'Alta', color: 'text-orange-400', icon: AlertCircle },
+  high: { label: 'Alta', color: 'text-red-400', icon: AlertCircle },
 }
 
 const containerVariants = {

@@ -1,5 +1,6 @@
 'use client'
 
+import {hasFilterSelection} from '@/lib/filter-selection'
 import { useTickets } from '@/hooks/useTickets'
 import { Ticket } from '@/types/tickets'
 import { TicketDetailModal } from '@/components/tickets/TicketDetailModal'
@@ -70,9 +71,9 @@ function TicketsPageContent() {
   const activeFilterCount = useMemo(() => {
     let n = 0
     if (filters.status && filters.status.length > 0) n++
-    if (filters.priority) n++
-    if (filters.category) n++
-    if (filters.assignedTo) n++
+    if (hasFilterSelection(filters.priority)) n++
+    if (hasFilterSelection(filters.category)) n++
+    if (hasFilterSelection(filters.assignedTo)) n++
     if (filters.searchQuery) n++
     return n
   }, [filters])
@@ -261,7 +262,7 @@ function TicketsPageContent() {
           <SheetHeader className="px-4 pt-6 pb-2">
             <SheetTitle className="text-zinc-100">Filtros</SheetTitle>
           </SheetHeader>
-          <div className="overflow-y-auto h-[calc(100vh-5rem)] px-4 pb-6">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-8">
             <TicketFilters filters={filters} onFiltersChange={setFilters} />
           </div>
         </SheetContent>

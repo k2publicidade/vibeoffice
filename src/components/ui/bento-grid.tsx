@@ -6,6 +6,8 @@ import { CardSpotlight } from "@/components/ui/card-spotlight";
 
 export interface BentoItem {
     id?: string;
+    className?: string;
+    tagClassNames?: Record<string, string>;
     title: string;
     description: string;
     icon: React.ReactNode;
@@ -34,7 +36,8 @@ function BentoGrid({ items }: BentoGridProps) {
                     className={cn(
                         "p-6 rounded-xl cursor-pointer transition-all duration-300",
                         "border border-zinc-800 bg-black/40 backdrop-blur-sm",
-                        item.colSpan === 2 ? "md:col-span-2" : "col-span-1"
+                        item.colSpan === 2 ? "md:col-span-2" : "col-span-1",
+                        item.className
                     )}
                 >
                     <div className="relative flex flex-col space-y-4">
@@ -70,7 +73,7 @@ function BentoGrid({ items }: BentoGridProps) {
                                 {item.tags?.map((tag, i) => (
                                     <span
                                         key={i}
-                                        className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900/50 text-zinc-500 border border-zinc-800 group-hover/spotlight:border-zinc-700 group-hover/spotlight:text-zinc-400 transition-colors"
+                                        className={cn("text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900/50 text-zinc-500 border border-zinc-800 group-hover/spotlight:border-zinc-700 group-hover/spotlight:text-zinc-400 transition-colors",item.tagClassNames?.[tag])}
                                     >
                                         #{tag}
                                     </span>

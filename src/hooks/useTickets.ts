@@ -1,4 +1,5 @@
 'use client'
+import { matchesFilterSelection, type FilterSelection } from '@/lib/filter-selection'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -70,9 +71,9 @@ function mapTicketRow(ticket: TicketRow): Ticket {
 
 export interface TicketFilters {
   status?: string[]  // Suporta multi-seleção
-  priority?: string
-  category?: string
-  assignedTo?: string
+  priority?: FilterSelection
+  category?: FilterSelection
+  assignedTo?: FilterSelection
   searchQuery?: string
 }
 
@@ -233,9 +234,9 @@ export function useTickets(): UseTicketsReturn {
       if (filters.status && filters.status.length > 0) {
         if (!filters.status.includes(ticket.status)) return false
       }
-      if (filters.priority && ticket.priority !== filters.priority) return false
-      if (filters.category && ticket.category !== filters.category) return false
-      if (filters.assignedTo && ticket.assignedTo !== filters.assignedTo) return false
+      if (!matchesFilterSelection(ticket.priority, filters.priority)) return false
+      if (!matchesFilterSelection(ticket.category, filters.category)) return false
+      if (!matchesFilterSelection(ticket.assignedTo, filters.assignedTo)) return false
 
       // Busca por texto
       if (filters.searchQuery) {
