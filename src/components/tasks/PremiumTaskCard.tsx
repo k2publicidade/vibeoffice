@@ -50,6 +50,14 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
             style={style}
             {...attributes}
             {...listeners}
+            onClick={() => { if (!isDragging) onClick?.() }}
+            onKeyDown={(event) => {
+                if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault()
+                    onClick?.()
+                }
+            }}
+            aria-label={`Abrir tarefa: ${task.title}`}
             layout
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -163,6 +171,8 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
 }, (prevProps, nextProps) => {
     // Só re-renderiza se task mudou significativamente
     return (
+        prevProps.onClick === nextProps.onClick &&
+        prevProps.onDelete === nextProps.onDelete &&
         prevProps.task.id === nextProps.task.id &&
         prevProps.task.status === nextProps.task.status &&
         prevProps.task.title === nextProps.task.title &&

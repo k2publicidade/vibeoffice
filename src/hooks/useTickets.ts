@@ -10,6 +10,7 @@ import { CreateTicketSchema, UpdateTicketSchema, CreateTicketCommentSchema, form
 function formatLocalDate(date: Date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}` }
 
 type TicketRow = {
+  request_decision?: Ticket['requestDecision'] | null
   request_type?: string | null
   request_start_date?: string | null
   request_end_date?: string | null
@@ -39,10 +40,11 @@ function getLinkedTaskAssigneeIds(ticket: TicketRow): string[] {
 }
 
 export function canCurrentUserSeeTicket(
-  ticket: Pick<Ticket, 'linkedTaskAssigneeIds'> & Partial<Pick<Ticket, 'requester' | 'assignedTo'>>,
-  user: { id: string; role: string }
+  ticket: Pick<Ticket, 'linkedTaskAssigneeIds'> & Partial<Pick<Ticket, 'requester' | 'assignedTo' | 'requestType' | 'category'>>,
+  user: { id: string; role: string; sector?: string }
 ): boolean {
   if (user.role === 'Admin' || user.role === 'Gerente') return true
+  if (ticket.requestType && ticket.category === user.sector) return true
   if (ticket.requester === user.id || ticket.assignedTo === user.id) return true
 
   return ticket.linkedTaskAssigneeIds?.includes(user.id) ?? false
@@ -50,6 +52,7 @@ export function canCurrentUserSeeTicket(
 
 function mapTicketRow(ticket: TicketRow): Ticket {
   return {
+    requestDecision: ticket.request_decision || undefined,
     requestType: ticket.request_type || undefined,
     requestStartDate: ticket.request_start_date ? new Date(ticket.request_start_date + 'T12:00:00') : undefined,
     requestEndDate: ticket.request_end_date ? new Date(ticket.request_end_date + 'T12:00:00') : undefined,
@@ -101,6 +104,7 @@ export interface UseTicketsReturn {
   stats: TicketStats
   setFilters: (filters: TicketFilters) => void
   createTicket: (ticket: Omit<Ticket, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Ticket>
+  respondToRequest: (id: string, decision: 'accepted' | 'rejected') => Promise<void>
   updateTicket: (id: string, updates: Partial<Ticket>) => Promise<Ticket | null>
   deleteTicket: (id: string) => Promise<boolean>
   getTicketById: (id: string) => Ticket | null
@@ -285,6 +289,7 @@ export function useTickets(): UseTicketsReturn {
 
       const insertedTicket = data as TicketRow
       const newTicket: Ticket = {
+        requestDecision: insertedTicket.request_decision || undefined,
         requestType: ticketData.requestType,
         requestStartDate: ticketData.requestStartDate,
         requestEndDate: ticketData.requestEndDate,
@@ -317,6 +322,14 @@ export function useTickets(): UseTicketsReturn {
     },
     [user, supabase]
   )
+
+  const respondToRequest = useCallback(async (id: string, decision: 'accepted' | 'rejected') => {
+    const { data, error } = await supabase.rpc('respond_to_request', { p_ticket_id: id, p_decision: decision })
+    if (error) throw error
+    if (!data) throw new Error('Não foi possível responder à solicitação')
+    const row = data as TicketRow
+    setTickets(prev => prev.map(ticket => ticket.id === id ? { ...mapTicketRow(row), linkedTaskAssigneeIds: ticket.linkedTaskAssigneeIds } : ticket))
+  }, [supabase])
 
   // Atualizar ticket
   const updateTicket = useCallback(
@@ -358,6 +371,7 @@ export function useTickets(): UseTicketsReturn {
         // Mapear resultado
         const updatedTicketRow = data as TicketRow
         const updatedTicket: Ticket = {
+          ...mapTicketRow(updatedTicketRow),
           id: data.id,
           title: data.title,
           description: data.description,
@@ -578,6 +592,7 @@ export function useTickets(): UseTicketsReturn {
     setFilters,
     createTicket,
     updateTicket,
+    respondToRequest,
     deleteTicket,
     getTicketById,
     getTicketsByStatus,

@@ -1,11 +1,11 @@
 'use client'
 
+import { requestTypes, type NewRequestInput } from '@/lib/request-types'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { Calendar as CalendarIcon, FileText, MessageSquare } from 'lucide-react'
+import { FileText, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -23,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
@@ -31,22 +30,10 @@ import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
 interface NewRequestModalProps {
   open: boolean
   onClose: () => void
-  onSave: (request: {
-    type: string
-    startDate: Date
-    endDate: Date
-    description?: string
-  }) => Promise<void> | void
+  onSave: (request: NewRequestInput) => Promise<void> | void
 }
 
-const requestTypes = [
-  { id: 'dayoff', name: 'Day Off', icon: '🌴' },
-  { id: 'vacation', name: 'Férias', icon: '✈️' },
-  { id: 'sick', name: 'Atestado Médico', icon: '🏥' },
-  { id: 'remote', name: 'Home Office', icon: '🏠' },
-  { id: 'compensatory', name: 'Folga Compensatória', icon: '⏰' },
-  { id: 'other', name: 'Outro', icon: '📋' },
-]
+
 
 // Animation variants for staggered children
 const containerVariants = {
@@ -69,6 +56,7 @@ export function NewRequestModal({
   onClose,
   onSave,
 }: NewRequestModalProps) {
+  const [sector, setSector] = useState('Administrativo')
   const [type, setType] = useState('')
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
@@ -76,18 +64,20 @@ export function NewRequestModal({
 
   const [saving, setSaving] = useState(false)
   const handleSave = async () => {
-    if (!type || !startDate || !endDate) return
+    if (!type || !startDate || !endDate || description.trim().length < 10) return
+    if (endDate < startDate) { toast.error('A data final deve ser igual ou posterior à inicial'); return }
 
     setSaving(true)
     try {
-    await onSave({
-      type,
-      startDate: startDate!,
-      endDate: endDate!,
-      description: description || undefined,
-    })
-    handleReset()
-    onClose()
+      await onSave({
+        type,
+        sector: requestTypes.find(item => item.id === type)!.sector,
+        startDate,
+        endDate,
+        description: description.trim(),
+      })
+      handleReset()
+      onClose()
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível salvar') } finally { setSaving(false) }
   }
 
@@ -118,6 +108,14 @@ export function NewRequestModal({
           animate="visible"
           className="space-y-5"
         >
+          <motion.div variants={itemVariants}>
+            <Label>Setor de destino</Label>
+            <Select value={sector} onValueChange={(value) => { setSector(value); setType('') }}>
+              <SelectTrigger aria-label="Setor de destino"><SelectValue /></SelectTrigger>
+              <SelectContent>{Array.from(new Set(requestTypes.map(item => item.sector))).map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground mt-2">A solicitação será enviada para {sector}, que poderá aceitar ou recusar o atendimento.</p>
+          </motion.div>
           {/* Request Type */}
           <motion.div variants={itemVariants}>
             <Label htmlFor="request-type" className="text-sm font-medium">
@@ -128,7 +126,7 @@ export function NewRequestModal({
                 <SelectValue placeholder="Selecione o tipo" />
               </SelectTrigger>
               <SelectContent>
-                {requestTypes.map((requestType) => (
+                {requestTypes.filter(item => item.sector === sector).map((requestType) => (
                   <SelectItem key={requestType.id} value={requestType.id}>
                     <span className="flex items-center gap-2">
                       <span className="text-lg">{requestType.icon}</span>
@@ -178,11 +176,11 @@ export function NewRequestModal({
           <motion.div variants={itemVariants}>
             <Label htmlFor="description" className="text-sm font-medium flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-zinc-400" />
-              Justificativa (opcional)
+              Motivo da solicitação (obrigatório)
             </Label>
             <Textarea
               id="description"
-              placeholder="Descreva o motivo da sua solicitação..."
+              placeholder="Explique o motivo da solicitação (mínimo de 10 caracteres)..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="mt-1.5 min-h-[100px] rounded-xl border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 focus:border-orange-500 focus:ring-orange-500/20 transition-all resize-none"
@@ -201,7 +199,7 @@ export function NewRequestModal({
         </Button>
         <Button
           onClick={handleSave}
-          disabled={saving || !type || !startDate || !endDate}
+          disabled={saving || !type || !startDate || !endDate || description.trim().length < 10}
           className="rounded-full px-6 h-11 bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#cc0200] shadow-lg shadow-[#ff0300]/30 transition-all disabled:opacity-50"
         >
           Enviar solicitação

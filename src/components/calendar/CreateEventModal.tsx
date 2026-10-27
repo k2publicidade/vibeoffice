@@ -73,7 +73,7 @@ const SECTORS: Sector[] = [
   'Jurídico',
   'Administrativo',
   'TI/Suporte',
-  'Atendimento ao Artista',
+  'Atendimento ao Artista', 'Análise de fonogramas',
 ]
 
 // Animation variants for staggered children

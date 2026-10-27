@@ -3,7 +3,7 @@
  * Defines user roles, sectors, and session structure
  */
 
-export type Sector = 'A&R' | 'Marketing' | 'Financeiro' | 'Jurídico' | 'Administrativo' | 'TI/Suporte' | 'Atendimento ao Artista'
+export type Sector = 'A&R' | 'Marketing' | 'Financeiro' | 'Jurídico' | 'Administrativo' | 'TI/Suporte' | 'Atendimento ao Artista' | 'Análise de fonogramas'
 export type Role = 'Admin' | 'Gerente' | 'Colaborador'
 
 export interface User {

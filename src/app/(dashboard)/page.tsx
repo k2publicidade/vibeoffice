@@ -1,5 +1,7 @@
 'use client'
 
+import { requestTypeLabel, type NewRequestInput } from '@/lib/request-types'
+
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
@@ -89,16 +91,11 @@ export default function DashboardPage() {
     }
   }, [user, isLoading, router])
 
-  const handleSaveRequest = async (request: {
-    type: string
-    startDate: Date
-    endDate: Date
-    description?: string
-  }) => {
+  const handleSaveRequest = async (request: NewRequestInput) => {
     if (!user) throw new Error('Faça login novamente')
     if (request.endDate < request.startDate) throw new Error('A data final deve ser igual ou posterior à inicial')
-    const label = ({ dayoff: 'Day Off', vacation: 'Férias', sick: 'Atestado Médico', remote: 'Home Office', compensatory: 'Folga Compensatória', other: 'Outro' } as Record<string, string>)[request.type] || request.type
-    await createTicket({ title: `Solicitação: ${label}`, description: request.description || `${label}: ${format(request.startDate, 'dd/MM/yyyy')} a ${format(request.endDate, 'dd/MM/yyyy')}`, category: 'Administrativo', status: 'open', priority: 'medium', requester: user.id, requestType: request.type, requestStartDate: request.startDate, requestEndDate: request.endDate })
+    const label = requestTypeLabel(request.type)
+    await createTicket({ title: `Solicitação: ${label}`, description: request.description || `${label}: ${format(request.startDate, 'dd/MM/yyyy')} a ${format(request.endDate, 'dd/MM/yyyy')}`, category: request.sector, status: 'open', priority: 'medium', requester: user.id, requestType: request.type, requestStartDate: request.startDate, requestEndDate: request.endDate })
     toast.success('Solicitação enviada para análise')
   }
 
@@ -229,7 +226,9 @@ export default function DashboardPage() {
         id: ticket.id,
         startDate: ticket.requestStartDate || new Date(ticket.createdAt),
         endDate: ticket.requestEndDate || new Date(ticket.updatedAt),
-        type: ticket.requestType || ticket.category || ticket.title,
+        type: requestTypeLabel(ticket.requestType || ticket.category || ticket.title),
+        description: ticket.description,
+        sector: ticket.category,
         status: ticket.status === 'open' ? ('pending' as const) : ('processing' as const),
         assignedTo: {
           id: responsible?.id ?? ticket.requester,
@@ -386,7 +385,7 @@ export default function DashboardPage() {
           eventGroups={collaboratorDashboardData.eventGroups}
           newCount={collaboratorDashboardData.newEventsCount}
         />
-        <RequestsTable requests={collaboratorDashboardData.requests} />
+        <RequestsTable requests={collaboratorDashboardData.requests} onNewRequest={() => setIsRequestModalOpen(true)} />
         <NewsCard {...collaboratorDashboardData.news} />
       </motion.div>
 

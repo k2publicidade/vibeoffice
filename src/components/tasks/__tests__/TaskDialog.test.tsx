@@ -51,6 +51,15 @@ describe('task editor lifecycle and persistence', () => {
     expect(screen.getByLabelText(/Título/)).toHaveValue('Segunda')
   })
 
+  it('creates a task without requiring a deadline or time selection', async () => {
+    const save = jest.fn()
+    render(<TaskDialog hideTrigger isOpen onSave={save} />)
+    fireEvent.change(screen.getByLabelText(/Título/), { target: { value: 'Sem prazo' } })
+    expect(screen.queryByText('Hora')).not.toBeInTheDocument()
+    fireEvent.submit(screen.getByLabelText(/Título/).closest('form')!)
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ dueDate: undefined })))
+  })
+
   it('does not add a deadline when editing a task without one', async () => {
     const save = jest.fn()
     render(<TaskDialog hideTrigger isOpen task={first} onSave={save} />)

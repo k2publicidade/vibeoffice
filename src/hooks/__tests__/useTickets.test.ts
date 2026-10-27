@@ -69,6 +69,32 @@ describe('useTickets', () => {
     expect(canCurrentUserSeeTicket(unassignedTicket, { id: 'admin-1', role: 'Admin' })).toBe(true)
   })
 
+  it('shows requests in the destination sector without exposing them to another sector', () => {
+    const request = { requestType: 'phonogram-review', category: 'Análise de fonogramas', linkedTaskAssigneeIds: [] }
+    expect(canCurrentUserSeeTicket(request, { id: userId, role: 'Colaborador', sector: 'Análise de fonogramas' })).toBe(true)
+    expect(canCurrentUserSeeTicket(request, { id: userId, role: 'Colaborador', sector: 'Marketing' })).toBe(false)
+    expect(canCurrentUserSeeTicket({ ...request, requester: userId }, { id: userId, role: 'Colaborador', sector: 'Marketing' })).toBe(true)
+  })
+
+  it('persists acceptance through the RPC and retains request metadata', async () => {
+    mockTicketAndCommentFetch([{ ...mockTicketData, request_type: 'technical-support', request_decision: 'pending' }])
+    const { result } = renderHook(() => useTickets())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: { ...mockTicketData, request_type: 'technical-support', request_decision: 'accepted', assigned_to: userId }, error: null })
+    await act(async () => { await result.current.respondToRequest('ticket-1', 'accepted') })
+    expect(supabase.rpc).toHaveBeenCalledWith('respond_to_request', { p_ticket_id: 'ticket-1', p_decision: 'accepted' })
+    expect(result.current.tickets[0]).toMatchObject({ requestType: 'technical-support', requestDecision: 'accepted', assignedTo: userId, linkedTaskAssigneeIds: [userId] })
+  })
+
+  it('retains the pending request if the server rejects the response', async () => {
+    mockTicketAndCommentFetch([{ ...mockTicketData, request_type: 'technical-support', request_decision: 'pending' }])
+    const { result } = renderHook(() => useTickets())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: null, error: new Error('Somente o destinatário') })
+    await act(async () => { await expect(result.current.respondToRequest('ticket-1', 'rejected')).rejects.toThrow('Somente o destinatário') })
+    expect(result.current.tickets[0].requestDecision).toBe('pending')
+  })
+
   it('should fetch tickets from Supabase when user is authenticated', async () => {
     mockTicketAndCommentFetch([mockTicketData])
 

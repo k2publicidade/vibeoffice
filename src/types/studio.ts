@@ -1,4 +1,4 @@
-export type SessionType = 'Gravacao' | 'Mix/Master' | 'Edicao' | 'Producao';
+export type SessionType = 'Gravacao' | 'Mix/Master' | 'Edicao' | 'Producao' | 'Ensaio';
 
 export interface Person {
     id: string;
