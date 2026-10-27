@@ -4,7 +4,7 @@ Status em 27/10/2026: preparação, não migração concluída. O D1 `vibeoffice
 
 O destino está identificado em `destination.json`. Os IDs são identificadores de recursos, não credenciais. Não cadastrar um banco vazio como produção nem trocar DNS/variáveis até a importação, a autorização e os testes de cada módulo estarem concluídos.
 
-O R2 ainda não foi ativado. A conta solicita uma assinatura com aceite de termos e cobrança por excedentes; a autorização específica foi solicitada ao usuário. Nenhum bucket foi criado e nenhuma assinatura foi contratada nesta preparação.
+O usuário autorizou a assinatura R2, seus termos, renovação e cobrança por excedentes. Ao prosseguir, a Cloudflare exigiu cadastro de pagamento/endereço. O usuário informou ter concluído a ativação, mas a conferência na conta do destino ainda mostrou ausência de meio de pagamento e nenhuma assinatura R2 ativa. A conta da ativação está sendo confirmada antes de criar o bucket. Nenhum bucket foi criado nesta preparação.
 
 ## Inventário reproduzível
 
