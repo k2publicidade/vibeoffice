@@ -1,0 +1,2033 @@
+{
+  "version": 1,
+  "source": "repository-only; not a live database audit",
+  "summary": {
+    "sourceFiles": 47,
+    "calls": 231,
+    "callsByKind": {
+      "table": 122,
+      "rpc": 24,
+      "storage": 7,
+      "auth": 53,
+      "realtime": 25
+    },
+    "dynamicCallsRequiringReview": 26
+  },
+  "tablesInMigrations": [
+    "calendar_day_colors",
+    "calendar_events",
+    "chat_rooms",
+    "company_announcements",
+    "course_progress",
+    "courses",
+    "cover_projects",
+    "drive_cleanup_jobs",
+    "drive_items",
+    "drive_tree_state",
+    "drive_uploads",
+    "lessons",
+    "messages",
+    "modules",
+    "music_genres",
+    "notification_preferences",
+    "notifications",
+    "push_subscriptions",
+    "release_distribution",
+    "release_distribution_history",
+    "release_performance",
+    "releases",
+    "shared_access",
+    "studio_bookings",
+    "task_assignees",
+    "tasks",
+    "ticket_comments",
+    "ticket_history",
+    "tickets",
+    "user_chat_preferences",
+    "user_course_progress",
+    "users"
+  ],
+  "functionsInMigrations": [
+    "abort_office_drive_upload",
+    "begin_office_drive_upload",
+    "can_delete_drive_object",
+    "can_drive",
+    "can_manage_drive",
+    "can_message_asset",
+    "can_office_channel",
+    "can_put_drive_upload",
+    "can_read_drive_object",
+    "can_room",
+    "can_send_room",
+    "can_task",
+    "can_ticket",
+    "change_release_distribution",
+    "chat_room_summaries",
+    "claim_drive_cleanup",
+    "complete_office_drive_upload",
+    "confirm_drive_upload_receipt",
+    "delete_office_drive_item",
+    "drive_is_public",
+    "drive_upload_receipt",
+    "emit_office_notification",
+    "enqueue_drive_cleanup",
+    "enqueue_notification",
+    "expire_drive_uploads",
+    "finish_drive_cleanup",
+    "guard_drive_cleanup_path",
+    "guard_drive_move_actor",
+    "guard_drive_upload_identity",
+    "handle_new_user",
+    "import_release_performance",
+    "invalidate_release_distribution",
+    "lock_drive_tree_statement",
+    "manage_group_member",
+    "mark_messages_read",
+    "mark_office_messages_read",
+    "notify_announcement",
+    "notify_assignment",
+    "notify_comment",
+    "notify_message",
+    "notify_new_ticket",
+    "notify_status",
+    "office_mfa_ok",
+    "office_role",
+    "office_sector",
+    "office_staff",
+    "protect_cover_project",
+    "protect_drive_item",
+    "protect_profile",
+    "protect_room_members",
+    "release_calendar_changed",
+    "release_clock_changed",
+    "release_distribution_fingerprint",
+    "release_operations_snapshot",
+    "save_office_release",
+    "save_office_task",
+    "sorted_room_members",
+    "sync_release_calendar",
+    "sync_task_calendar",
+    "task_calendar_changed",
+    "toggle_message_reaction",
+    "touch_updated_at"
+  ],
+  "tablesUsedByApplication": [
+    "calendar_day_colors",
+    "calendar_events",
+    "chat_rooms",
+    "company_announcements",
+    "courses",
+    "cover_projects",
+    "drive_cleanup_jobs",
+    "drive_items",
+    "lessons",
+    "messages",
+    "music_genres",
+    "notification_preferences",
+    "notifications",
+    "push_subscriptions",
+    "releases",
+    "shared_access",
+    "tasks",
+    "ticket_comments",
+    "tickets",
+    "user_chat_preferences",
+    "users"
+  ],
+  "rpcsUsedByApplication": [
+    "abort_office_drive_upload",
+    "begin_office_drive_upload",
+    "change_release_distribution",
+    "claim_drive_cleanup",
+    "complete_office_drive_upload",
+    "delete_office_drive_item",
+    "drive_is_public",
+    "finish_drive_cleanup",
+    "import_release_performance",
+    "manage_group_member",
+    "office_role",
+    "release_operations_snapshot",
+    "save_office_release",
+    "save_office_task"
+  ],
+  "storageBucketsUsedByApplication": [
+    "drive-files",
+    "release-assets"
+  ],
+  "migrationFiles": [
+    "supabase/migrations/202610080001_reactivation.sql",
+    "supabase/migrations/202610080002_security.sql",
+    "supabase/migrations/202610080003_insert_visibility.sql",
+    "supabase/migrations/202610080004_notifications.sql",
+    "supabase/migrations/202610080005_requests.sql",
+    "supabase/migrations/202610090001_chat.sql",
+    "supabase/migrations/202610090002_delivery.sql",
+    "supabase/migrations/202610090003_cover_projects.sql",
+    "supabase/migrations/202610090004_chat_preferences.sql",
+    "supabase/migrations/202610090005_chat_integrity.sql",
+    "supabase/migrations/202610090006_presence.sql",
+    "supabase/migrations/202610090007_delivery_guards.sql",
+    "supabase/migrations/202610090008_drive_integrity.sql",
+    "supabase/migrations/202610090009_drive_storage.sql",
+    "supabase/migrations/202610090010_mfa_enforcement.sql",
+    "supabase/migrations/202610100001_atomic_tasks.sql",
+    "supabase/migrations/202610100002_calendar_sector_edits.sql",
+    "supabase/migrations/202610120001_atomic_releases.sql",
+    "supabase/migrations/202610120002_drive_cleanup.sql",
+    "supabase/migrations/202610130001_drive_tree_serialization.sql",
+    "supabase/migrations/202610130002_drive_upload_receipts.sql",
+    "supabase/migrations/202610130003_chat_read_receipts.sql",
+    "supabase/migrations/202610220001_collaborator_calendar_genres.sql",
+    "supabase/migrations/202610220002_release_operations.sql"
+  ],
+  "calls": [
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/(auth)/update-password/page.tsx",
+      "line": 28
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/(auth)/update-password/page.tsx",
+      "line": 41
+    },
+    {
+      "kind": "auth",
+      "method": "updateUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/(auth)/update-password/page.tsx",
+      "line": 43
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/(dashboard)/settings/notifications/page.tsx",
+      "line": 24
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/app/(dashboard)/settings/notifications/page.tsx",
+      "line": 31
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/app/(dashboard)/settings/notifications/page.tsx",
+      "line": 46
+    },
+    {
+      "kind": "auth",
+      "method": "signInWithPassword",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/(dashboard)/settings/page.tsx",
+      "line": 32
+    },
+    {
+      "kind": "auth",
+      "method": "getAuthenticatorAssuranceLevel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/(dashboard)/settings/page.tsx",
+      "line": 34
+    },
+    {
+      "kind": "auth",
+      "method": "updateUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/(dashboard)/settings/page.tsx",
+      "line": 36
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 18
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "office_role",
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 20
+    },
+    {
+      "kind": "auth",
+      "method": "createUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 31
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 33
+    },
+    {
+      "kind": "auth",
+      "method": "deleteUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 35
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 44
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 46
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/app/api/admin/users/route.ts",
+      "line": 53
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/calendar/day-colors/route.ts",
+      "line": 9
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_day_colors",
+      "dynamic": false,
+      "file": "src/app/api/calendar/day-colors/route.ts",
+      "line": 11
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/calendar/day-colors/route.ts",
+      "line": 17
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_day_colors",
+      "dynamic": false,
+      "file": "src/app/api/calendar/day-colors/route.ts",
+      "line": 24
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_day_colors",
+      "dynamic": false,
+      "file": "src/app/api/calendar/day-colors/route.ts",
+      "line": 25
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/drive/cleanup/route.ts",
+      "line": 25
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "office_role",
+      "dynamic": false,
+      "file": "src/app/api/drive/cleanup/route.ts",
+      "line": 27
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_cleanup_jobs",
+      "dynamic": false,
+      "file": "src/app/api/drive/cleanup/route.ts",
+      "line": 29
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/music-genres/route.ts",
+      "line": 10
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/app/api/music-genres/route.ts",
+      "line": 12
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "music_genres",
+      "dynamic": false,
+      "file": "src/app/api/music-genres/route.ts",
+      "line": 19
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "music_genres",
+      "dynamic": false,
+      "file": "src/app/api/music-genres/route.ts",
+      "line": 27
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "music_genres",
+      "dynamic": false,
+      "file": "src/app/api/music-genres/route.ts",
+      "line": 35
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/app/api/notifications/deliver/route.ts",
+      "line": 15
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/app/api/notifications/deliver/route.ts",
+      "line": 17
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/app/api/notifications/deliver/route.ts",
+      "line": 20
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/app/api/notifications/deliver/route.ts",
+      "line": 32
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/app/api/notifications/deliver/route.ts",
+      "line": 40
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/app/api/notifications/deliver/route.ts",
+      "line": 52
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/api/release-operations/route.ts",
+      "line": 11
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "office_role",
+      "dynamic": false,
+      "file": "src/app/api/release-operations/route.ts",
+      "line": 13
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "release_operations_snapshot",
+      "dynamic": false,
+      "file": "src/app/api/release-operations/route.ts",
+      "line": 24
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "change_release_distribution",
+      "dynamic": false,
+      "file": "src/app/api/release-operations/route.ts",
+      "line": 39
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "import_release_performance",
+      "dynamic": false,
+      "file": "src/app/api/release-operations/route.ts",
+      "line": 50
+    },
+    {
+      "kind": "auth",
+      "method": "exchangeCodeForSession",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/auth/callback/route.ts",
+      "line": 12
+    },
+    {
+      "kind": "auth",
+      "method": "listFactors",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/auth/mfa/page.tsx",
+      "line": 18
+    },
+    {
+      "kind": "auth",
+      "method": "challengeAndVerify",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/auth/mfa/page.tsx",
+      "line": 22
+    },
+    {
+      "kind": "auth",
+      "method": "signOut",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/auth/mfa/page.tsx",
+      "line": 27
+    },
+    {
+      "kind": "auth",
+      "method": "verifyOtp",
+      "target": null,
+      "dynamic": false,
+      "file": "src/app/auth/recover/page.tsx",
+      "line": 29
+    },
+    {
+      "kind": "storage",
+      "method": "from",
+      "target": "release-assets",
+      "dynamic": false,
+      "file": "src/components/releases/ReleaseModal.tsx",
+      "line": 290
+    },
+    {
+      "kind": "auth",
+      "method": "listFactors",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/settings/MfaSettings.tsx",
+      "line": 14
+    },
+    {
+      "kind": "auth",
+      "method": "listFactors",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/settings/MfaSettings.tsx",
+      "line": 17
+    },
+    {
+      "kind": "auth",
+      "method": "unenroll",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/settings/MfaSettings.tsx",
+      "line": 18
+    },
+    {
+      "kind": "auth",
+      "method": "enroll",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/settings/MfaSettings.tsx",
+      "line": 19
+    },
+    {
+      "kind": "auth",
+      "method": "challengeAndVerify",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/settings/MfaSettings.tsx",
+      "line": 25
+    },
+    {
+      "kind": "auth",
+      "method": "unenroll",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/settings/MfaSettings.tsx",
+      "line": 34
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/components/settings/PushSettings.tsx",
+      "line": 20
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/components/settings/PushSettings.tsx",
+      "line": 23
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/vibecanvas/Dashboard.tsx",
+      "line": 32
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/components/vibecanvas/Dashboard.tsx",
+      "line": 33
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "company_announcements",
+      "dynamic": false,
+      "file": "src/hooks/useAnnouncements.ts",
+      "line": 92
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": "announcements-changes",
+      "dynamic": false,
+      "file": "src/hooks/useAnnouncements.ts",
+      "line": 135
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "company_announcements",
+      "dynamic": false,
+      "file": "src/hooks/useAnnouncements.ts",
+      "line": 230
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "company_announcements",
+      "dynamic": false,
+      "file": "src/hooks/useAnnouncements.ts",
+      "line": 277
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "company_announcements",
+      "dynamic": false,
+      "file": "src/hooks/useAnnouncements.ts",
+      "line": 310
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "company_announcements",
+      "dynamic": false,
+      "file": "src/hooks/useAnnouncements.ts",
+      "line": 344
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 51
+    },
+    {
+      "kind": "auth",
+      "method": "getSession",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 65
+    },
+    {
+      "kind": "auth",
+      "method": "onAuthStateChange",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 72
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 87
+    },
+    {
+      "kind": "auth",
+      "method": "signInWithPassword",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 111
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 119
+    },
+    {
+      "kind": "auth",
+      "method": "signOut",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 126
+    },
+    {
+      "kind": "auth",
+      "method": "getAuthenticatorAssuranceLevel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 129
+    },
+    {
+      "kind": "auth",
+      "method": "signUp",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 156
+    },
+    {
+      "kind": "auth",
+      "method": "signOut",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 182
+    },
+    {
+      "kind": "auth",
+      "method": "resetPasswordForEmail",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 196
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useAuth.ts",
+      "line": 222
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 50
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 52
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_events",
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 58
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_events",
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 164
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "save_office_release",
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 204
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "save_office_task",
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 217
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_events",
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 224
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_events",
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 277
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "calendar_events",
+      "dynamic": false,
+      "file": "src/hooks/useCalendar.ts",
+      "line": 298
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "chat_rooms",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 98
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "chat_rooms",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 131
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 171
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useChat.ts",
+      "line": 204
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 213
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 217
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 229
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "chat_rooms",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 270
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "chat_rooms",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 283
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "messages",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 318
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 331
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 388
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "messages",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 408
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "messages",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 447
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "chat_rooms",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 479
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "chat_rooms",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 545
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "manage_group_member",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 601
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "manage_group_member",
+      "dynamic": false,
+      "file": "src/hooks/useChat.ts",
+      "line": 646
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "user_chat_preferences",
+      "dynamic": false,
+      "file": "src/hooks/useChatPreferences.ts",
+      "line": 29
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useChatPreferences.ts",
+      "line": 56
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useChatPreferences.ts",
+      "line": 59
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "user_chat_preferences",
+      "dynamic": false,
+      "file": "src/hooks/useChatPreferences.ts",
+      "line": 72
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "courses",
+      "dynamic": false,
+      "file": "src/hooks/useCourses.ts",
+      "line": 107
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 115
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "lessons",
+      "dynamic": false,
+      "file": "src/hooks/useCourses.ts",
+      "line": 123
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 158
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 209
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 216
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 298
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 331
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 362
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 374
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 391
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 403
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 420
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useCourses.ts",
+      "line": 438
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 113
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 146
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 179
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 183
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 188
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 362
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "delete_office_drive_item",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 400
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 422
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 464
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "shared_access",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 492
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "shared_access",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 502
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "shared_access",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 512
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "shared_access",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 532
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "shared_access",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 548
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/hooks/useDrive.ts",
+      "line": 599
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useMessageReactions.ts",
+      "line": 18
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/hooks/useNotificationPreferences.ts",
+      "line": 71
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/hooks/useNotifications.ts",
+      "line": 44
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/hooks/useNotifications.ts",
+      "line": 71
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/hooks/useNotifications.ts",
+      "line": 87
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/hooks/useNotifications.ts",
+      "line": 113
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/hooks/useNotifications.ts",
+      "line": 135
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useNotifications.ts",
+      "line": 168
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useNotifications.ts",
+      "line": 210
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": "office-presence",
+      "dynamic": false,
+      "file": "src/hooks/usePresence.ts",
+      "line": 21
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/usePresence.ts",
+      "line": 41
+    },
+    {
+      "kind": "auth",
+      "method": "onAuthStateChange",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useReleaseOperations.ts",
+      "line": 26
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": "releases-changes",
+      "dynamic": false,
+      "file": "src/hooks/useReleases.ts",
+      "line": 94
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useReleases.ts",
+      "line": 113
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "releases",
+      "dynamic": false,
+      "file": "src/hooks/useReleases.ts",
+      "line": 126
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "save_office_release",
+      "dynamic": false,
+      "file": "src/hooks/useReleases.ts",
+      "line": 158
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "save_office_release",
+      "dynamic": false,
+      "file": "src/hooks/useReleases.ts",
+      "line": 213
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "releases",
+      "dynamic": false,
+      "file": "src/hooks/useReleases.ts",
+      "line": 225
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "save_office_release",
+      "dynamic": false,
+      "file": "src/hooks/useReleases.ts",
+      "line": 241
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useStudio.ts",
+      "line": 14
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useStudio.ts",
+      "line": 32
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useStudio.ts",
+      "line": 35
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useStudio.ts",
+      "line": 58
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/hooks/useStudio.ts",
+      "line": 79
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": "studio_bookings_changes",
+      "dynamic": false,
+      "file": "src/hooks/useStudio.ts",
+      "line": 103
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useStudio.ts",
+      "line": 121
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "tasks",
+      "dynamic": false,
+      "file": "src/hooks/useTasks.ts",
+      "line": 167
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": "tasks-changes",
+      "dynamic": false,
+      "file": "src/hooks/useTasks.ts",
+      "line": 198
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "save_office_task",
+      "dynamic": false,
+      "file": "src/hooks/useTasks.ts",
+      "line": 331
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "save_office_task",
+      "dynamic": false,
+      "file": "src/hooks/useTasks.ts",
+      "line": 376
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "tasks",
+      "dynamic": false,
+      "file": "src/hooks/useTasks.ts",
+      "line": 403
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/hooks/useTasks.ts",
+      "line": 407
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": "tickets-changes",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 135
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "tickets",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 170
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "ticket_comments",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 193
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "tickets",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 266
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "tickets",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 341
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "tasks",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 414
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "tickets",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 438
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "ticket_comments",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 470
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "ticket_comments",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 508
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "ticket_comments",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 526
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useTickets.ts",
+      "line": 561
+    },
+    {
+      "kind": "realtime",
+      "method": "channel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useUsers.ts",
+      "line": 43
+    },
+    {
+      "kind": "realtime",
+      "method": "removeChannel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/hooks/useUsers.ts",
+      "line": 44
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/hooks/useUsers.ts",
+      "line": 50
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/auth.ts",
+      "line": 21
+    },
+    {
+      "kind": "auth",
+      "method": "getSession",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/auth.ts",
+      "line": 24
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/lib/auth.ts",
+      "line": 31
+    },
+    {
+      "kind": "auth",
+      "method": "signInWithPassword",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/auth.ts",
+      "line": 63
+    },
+    {
+      "kind": "auth",
+      "method": "signOut",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/auth.ts",
+      "line": 81
+    },
+    {
+      "kind": "auth",
+      "method": "getSession",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/chat-read-receipts.ts",
+      "line": 6
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/chat-read-receipts.ts",
+      "line": 12
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "claim_drive_cleanup",
+      "dynamic": false,
+      "file": "src/lib/drive-cleanup.ts",
+      "line": 9
+    },
+    {
+      "kind": "storage",
+      "method": "from",
+      "target": "drive-files",
+      "dynamic": false,
+      "file": "src/lib/drive-cleanup.ts",
+      "line": 14
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "finish_drive_cleanup",
+      "dynamic": false,
+      "file": "src/lib/drive-cleanup.ts",
+      "line": 17
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_cleanup_jobs",
+      "dynamic": false,
+      "file": "src/lib/drive-cleanup.ts",
+      "line": 24
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/drive-content-server.ts",
+      "line": 21
+    },
+    {
+      "kind": "auth",
+      "method": "getAuthenticatorAssuranceLevel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/drive-content-server.ts",
+      "line": 23
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/lib/drive-content-server.ts",
+      "line": 27
+    },
+    {
+      "kind": "auth",
+      "method": "getSession",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/drive-content-server.ts",
+      "line": 46
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/lib/drive-sharing-server.ts",
+      "line": 10
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "drive_is_public",
+      "dynamic": false,
+      "file": "src/lib/drive-sharing-server.ts",
+      "line": 13
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/drive-sharing-server.ts",
+      "line": 18
+    },
+    {
+      "kind": "auth",
+      "method": "getAuthenticatorAssuranceLevel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/drive-sharing-server.ts",
+      "line": 20
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/lib/drive-sharing-server.ts",
+      "line": 23
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/lib/drive-sharing-server.ts",
+      "line": 28
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "begin_office_drive_upload",
+      "dynamic": false,
+      "file": "src/lib/drive-upload.ts",
+      "line": 58
+    },
+    {
+      "kind": "storage",
+      "method": "from",
+      "target": "drive-files",
+      "dynamic": false,
+      "file": "src/lib/drive-upload.ts",
+      "line": 76
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "complete_office_drive_upload",
+      "dynamic": false,
+      "file": "src/lib/drive-upload.ts",
+      "line": 81
+    },
+    {
+      "kind": "rpc",
+      "method": "rpc",
+      "target": "abort_office_drive_upload",
+      "dynamic": false,
+      "file": "src/lib/drive-upload.ts",
+      "line": 86
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "drive_items",
+      "dynamic": false,
+      "file": "src/lib/drive-upload.ts",
+      "line": 101
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/lib/notifications/defaults.ts",
+      "line": 22
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/lib/notifications/defaults.ts",
+      "line": 48
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/lib/notifications/handlers/emailHandler.ts",
+      "line": 74
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notifications",
+      "dynamic": false,
+      "file": "src/lib/notifications/handlers/inAppHandler.ts",
+      "line": 9
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "push_subscriptions",
+      "dynamic": false,
+      "file": "src/lib/notifications/handlers/pushHandler.ts",
+      "line": 13
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "push_subscriptions",
+      "dynamic": false,
+      "file": "src/lib/notifications/handlers/pushHandler.ts",
+      "line": 77
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "notification_preferences",
+      "dynamic": false,
+      "file": "src/lib/notifications/processor.ts",
+      "line": 78
+    },
+    {
+      "kind": "storage",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/lib/supabase/storage.ts",
+      "line": 34
+    },
+    {
+      "kind": "storage",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/lib/supabase/storage.ts",
+      "line": 82
+    },
+    {
+      "kind": "storage",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/lib/supabase/storage.ts",
+      "line": 98
+    },
+    {
+      "kind": "storage",
+      "method": "from",
+      "target": null,
+      "dynamic": true,
+      "file": "src/lib/supabase/storage.ts",
+      "line": 110
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "cover_projects",
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 22
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 31
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "cover_projects",
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 33
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "cover_projects",
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 39
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "cover_projects",
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 44
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "cover_projects",
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 49
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 55
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "cover_projects",
+      "dynamic": false,
+      "file": "src/lib/vibecanvas/storageService.ts",
+      "line": 59
+    },
+    {
+      "kind": "auth",
+      "method": "getUser",
+      "target": null,
+      "dynamic": false,
+      "file": "src/proxy.ts",
+      "line": 36
+    },
+    {
+      "kind": "auth",
+      "method": "getAuthenticatorAssuranceLevel",
+      "target": null,
+      "dynamic": false,
+      "file": "src/proxy.ts",
+      "line": 66
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/proxy.ts",
+      "line": 77
+    },
+    {
+      "kind": "auth",
+      "method": "signOut",
+      "target": null,
+      "dynamic": false,
+      "file": "src/proxy.ts",
+      "line": 79
+    },
+    {
+      "kind": "table",
+      "method": "from",
+      "target": "users",
+      "dynamic": false,
+      "file": "src/proxy.ts",
+      "line": 91
+    }
+  ]
+}

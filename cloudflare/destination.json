@@ -1,0 +1,11 @@
+{
+  "provider": "cloudflare",
+  "accountId": "f4a486cb8e07626ee9c1d1745be58c93",
+  "databaseName": "vibeoffice-staging",
+  "databaseId": "c1fc1888-9b7b-4d1b-847e-8bf33282ad65",
+  "verifiedOn": "2026-10-27",
+  "state": "created-empty",
+  "r2State": "subscription-awaiting-user-authorization",
+  "applicationConnected": false,
+  "productionCutoverCompleted": false
+}
