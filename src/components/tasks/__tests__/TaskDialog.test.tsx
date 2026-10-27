@@ -18,6 +18,25 @@ jest.mock('@/components/ui/premium-modal', () => ({
 const first: Task = { id: 'first', title: 'Primeira', description: '', status: 'todo', priority: 'medium', sector: 'Administrativo', assignees: [], createdBy: 'audit', createdAt: new Date(), updatedAt: new Date() }
 
 describe('task editor lifecycle and persistence', () => {
+  it('registers collaborator demands in their own sector and locks sector selection', async () => {
+    const save = jest.fn()
+    const currentUser = { id: 'collaborator', name: 'Colaborador', role: 'Colaborador', sector: 'Marketing' as const }
+    render(<TaskDialog hideTrigger isOpen currentUser={currentUser} onSave={save} />)
+    expect(screen.getByRole('combobox', { name: 'Setor' })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/Título/), { target: { value: 'Minha demanda' } })
+    fireEvent.submit(screen.getByLabelText(/Título/).closest('form')!)
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ sector: 'Marketing', assignees: ['collaborator'], createdBy: 'collaborator' })))
+  })
+
+  it('shows database errors and retains the draft for retry', async () => {
+    const save = jest.fn().mockRejectedValue({ code: '42501', message: 'Acesso negado ao setor' })
+    render(<TaskDialog hideTrigger isOpen task={first} onSave={save} />)
+    fireEvent.submit(screen.getByLabelText(/Título/).closest('form')!)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Acesso negado ao setor')
+    expect(screen.getByLabelText(/Título/)).toHaveValue('Primeira')
+    expect(screen.getByRole('button', { name: 'Atualizar Tarefa' })).toBeEnabled()
+  })
+
   it('opens when the parent opens a Kanban creation dialog', () => {
     const { rerender } = render(<TaskDialog hideTrigger isOpen={false} onSave={jest.fn()} />)
     expect(screen.queryByLabelText(/Título/)).not.toBeInTheDocument()

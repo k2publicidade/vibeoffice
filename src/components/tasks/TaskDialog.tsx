@@ -136,13 +136,17 @@ function TaskDialogForm({
     setSaveError(null)
     try {
       await onSave(isCollaborator && currentUser
-        ? { ...formData, assignees: [currentUser.id], createdBy: currentUser.id, sector: formData.sector || currentUser.sector }
+        ? { ...formData, assignees: [currentUser.id], createdBy: currentUser.id, sector: task ? formData.sector : currentUser.sector }
         : formData
       )
       setOpen(false)
       onOpenChange?.(false)
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Não foi possível salvar a tarefa. Tente novamente.')
+      setSaveError(
+        typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : 'Não foi possível salvar a tarefa. Tente novamente.'
+      )
     } finally { setIsSaving(false) }
   }
 
@@ -267,7 +271,7 @@ function TaskDialogForm({
                   <Briefcase className="h-3.5 w-3.5 text-zinc-500" />
                   Setor
                 </Label>
-                <Select value={formData.sector} onValueChange={(value) => setFormData({ ...formData, sector: value as Sector })}>
+                <Select disabled={isCollaborator} value={formData.sector} onValueChange={(value) => setFormData({ ...formData, sector: value as Sector })}>
                   <SelectTrigger id="sector" className="bg-zinc-800/50 border-zinc-700 h-11">
                     <SelectValue />
                   </SelectTrigger>

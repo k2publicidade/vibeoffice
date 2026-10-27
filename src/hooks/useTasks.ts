@@ -312,6 +312,7 @@ export function useTasks(): UseTasksReturn {
       const isCollaboratorDemand = user.role === 'Colaborador'
       const normalizedTaskData = {
         ...taskData,
+        sector: isCollaboratorDemand ? user.sector : taskData.sector,
         assignees: allowedAssignees,
         createdBy: user.id,
         tags: isCollaboratorDemand

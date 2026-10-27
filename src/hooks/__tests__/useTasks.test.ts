@@ -136,6 +136,26 @@ describe('useTasks', () => {
     })
   })
 
+  it('creates a collaborator demand in their own sector with a deadline and self assignment', async () => {
+    ;(useAuth as jest.Mock).mockReturnValue({ user: { ...mockUser, role: 'Colaborador' } })
+    mockTaskFetch([])
+    const { result } = renderHook(() => useTasks())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const deadline = new Date('2026-10-28T15:00:00Z')
+    ;(supabase.rpc as jest.Mock).mockResolvedValueOnce({ data: mockTaskData, error: null })
+    await act(async () => {
+      await result.current.createTask({
+        title: 'Demanda interna', description: '', status: 'todo', priority: 'medium',
+        sector: 'Marketing', assignees: [user2Id], createdBy: user2Id, dueDate: deadline,
+      })
+    })
+    expect(supabase.rpc).toHaveBeenCalledWith('save_office_task', {
+      task_id: null,
+      changes: expect.objectContaining({ sector: mockUser.sector, assignees: [userId], due_date: deadline.toISOString(), tags: ['demanda-interna'] }),
+    })
+    expect(result.current.tasks).toHaveLength(1)
+  })
+
   it('should update task successfully', async () => {
     mockTaskFetch([mockTaskData])
     const { result } = renderHook(() => useTasks())
