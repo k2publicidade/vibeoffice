@@ -1,0 +1,14 @@
+{
+  "name": "vibeoffice-requests-staging",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-27",
+  "account_id": "f4a486cb8e07626ee9c1d1745be58c93",
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "vibeoffice-staging",
+    "database_id": "c1fc1888-9b7b-4d1b-847e-8bf33282ad65",
+    "migrations_table": "requests_staging_migrations"
+  }]
+}
