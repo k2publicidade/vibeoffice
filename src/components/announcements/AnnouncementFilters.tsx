@@ -16,7 +16,7 @@ const SECTORS: Sector[] = [
   'Jurídico',
   'Administrativo',
   'TI/Suporte',
-  'Atendimento ao Artista',
+  'Atendimento ao Artista', 'Análise de fonogramas',
 ]
 
 interface AnnouncementFiltersProps {

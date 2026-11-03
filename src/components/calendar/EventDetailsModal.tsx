@@ -76,7 +76,7 @@ const defaultTags: Tag[] = [
     { id: 'developer', name: 'Dev', color: 'hsl(0, 0%, 15%)' },
     { id: 'meeting', name: 'Reunião', color: 'hsl(142, 76%, 36%)' },
 ]
-const eventSectors: Sector[] = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
+const eventSectors: Sector[] = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista', 'Análise de fonogramas']
 
 export function EventDetailsModal({
     open,

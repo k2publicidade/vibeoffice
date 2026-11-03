@@ -11,7 +11,7 @@ import {X,Search,AlertTriangle,Calendar} from 'lucide-react'
 import {useUsers} from '@/hooks/useUsers'
 import {cn} from '@/lib/utils'
 interface Props {filters:TaskFilters;onFiltersChange:(filters:TaskFilters)=>void;stats?:TaskStats}
-const sectors=['A&R','Marketing','Financeiro','Jurídico','Administrativo','TI/Suporte','Atendimento ao Artista']
+const sectors=['A&R','Marketing','Financeiro','Jurídico','Administrativo','TI/Suporte','Atendimento ao Artista', 'Análise de fonogramas']
 const dates:{value:DateFilter;label:string}[]=[{value:'all',label:'Todas as datas'},{value:'overdue',label:'Atrasadas'},{value:'today',label:'Hoje'},{value:'tomorrow',label:'Amanhã'},{value:'this_week',label:'Esta semana'},{value:'this_month',label:'Este mês'},{value:'no_date',label:'Sem data'}]
 export function TaskFilters({filters,onFiltersChange,stats}:Props) {
  const {users}=useUsers()

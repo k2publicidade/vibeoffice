@@ -7,6 +7,7 @@ export type TicketStatus = 'open' | 'analyzing' | 'in_progress' | 'completed'
 export type TicketPriority = 'low' | 'medium' | 'high'
 
 export interface Ticket {
+  requestDecision?: 'pending' | 'accepted' | 'rejected'
   requestType?: string
   requestStartDate?: Date
   requestEndDate?: Date

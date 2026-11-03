@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -46,6 +47,7 @@ import { useUsers } from '@/hooks/useUsers'
 import { useAuth } from '@/hooks/useAuth'
 
 interface TicketDetailModalProps {
+  onRespond?: (id: string, decision: 'accepted' | 'rejected') => Promise<void>
   ticket: Ticket | null
   open: boolean
   onClose: () => void
@@ -98,7 +100,9 @@ export function TicketDetailModal({
   comments,
   onAddComment,
   onDeleteComment,
+  onRespond,
 }: TicketDetailModalProps) {
+  const [responding, setResponding] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [isInternal, setIsInternal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -175,7 +179,7 @@ export function TicketDetailModal({
           {ticket.title}
         </PremiumModalTitle>
         <PremiumModalDescription>
-          Criado em {format(new Date(ticket.createdAt), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          Criado em {format(new Date(ticket.createdAt), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
         </PremiumModalDescription>
       </PremiumModalHeader>
 
@@ -186,6 +190,22 @@ export function TicketDetailModal({
           animate="visible"
           className="space-y-6 flex-1 overflow-hidden flex flex-col"
         >
+          {ticket.requestType && (
+            <div className="space-y-2 rounded-xl border border-zinc-700 p-3">
+              <p>Setor de destino: {ticket.category}</p>
+              <p>{ticket.requestDecision === 'accepted' ? 'Solicitação aceita' : ticket.requestDecision === 'rejected' ? 'Solicitação recusada' : 'Aguardando aceite do setor'}</p>
+              {onRespond && (!ticket.requestDecision || ticket.requestDecision === 'pending') && currentUser && (currentUser.role === 'Admin' || currentUser.sector === ticket.category || ticket.assignedTo === currentUser.id) && (
+                <div className="flex gap-2">{(['accepted', 'rejected'] as const).map(decision => (
+                  <Button key={decision} disabled={responding} variant={decision === 'rejected' ? 'outline' : 'default'} onClick={async () => {
+                    setResponding(true)
+                    try { await onRespond(ticket.id, decision); toast.success(decision === 'accepted' ? 'Solicitação aceita' : 'Solicitação recusada') }
+                    catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível responder') }
+                    finally { setResponding(false) }
+                  }}>{decision === 'accepted' ? 'Aceitar' : 'Recusar'}</Button>
+                ))}</div>
+              )}
+            </div>
+          )}
           {/* Description */}
           <motion.div variants={itemVariants} className="space-y-2">
             <div className="flex items-center gap-2 text-zinc-400">

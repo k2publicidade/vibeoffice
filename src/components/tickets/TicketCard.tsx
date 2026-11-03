@@ -58,6 +58,7 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {ticket.requestType && <p className="text-xs text-muted-foreground">Destino: {ticket.category} · {ticket.requestDecision === 'accepted' ? 'Aceita' : ticket.requestDecision === 'rejected' ? 'Recusada' : 'Aguardando aceite'}</p>}
         {/* Description */}
         {ticket.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">

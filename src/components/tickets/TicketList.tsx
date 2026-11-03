@@ -57,6 +57,9 @@ export function TicketList({ tickets, onSelectTicket, view = 'grid' }: TicketLis
                   <h4 className="font-semibold text-zinc-100 group-hover:text-orange-400 transition-colors truncate">
                     {ticket.title}
                   </h4>
+                  <p className="text-xs text-zinc-400 mt-1">Destino: {ticket.category}</p>
+                  <p className="text-sm text-zinc-400 line-clamp-2">{ticket.description}</p>
+                  {ticket.requestType && <p className="text-xs text-orange-400">{ticket.requestDecision === 'accepted' ? 'Aceita' : ticket.requestDecision === 'rejected' ? 'Recusada' : 'Aguardando aceite'}</p>}
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] font-mono text-zinc-500 uppercase">#{ticket.id}</span>
                     <span className="text-zinc-700 text-xs">•</span>
@@ -113,8 +116,8 @@ export function TicketList({ tickets, onSelectTicket, view = 'grid' }: TicketLis
       title: ticket.title,
       description: ticket.description || '',
       meta: ticket.id,
-      status: status.label,
-      tags: [ticket.category, `${priority.label} Prioridade`],
+      status: ticket.requestType ? (ticket.requestDecision === 'accepted' ? 'Aceita' : ticket.requestDecision === 'rejected' ? 'Recusada' : 'Aguardando aceite') : status.label,
+      tags: [`Destino: ${ticket.category}`, `${priority.label} Prioridade`],
       icon: <Icon className={cn("h-4 w-4", status.color)} />,
       colSpan: index % 4 === 0 ? 2 : 1, // Make every 4th ticket wider for visual interest
       onClick: () => onSelectTicket?.(ticket),

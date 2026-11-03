@@ -44,7 +44,7 @@ const PLATFORM_OPTIONS = [
   { value: 'Apple Music', label: 'Apple Music' },
 ]
 
-const SECTORS: Sector[] = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
+const SECTORS: Sector[] = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista', 'Análise de fonogramas']
 
 const STATUS_OPTIONS: { value: ReleaseStatus; label: string }[] = [
   { value: 'scheduled', label: 'Programado' },

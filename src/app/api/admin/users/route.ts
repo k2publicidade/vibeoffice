@@ -7,7 +7,7 @@ const input = z.object({
   email: z.email().trim().toLowerCase(),
   password: z.string().min(12).max(128),
   role: z.enum(['Admin', 'Gerente', 'Colaborador']),
-  sector: z.enum(['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']),
+  sector: z.enum(['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista', 'Análise de fonogramas']),
 })
 
 export async function POST(request: Request) {

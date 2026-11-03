@@ -231,7 +231,7 @@ const StudioBookingForm: React.FC<StudioBookingFormProps> = ({ onSuccess, onCanc
                 <div className="space-y-4">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Tipo de Sessão</label>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {['Gravacao', 'Mix/Master', 'Edicao', 'Producao'].map((t) => {
+                        {['Gravacao', 'Mix/Master', 'Edicao', 'Producao', 'Ensaio'].map((t) => {
                             const isSelected = types.includes(t as SessionType);
                             return (
                                 <button

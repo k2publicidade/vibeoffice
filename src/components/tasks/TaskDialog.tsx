@@ -32,7 +32,6 @@ import {
   Briefcase,
   Flag,
   CheckSquare,
-  Clock,
   Sparkles
 } from 'lucide-react'
 import { useUsers, User } from '@/hooks/useUsers'
@@ -45,7 +44,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import { PremiumDatePicker } from '@/components/ui/premium-date-picker'
-import { PremiumTimePicker } from '@/components/ui/premium-time-picker'
 import { cn } from '@/lib/utils'
 
 interface TaskDialogProps {
@@ -68,7 +66,7 @@ interface TaskDialogProps {
   } | null
 }
 
-const sectors = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista']
+const sectors = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista', 'Análise de fonogramas']
 
 
 // Função para criar o estado inicial do form
@@ -87,7 +85,7 @@ function getInitialFormData(
     sector: task?.sector || currentUser?.sector || 'A&R',
     assignees: isCollaborator && currentUser ? [currentUser.id] : (task?.assignees || []),
     createdBy: task?.createdBy || currentUser?.id || 'user-001',
-    dueDate: task ? task.dueDate : new Date(),
+    dueDate: task?.dueDate,
   }
 }
 
@@ -481,12 +479,13 @@ function TaskDialogForm({
               </span>
             </div>
 
-            {/* Data e Hora de Vencimento */}
+            <p className="text-xs text-zinc-400">A data e a hora de criação são registradas automaticamente.</p>
+            {/* Vencimento opcional */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <CalendarIcon className="h-3.5 w-3.5 text-zinc-500" />
-                  Data de Vencimento
+                  Data de Vencimento (opcional)
                 </Label>
                 <PremiumDatePicker
                   date={formData.dueDate}
@@ -496,27 +495,12 @@ function TaskDialogForm({
                       return
                     }
                     const newDate = new Date(date)
-                    // Manter a hora atual se já existir
-                    if (formData.dueDate) {
-                      newDate.setHours(formData.dueDate.getHours())
-                      newDate.setMinutes(formData.dueDate.getMinutes())
-                    }
+                    newDate.setHours(23, 59, 59, 999)
                     setFormData({ ...formData, dueDate: newDate })
                   }}
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-zinc-500" />
-                  Hora
-                </Label>
-                <PremiumTimePicker
-                  date={formData.dueDate}
-                  onTimeChange={(newDate) => {
-                    setFormData({ ...formData, dueDate: newDate })
-                  }}
-                />
-              </div>
+
             </div>
           </div>
         </PremiumModalBody>
