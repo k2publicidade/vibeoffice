@@ -1,4 +1,5 @@
 'use client'
+import { requestTypes } from '@/lib/request-types'
 import type {TicketFilters} from '@/hooks/useTickets'
 import {FilterMultiSelect} from '@/components/ui/filter-multi-select'
 import {hasFilterSelection} from '@/lib/filter-selection'
@@ -15,7 +16,7 @@ export function TicketFilters({filters,onFiltersChange}:Props) {
    <FilterMultiSelect label="Status" placeholder="Todos os status" value={filters.status} onChange={value=>change('status',value)} options={[{value:'open',label:'A Fazer'},{value:'analyzing',label:'Em Análise'},{value:'in_progress',label:'Em Progresso'},{value:'completed',label:'Concluído'}]}/>
    <div className="flex flex-wrap gap-1">{[{label:'Pendentes',values:['open','analyzing']},{label:'Em andamento',values:['in_progress']},{label:'Finalizados',values:['completed']}].map(item=><Button key={item.label} variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={()=>change('status',item.values)}>{item.label}</Button>)}</div>
    <FilterMultiSelect label="Prioridade" placeholder="Todas as prioridades" value={filters.priority} onChange={value=>change('priority',value)} options={[{value:'low',label:'Baixa'},{value:'medium',label:'Média'},{value:'high',label:'Alta',className:'text-red-400'}]}/>
-   <FilterMultiSelect label="Categoria" placeholder="Todas as categorias" value={filters.category} onChange={value=>change('category',value)} options={['Bug','Feature','Melhoria','Dúvida','Outro'].map(value=>({value,label:value}))}/>
+   <FilterMultiSelect label="Categoria" placeholder="Todas as categorias" value={filters.category} onChange={value=>change('category',value)} options={Array.from(new Set(requestTypes.map(type => type.sector))).map(value=>({value,label:value}))}/>
    <FilterMultiSelect label="Atribuído a" placeholder="Todas as pessoas" value={filters.assignedTo} onChange={value=>change('assignedTo',value)} options={(users||[]).map(user=>({value:user.id,label:user.name}))}/>
   </div>
  </div>

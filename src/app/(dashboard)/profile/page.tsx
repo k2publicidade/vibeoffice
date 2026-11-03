@@ -38,7 +38,7 @@ const sectors: Sector[] = [
     'Jurídico',
     'Administrativo',
     'TI/Suporte',
-    'Atendimento ao Artista',
+    'Atendimento ao Artista', 'Análise de fonogramas',
 ]
 
 const containerVariants = {

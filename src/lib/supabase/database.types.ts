@@ -765,6 +765,7 @@ export type Database = {
       }
       tickets: {
         Row: {
+          request_decision: "pending" | "accepted" | "rejected" | null
           request_type: string | null
           request_start_date: string | null
           request_end_date: string | null
@@ -781,6 +782,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          request_decision?: "pending" | "accepted" | "rejected" | null
           request_type?: string | null
           request_start_date?: string | null
           request_end_date?: string | null
@@ -797,6 +799,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          request_decision?: "pending" | "accepted" | "rejected" | null
           request_type?: string | null
           request_start_date?: string | null
           request_end_date?: string | null
@@ -1029,6 +1032,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      respond_to_request: { Args: { p_ticket_id: string; p_decision: string }; Returns: Database["public"]["Tables"]["tickets"]["Row"] }
       begin_office_drive_upload: { Args: { upload_id: string; file_name: string; file_size: number; file_mime: string; target_parent?: string | null }; Returns: Json }
       complete_office_drive_upload: { Args: { upload_id: string }; Returns: Json }
       abort_office_drive_upload: { Args: { upload_id: string }; Returns: Json }
@@ -1079,6 +1083,7 @@ export type Database = {
         | "Administrativo"
         | "TI/Suporte"
         | "Atendimento ao Artista"
+        | "Análise de fonogramas"
       share_permission: "view" | "edit" | "manage"
       task_status: "todo" | "in_progress" | "done"
       ticket_status: "open" | "analyzing" | "in_progress" | "completed"

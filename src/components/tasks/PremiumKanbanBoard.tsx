@@ -87,6 +87,14 @@ function KanbanColumn({
                 </button>
             </div>
 
+            <button
+                onClick={() => onAddTask(column.id)}
+                className="mb-4 w-full flex items-center justify-center gap-2 text-gray-500 hover:text-white hover:bg-[#1a1a1a] border border-dashed border-[#2a2a2a] hover:border-[#fc7a67]/50 rounded-lg p-3 text-xs font-medium transition-all duration-200"
+            >
+                <Plus className="w-3.5 h-3.5" />
+                Adicionar tarefa
+            </button>
+
             <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-3 min-h-[200px] flex-1">
                     {column.tasks.map((task) => (
@@ -100,13 +108,7 @@ function KanbanColumn({
                 </div>
             </SortableContext>
 
-            <button
-                onClick={() => onAddTask(column.id)}
-                className="mt-4 w-full flex items-center justify-center gap-2 text-gray-500 hover:text-white hover:bg-[#1a1a1a] border border-dashed border-[#2a2a2a] hover:border-[#fc7a67]/50 rounded-lg p-3 text-xs font-medium transition-all duration-200"
-            >
-                <Plus className="w-3.5 h-3.5" />
-                Adicionar tarefa
-            </button>
+
         </div>
     )
 }

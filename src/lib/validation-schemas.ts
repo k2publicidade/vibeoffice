@@ -32,7 +32,7 @@ export const CreateTaskSchema = z.object({
     'Jurídico',
     'Administrativo',
     'TI/Suporte',
-    'Atendimento ao Artista'
+    'Atendimento ao Artista', 'Análise de fonogramas'
   ]),
 
   assignees: z.array(z.string().uuid('ID de usuário inválido')).optional(),
@@ -68,7 +68,7 @@ export const CreateTicketSchema = z.object({
     'Jurídico',
     'Administrativo',
     'TI/Suporte',
-    'Atendimento ao Artista'
+    'Atendimento ao Artista', 'Análise de fonogramas'
   ]),
 
   priority: z.enum(['low', 'medium', 'high']),
@@ -125,7 +125,7 @@ export const CreateDriveItemSchema = z.object({
     'Jurídico',
     'Administrativo',
     'TI/Suporte',
-    'Atendimento ao Artista'
+    'Atendimento ao Artista', 'Análise de fonogramas'
   ]),
 })
 

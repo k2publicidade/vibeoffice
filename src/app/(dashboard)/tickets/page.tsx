@@ -1,5 +1,8 @@
 'use client'
 
+import { NewRequestModal } from '@/components/dashboard/NewRequestModal'
+import { requestTypeLabel, type NewRequestInput } from '@/lib/request-types'
+import { useAuth } from '@/hooks/useAuth'
 import {hasFilterSelection} from '@/lib/filter-selection'
 import { useTickets } from '@/hooks/useTickets'
 import { Ticket } from '@/types/tickets'
@@ -36,6 +39,8 @@ export default function TicketsPage() {
 
 function TicketsPageContent() {
   const {
+    createTicket,
+    respondToRequest,
     filteredTickets,
     filters,
     setFilters,
@@ -47,6 +52,14 @@ function TicketsPageContent() {
     tickets, // Destructure tickets for realtime updates
     isLoading,
   } = useTickets()
+
+  const { user } = useAuth()
+  const [requestModalOpen, setRequestModalOpen] = useState(false)
+  const handleCreateRequest = async (request: NewRequestInput) => {
+    if (!user) throw new Error('Faça login novamente')
+    await createTicket({ title: `Solicitação: ${requestTypeLabel(request.type)}`, description: request.description || '', category: request.sector, status: 'open', priority: 'medium', requester: user.id, requestType: request.type, requestStartDate: request.startDate, requestEndDate: request.endDate })
+    toast.success('Solicitação enviada para análise')
+  }
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
 
@@ -189,7 +202,7 @@ function TicketsPageContent() {
               </button>
             </div>
 
-            {/* Botão "Novo Ticket" removido: tickets são criados automaticamente via tasks */}
+            <Button onClick={() => setRequestModalOpen(true)}>Nova Solicitação</Button>
           </div>
         </div>
       </div>
@@ -268,6 +281,7 @@ function TicketsPageContent() {
         </SheetContent>
       </Sheet>
 
+      <NewRequestModal open={requestModalOpen} onClose={() => setRequestModalOpen(false)} onSave={handleCreateRequest} />
       {/* Ticket Detail Modal */}
       <TicketDetailModal
         ticket={activeTicket}
@@ -277,6 +291,7 @@ function TicketsPageContent() {
         onAddComment={handleAddComment}
         onDeleteComment={handleDeleteComment}
         getUserById={getUserById}
+        onRespond={respondToRequest}
       />
 
       {/* AlertDialog: confirmar exclusão de comentário */}

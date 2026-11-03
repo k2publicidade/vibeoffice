@@ -23,6 +23,7 @@ const sectors: Sector[] = [
   { id: 'juridico', name: 'Jurídico', icon: <Scale className="w-5 h-5" />, color: '#ef5907' },
   { id: 'administrativo', name: 'Administrativo', icon: <Settings className="w-5 h-5" />, color: '#0c67ff' },
   { id: 'suporte', name: 'Suporte', icon: <Headset className="w-5 h-5" />, color: '#ef5907' },
+  { id: 'fonogramas', name: 'Análise de fonogramas', icon: <Users className="w-5 h-5" />, color: '#a855f7' },
   { id: 'artista', name: 'Atendimento ao Artista', icon: <Users className="w-5 h-5" />, color: '#0c67ff' },
 ]
 
