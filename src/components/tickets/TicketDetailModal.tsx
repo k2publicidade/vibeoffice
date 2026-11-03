@@ -212,7 +212,7 @@ export function TicketDetailModal({
               <FileText className="h-4 w-4" />
               <span className="text-sm font-medium">Descrição</span>
             </div>
-            <div className="rounded-xl bg-zinc-800/50 border border-zinc-700/50 p-4 leading-relaxed text-zinc-300">
+            <div className="rounded-xl bg-zinc-800/50 border border-zinc-700/50 p-4 whitespace-pre-wrap break-words leading-relaxed text-zinc-300">
               {ticket.description || 'Nenhuma descrição fornecida.'}
             </div>
           </motion.div>
