@@ -26,8 +26,11 @@ it('routes the selected request type to its department with the required reason'
   fireEvent.click(screen.getByText('Data fim'))
   expect(screen.getByRole('button', { name: 'Enviar solicitação' })).toBeDisabled()
   fireEvent.change(screen.getByLabelText(/Motivo da solicitação/), { target: { value: 'Conferir a qualidade do áudio recebido' } })
+  expect(screen.getByRole('button', { name: 'Enviar solicitação' })).toBeDisabled()
+  fireEvent.change(screen.getByLabelText('Nome do artista'), { target: { value: 'Artista teste' } })
+  fireEvent.change(screen.getByLabelText('ID de Release'), { target: { value: 'REL-123' } })
   fireEvent.click(screen.getByRole('button', { name: 'Enviar solicitação' }))
-  await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ type: 'phonogram-review', sector: 'Análise de fonogramas', description: 'Conferir a qualidade do áudio recebido' })))
+  await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ type: 'phonogram-review', sector: 'Análise de fonogramas', description: 'Nome do artista: Artista teste\nID de Release: REL-123\n\nConferir a qualidade do áudio recebido' })))
   expect(close).toHaveBeenCalled()
 })
 

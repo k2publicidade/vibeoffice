@@ -56,3 +56,4 @@ multiselect.md
 # Worktrees directory
 .worktrees/
 tmpclaude-*
+/vibecanvas/

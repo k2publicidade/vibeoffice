@@ -62,9 +62,20 @@ export function NewRequestModal({
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [description, setDescription] = useState('')
 
+  const [artistName, setArtistName] = useState('')
+  const [releaseId, setReleaseId] = useState('')
+  const isPhonogramRequest = sector === 'Análise de fonogramas'
+  const missingReleaseDetails = isPhonogramRequest && (!artistName.trim() || !releaseId.trim())
+  const ticketDescription = isPhonogramRequest
+    ? `Nome do artista: ${artistName.trim()}
+ID de Release: ${releaseId.trim()}
+
+${description.trim()}`
+    : description.trim()
+
   const [saving, setSaving] = useState(false)
   const handleSave = async () => {
-    if (!type || !startDate || !endDate || description.trim().length < 10) return
+    if (!type || !startDate || !endDate || description.trim().length < 10 || missingReleaseDetails || ticketDescription.length > 5000) return
     if (endDate < startDate) { toast.error('A data final deve ser igual ou posterior à inicial'); return }
 
     setSaving(true)
@@ -74,7 +85,7 @@ export function NewRequestModal({
         sector: requestTypes.find(item => item.id === type)!.sector,
         startDate,
         endDate,
-        description: description.trim(),
+        description: ticketDescription,
       })
       handleReset()
       onClose()
@@ -86,6 +97,8 @@ export function NewRequestModal({
     setStartDate(undefined)
     setEndDate(undefined)
     setDescription('')
+    setArtistName('')
+    setReleaseId('')
   }
 
   const selectedType = requestTypes.find((t) => t.id === type)
@@ -172,6 +185,23 @@ export function NewRequestModal({
             </motion.div>
           )}
 
+          {isPhonogramRequest && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="request-artist">Nome do artista</Label>
+                <input id="request-artist" required maxLength={160} value={artistName}
+                  onChange={event => setArtistName(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2" />
+              </div>
+              <div>
+                <Label htmlFor="request-release">ID de Release</Label>
+                <input id="request-release" required maxLength={120} value={releaseId}
+                  onChange={event => setReleaseId(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 p-2" />
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <motion.div variants={itemVariants}>
             <Label htmlFor="description" className="text-sm font-medium flex items-center gap-2">
@@ -183,6 +213,7 @@ export function NewRequestModal({
               placeholder="Explique o motivo da solicitação (mínimo de 10 caracteres)..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              maxLength={isPhonogramRequest ? 4600 : 5000}
               className="mt-1.5 min-h-[100px] rounded-xl border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 focus:border-orange-500 focus:ring-orange-500/20 transition-all resize-none"
             />
           </motion.div>
@@ -199,7 +230,7 @@ export function NewRequestModal({
         </Button>
         <Button
           onClick={handleSave}
-          disabled={saving || !type || !startDate || !endDate || description.trim().length < 10}
+          disabled={saving || !type || !startDate || !endDate || description.trim().length < 10 || missingReleaseDetails || ticketDescription.length > 5000}
           className="rounded-full px-6 h-11 bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white hover:from-[#ff0300] hover:to-[#cc0200] shadow-lg shadow-[#ff0300]/30 transition-all disabled:opacity-50"
         >
           Enviar solicitação
