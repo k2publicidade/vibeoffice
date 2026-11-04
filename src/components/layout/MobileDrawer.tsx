@@ -33,15 +33,15 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Drawer */}
-      <div className="fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-card shadow-xl md:hidden animate-slide-in-left">
+      <div className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col sm:w-72 bg-card shadow-xl lg:hidden animate-slide-in-left">
         {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b px-4 gap-2">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b px-4 gap-2">
           <img
             src="/logo.png"
             alt="Yanger Logo"
@@ -59,7 +59,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4">
+        <nav className="min-h-0 flex-1 overflow-y-auto p-4">
           <ul className="space-y-0.5">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -85,7 +85,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
         </nav>
 
         {/* Footer */}
-        <div className="border-t p-4">
+        <div className="shrink-0 border-t p-4">
           <p className="text-xs text-muted-foreground text-center">
             Yanger Intranet
           </p>

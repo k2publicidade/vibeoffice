@@ -64,7 +64,7 @@ function KanbanColumn({
         <div
             ref={setNodeRef}
             className={cn(
-                "flex-1 min-w-0 md:min-w-[240px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border shadow-inner h-full min-h-[500px] transition-all duration-200",
+                "min-w-0 flex flex-col bg-[#0a0a0a] rounded-xl p-3 xl:p-4 border shadow-inner min-h-[500px] transition-all duration-200",
                 isOver
                     ? "border-[#fc7a67] bg-[#fc7a67]/5 ring-2 ring-[#fc7a67]/20 scale-[1.01]"
                     : "border-[#2a2a2a]",
@@ -72,9 +72,9 @@ function KanbanColumn({
             )}
         >
             <div className="flex items-center justify-between mb-5 px-1">
-                <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2">
                     <div
-                        className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(252,122,103,0.5)]"
+                        className="w-2.5 h-2.5 shrink-0 rounded-full shadow-[0_0_8px_rgba(252,122,103,0.5)]"
                         style={{ backgroundColor: column.color }}
                     />
                     <h2 className="text-white font-bold text-sm tracking-wide uppercase">{column.title}</h2>
@@ -82,7 +82,7 @@ function KanbanColumn({
                         {column.tasks.length}
                     </Badge>
                 </div>
-                <button className="text-gray-600 hover:text-white transition-colors p-1">
+                <button className="shrink-0 text-gray-600 hover:text-white transition-colors p-1">
                     <MoreHorizontal className="w-4 h-4" />
                 </button>
             </div>
@@ -277,7 +277,7 @@ export function PremiumKanbanBoard({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
-            <div className={cn("flex flex-col md:flex-row gap-4 md:gap-6 overflow-x-hidden md:overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-[#2a2a2a] scrollbar-track-transparent", className)}>
+            <div className={cn("grid grid-cols-1 items-start gap-4 pb-6 sm:grid-cols-2 lg:grid-cols-4", className)}>
                 {columns.map((column) => (
                     <KanbanColumn
                         key={column.id}
@@ -285,7 +285,6 @@ export function PremiumKanbanBoard({
                         onAddTask={onAddTask}
                         onTaskClick={onTaskClick}
                         onDeleteTask={onDeleteTask}
-                        className="w-full md:w-[320px] md:min-w-[320px]"
                     />
                 ))}
             </div>

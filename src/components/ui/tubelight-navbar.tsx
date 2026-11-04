@@ -26,8 +26,7 @@ export function NavBar({ items, className }: NavBarProps) {
 
     return (
         <nav aria-label="Navegação principal" className={cn("min-w-0", className)}>
-            <div className="overflow-x-auto pt-2">
-            <div className="flex w-max mx-auto items-center gap-1 bg-zinc-900/80 border border-zinc-800 backdrop-blur-lg py-1 px-1 rounded-full shadow-lg">
+            <div className="mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-x-1 gap-y-2 bg-zinc-900/80 border border-zinc-800 backdrop-blur-lg rounded-2xl p-1 shadow-lg">
                 {items.map((item) => {
                     const Icon = item.icon
                     const isActive = activeTab === item.name
@@ -38,7 +37,7 @@ export function NavBar({ items, className }: NavBarProps) {
                             href={item.url}
                             aria-current={isActive ? 'page' : undefined}
                             className={cn(
-                                "relative shrink-0 cursor-pointer text-sm font-semibold px-3 lg:px-4 py-2 rounded-full transition-colors",
+                                "relative shrink-0 cursor-pointer text-sm font-semibold px-2.5 2xl:px-4 py-2 rounded-full transition-colors",
                                 "text-zinc-400 hover:text-white",
                                 isActive && "bg-zinc-800 text-[#fc7a67]",
                             )}
@@ -68,7 +67,6 @@ export function NavBar({ items, className }: NavBarProps) {
                         </Link>
                     )
                 })}
-            </div>
             </div>
         </nav>
     )

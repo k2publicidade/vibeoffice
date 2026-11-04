@@ -33,14 +33,14 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-sm">
-      <div className="flex h-16 items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="flex min-h-16 flex-wrap items-center justify-between gap-x-3 px-3 sm:px-4 lg:px-6 xl:flex-nowrap">
         {/* Left: Logo + Mobile Menu */}
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex min-h-16 min-w-0 items-center gap-2 md:gap-4">
           {/* Mobile menu button */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden min-h-11 min-w-11"
+            className="lg:hidden min-h-11 min-w-11"
             onClick={onMenuClick}
             aria-label="Abrir menu"
           >
@@ -57,16 +57,18 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
           </Link>
         </div>
 
+        <NavBar items={navItems} className="order-last hidden w-full py-2 lg:block xl:order-none xl:grow xl:basis-0 xl:w-auto" />
+
         {/* Right: User Info */}
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex min-h-16 min-w-0 items-center gap-2 md:gap-4">
           <OnlineUsersPopover />
           <NotificationBell />
           {user && (
-            <div className="hidden sm:flex items-center gap-2 md:gap-3">
+            <div className="hidden min-w-0 items-center gap-2 sm:flex md:gap-3">
               {/* User info text */}
-              <div className="text-right">
-                <p className="text-sm font-semibold leading-tight">{user.name}</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="min-w-0 text-right">
+                <p className="max-w-36 truncate text-sm font-semibold leading-tight">{user.name}</p>
+                <p className="max-w-36 truncate text-xs text-muted-foreground">
                   {getUserRole()}
                 </p>
               </div>
@@ -82,7 +84,6 @@ export function TopNavigation({ onMenuClick }: TopNavigationProps) {
           </div>
         </div>
       </div>
-      <NavBar items={navItems} className="hidden md:block px-6 lg:px-8 pb-3" />
     </header>
   )
 }
