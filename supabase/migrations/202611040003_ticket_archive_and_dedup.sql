@@ -1,4 +1,4 @@
--- Keep the original submission identity even when a ticket is edited or archived.
+-- Keep a record of ticket identities even when a ticket is edited or archived.
 ALTER TABLE public.tickets ADD COLUMN archived_at timestamptz;
 
 CREATE TABLE public.ticket_submission_keys (
@@ -40,12 +40,18 @@ CREATE FUNCTION public.reserve_ticket_submission()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
+DECLARE
+  submission_key text := public.ticket_submission_fingerprint(NEW);
 BEGIN
+  IF TG_OP = 'UPDATE' AND submission_key = public.ticket_submission_fingerprint(OLD) THEN
+    RETURN NEW;
+  END IF;
+
   INSERT INTO public.ticket_submission_keys (fingerprint)
-  VALUES (public.ticket_submission_fingerprint(NEW))
+  VALUES (submission_key)
   ON CONFLICT DO NOTHING;
 
-  IF NOT FOUND THEN
+  IF NOT FOUND AND TG_OP = 'INSERT' THEN
     RAISE EXCEPTION 'Já existe um ticket igual para este solicitante.'
       USING ERRCODE = '23505', CONSTRAINT = 'ticket_submission_keys_pkey';
   END IF;
@@ -56,5 +62,6 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.reserve_ticket_submission() FROM PUBLIC;
 CREATE TRIGGER reserve_ticket_submission
-AFTER INSERT ON public.tickets
+AFTER INSERT OR UPDATE OF requester, title, description, category, request_type, request_start_date, request_end_date
+ON public.tickets
 FOR EACH ROW EXECUTE FUNCTION public.reserve_ticket_submission();
