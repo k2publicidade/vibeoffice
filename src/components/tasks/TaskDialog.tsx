@@ -74,15 +74,22 @@ function getInitialFormData(
   task?: Task,
   defaultStatus?: TaskStatus,
   currentUser?: TaskDialogProps['currentUser']
-): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
+) {
   const isCollaborator = currentUser?.role === 'Colaborador'
+  const sector: Sector = task?.sector || currentUser?.sector || 'A&R'
+  const description = task?.description || ''
+  const releaseDetails = sector === 'Análise de fonogramas'
+    ? /^Nome do artista:[ \t]*([^\r\n]*)\r?\nID de Release:[ \t]*([^\r\n]*)(?:\r?\n\r?\n|$)/.exec(description)
+    : null
 
   return {
     title: task?.title || '',
-    description: task?.description || '',
+    description: releaseDetails ? description.slice(releaseDetails[0].length) : description,
+    artistName: releaseDetails?.[1] ?? '',
+    releaseId: releaseDetails?.[2] ?? '',
     status: task?.status || defaultStatus || 'todo',
     priority: task?.priority || 'medium',
-    sector: task?.sector || currentUser?.sector || 'A&R',
+    sector,
     assignees: isCollaborator && currentUser ? [currentUser.id] : (task?.assignees || []),
     createdBy: task?.createdBy || currentUser?.id || 'user-001',
     dueDate: task?.dueDate,
@@ -133,9 +140,13 @@ function TaskDialogForm({
     setIsSaving(true)
     setSaveError(null)
     try {
+      const { artistName, releaseId, ...taskData } = formData
+      if (artistName.trim() || releaseId.trim()) {
+        taskData.description = `Nome do artista: ${artistName.trim()}\nID de Release: ${releaseId.trim()}\n\n${taskData.description}`
+      }
       await onSave(isCollaborator && currentUser
-        ? { ...formData, assignees: [currentUser.id], createdBy: currentUser.id, sector: task ? formData.sector : currentUser.sector }
-        : formData
+        ? { ...taskData, assignees: [currentUser.id], createdBy: currentUser.id, sector: task ? taskData.sector : currentUser.sector }
+        : taskData
       )
       setOpen(false)
       onOpenChange?.(false)
@@ -241,6 +252,31 @@ function TaskDialogForm({
                 className="bg-zinc-800/50 border-zinc-700 focus:border-[#fc7a67] transition-colors h-11"
               />
             </div>
+
+            {formData.sector === 'Análise de fonogramas' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="task-artist">Nome do artista</Label>
+                  <Input
+                    id="task-artist"
+                    maxLength={160}
+                    value={formData.artistName}
+                    onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
+                    className="bg-zinc-800/50 border-zinc-700 focus:border-[#fc7a67] transition-colors h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-release">ID de Release</Label>
+                  <Input
+                    id="task-release"
+                    maxLength={120}
+                    value={formData.releaseId}
+                    onChange={(e) => setFormData({ ...formData, releaseId: e.target.value })}
+                    className="bg-zinc-800/50 border-zinc-700 focus:border-[#fc7a67] transition-colors h-11"
+                  />
+                </div>
+              </>
+            )}
 
             {/* Descrição */}
             <div className="space-y-2">

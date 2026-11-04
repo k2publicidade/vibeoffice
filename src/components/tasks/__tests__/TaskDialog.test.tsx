@@ -18,6 +18,24 @@ jest.mock('@/components/ui/premium-modal', () => ({
 const first: Task = { id: 'first', title: 'Primeira', description: '', status: 'todo', priority: 'medium', sector: 'Administrativo', assignees: [], createdBy: 'audit', createdAt: new Date(), updatedAt: new Date() }
 
 describe('task editor lifecycle and persistence', () => {
+  it('loads and updates release details separately from the phonogram description', async () => {
+    const save = jest.fn()
+    const task: Task = {
+      ...first,
+      sector: 'Análise de fonogramas',
+      description: 'Nome do artista: Artista\nID de Release: 00123\n\nConferir o instrumental',
+    }
+    render(<TaskDialog hideTrigger isOpen task={task} onSave={save} />)
+    expect(screen.getByLabelText('Nome do artista')).toHaveValue('Artista')
+    expect(screen.getByLabelText('ID de Release')).toHaveValue('00123')
+    expect(screen.getByLabelText('Descrição')).toHaveValue('Conferir o instrumental')
+    fireEvent.change(screen.getByLabelText('ID de Release'), { target: { value: '00456' } })
+    fireEvent.submit(screen.getByLabelText(/Título/).closest('form')!)
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      description: 'Nome do artista: Artista\nID de Release: 00456\n\nConferir o instrumental',
+    })))
+  })
+
   it('registers collaborator demands in their own sector and locks sector selection', async () => {
     const save = jest.fn()
     const currentUser = { id: 'collaborator', name: 'Colaborador', role: 'Colaborador', sector: 'Marketing' as const }
