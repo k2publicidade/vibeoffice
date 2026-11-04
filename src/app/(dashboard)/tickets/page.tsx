@@ -49,7 +49,8 @@ function TicketsPageContent() {
     addComment,
     deleteComment,
     getUserById,
-    tickets, // Destructure tickets for realtime updates
+    allTickets: tickets,
+    setTicketArchived,
     isLoading,
   } = useTickets()
 
@@ -207,6 +208,14 @@ function TicketsPageContent() {
         </div>
       </div>
 
+      <Button
+        variant="outline"
+        aria-pressed={Boolean(filters.archived)}
+        onClick={() => setFilters({ ...filters, archived: !filters.archived })}
+      >
+        {filters.archived ? 'Ver tickets ativos' : 'Ver tickets arquivados'}
+      </Button>
+
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         {[
@@ -257,7 +266,7 @@ function TicketsPageContent() {
               <Button
                 variant="outline"
                 className="rounded-full border-zinc-700 mt-4"
-                onClick={() => setFilters({})}
+                onClick={() => setFilters({ archived: filters.archived })}
               >
                 Limpar Filtros
               </Button>
@@ -292,6 +301,7 @@ function TicketsPageContent() {
         onDeleteComment={handleDeleteComment}
         getUserById={getUserById}
         onRespond={respondToRequest}
+        onSetArchived={setTicketArchived}
       />
 
       {/* AlertDialog: confirmar exclusão de comentário */}

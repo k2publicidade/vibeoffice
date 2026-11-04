@@ -344,6 +344,9 @@ export function useTasks(): UseTasksReturn {
           assignees: allowedAssignees,
         },
       })
+      if (error?.code === '23505' && error.message.includes('Já existe um ticket igual')) {
+        throw new Error(error.message)
+      }
       if (error) throw error
       const newTask = mapTaskRow(data as unknown as TaskRow)
 

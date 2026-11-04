@@ -768,6 +768,7 @@ export type Database = {
       }
       tickets: {
         Row: {
+          archived_at: string | null
           request_decision: "pending" | "accepted" | "rejected" | null
           request_type: string | null
           request_start_date: string | null
@@ -785,6 +786,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           request_decision?: "pending" | "accepted" | "rejected" | null
           request_type?: string | null
           request_start_date?: string | null
@@ -802,6 +804,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           request_decision?: "pending" | "accepted" | "rejected" | null
           request_type?: string | null
           request_start_date?: string | null

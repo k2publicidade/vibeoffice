@@ -95,7 +95,7 @@ export default function DashboardPage() {
     if (!user) throw new Error('Faça login novamente')
     if (request.endDate < request.startDate) throw new Error('A data final deve ser igual ou posterior à inicial')
     const label = requestTypeLabel(request.type)
-    await createTicket({ title: `Solicitação: ${label}`, description: request.description || `${label}: ${format(request.startDate, 'dd/MM/yyyy')} a ${format(request.endDate, 'dd/MM/yyyy')}`, category: request.sector, status: 'open', priority: 'medium', requester: user.id, requestType: request.type, requestStartDate: request.startDate, requestEndDate: request.endDate })
+    await createTicket({ title: `Solicitação: ${label}`, description: request.description || '', category: request.sector, status: 'open', priority: 'medium', requester: user.id, requestType: request.type, requestStartDate: request.startDate, requestEndDate: request.endDate })
     toast.success('Solicitação enviada para análise')
   }
 
