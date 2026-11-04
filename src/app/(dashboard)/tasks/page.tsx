@@ -32,11 +32,11 @@ const columnColors: Record<TaskStatus, string> = {
 }
 
 // Converter Task[] em KanbanColumnData[]
-function tasksToPremiumColumns(tasks: Task[]): KanbanColumnData[] {
+function tasksToPremiumColumns(tasks: Task[], isAnalyst: boolean): KanbanColumnData[] {
   return [
     {
       id: 'todo',
-      title: 'A Fazer',
+      title: isAnalyst ? 'Estacionado' : 'A Fazer',
       color: columnColors.todo,
       tasks: tasks.filter(t => t.status === 'todo'),
     },
@@ -68,6 +68,7 @@ export default function TasksPage() {
 function TasksPageContent() {
   const { user, isLoading: authLoading } = useAuth()
   const isCollaborator = user?.role === 'Colaborador'
+  const isAnalyst = isCollaborator && user?.sector === 'Análise de fonogramas'
 
 
   const {
@@ -96,8 +97,8 @@ function TasksPageContent() {
 
   // Converter tasks para colunas do Kanban Premium
   const kanbanColumns = useMemo(
-    () => tasksToPremiumColumns(filteredTasks),
-    [filteredTasks]
+    () => tasksToPremiumColumns(filteredTasks, isAnalyst),
+    [filteredTasks, isAnalyst]
   )
 
   const handleCreateTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {

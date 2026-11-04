@@ -60,6 +60,7 @@ type TaskRow = {
   id: string
   title: string
   description: string | null
+  resolution?: string | null
   status: Task['status']
   priority: Task['priority']
   due_date: string | null
@@ -119,6 +120,7 @@ function mapTaskRow(task: TaskRow): Task {
     id: task.id,
     title: task.title,
     description: task.description || '',
+    ...(task.resolution != null && { resolution: task.resolution }),
     status: task.status,
     priority: task.priority,
     dueDate: task.due_date ? new Date(task.due_date) : undefined,
@@ -333,6 +335,7 @@ export function useTasks(): UseTasksReturn {
         changes: {
           title: normalizedTaskData.title,
           description: normalizedTaskData.description,
+          ...(normalizedTaskData.resolution !== undefined && { resolution: normalizedTaskData.resolution }),
           status: normalizedTaskData.status,
           priority: normalizedTaskData.priority,
           due_date: normalizedTaskData.dueDate?.toISOString() ?? null,
@@ -378,6 +381,7 @@ export function useTasks(): UseTasksReturn {
       changes: {
         title: normalizedUpdates.title,
         description: normalizedUpdates.description,
+        ...(normalizedUpdates.resolution !== undefined && { resolution: normalizedUpdates.resolution }),
         status: normalizedUpdates.status,
         priority: normalizedUpdates.priority,
         due_date: Object.prototype.hasOwnProperty.call(normalizedUpdates, 'dueDate')

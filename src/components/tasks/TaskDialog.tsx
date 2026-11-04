@@ -84,6 +84,7 @@ function getInitialFormData(
 
   return {
     title: task?.title || '',
+    resolution: task?.resolution ?? '',
     description: releaseDetails ? description.slice(releaseDetails[0].length) : description,
     artistName: releaseDetails?.[1] ?? '',
     releaseId: releaseDetails?.[2] ?? '',
@@ -114,6 +115,9 @@ function TaskDialogForm({
   const isCollaborator = currentUser?.role === 'Colaborador'
   const [open, setOpen] = useState(isOpen || false)
   const [formData, setFormData] = useState(() => getInitialFormData(task, defaultStatus, currentUser))
+  const canWriteResolution = isCollaborator && currentUser?.sector === 'Análise de fonogramas'
+    && formData.sector === 'Análise de fonogramas'
+  const canReadResolution = currentUser?.role === 'Admin' || currentUser?.role === 'Gerente'
   const [assigneeSearch, setAssigneeSearch] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -140,7 +144,11 @@ function TaskDialogForm({
     setIsSaving(true)
     setSaveError(null)
     try {
-      const { artistName, releaseId, ...taskData } = formData
+      const { artistName, releaseId, resolution, ...fields } = formData
+      const taskData = {
+        ...fields,
+        ...(canWriteResolution && resolution.trim() !== (task?.resolution ?? '') && { resolution: resolution.trim() || null }),
+      }
       if (artistName.trim() || releaseId.trim()) {
         taskData.description = `Nome do artista: ${artistName.trim()}\nID de Release: ${releaseId.trim()}\n\n${taskData.description}`
       }
@@ -515,6 +523,25 @@ function TaskDialogForm({
                 Prioridade {formData.priority === 'high' ? 'Alta' : formData.priority === 'medium' ? 'Média' : 'Baixa'}
               </span>
             </div>
+
+            {canWriteResolution && (
+              <div className="space-y-2">
+                <Label htmlFor="task-resolution">Resolução (opcional)</Label>
+                <Textarea
+                  id="task-resolution"
+                  className="bg-zinc-800/50 border-zinc-700"
+                  placeholder="Descreva como o problema foi resolvido"
+                  value={formData.resolution}
+                  onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
+                />
+              </div>
+            )}
+            {canReadResolution && task?.resolution && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Resolução</h3>
+                <p className="whitespace-pre-wrap break-words text-sm text-zinc-300">{task.resolution}</p>
+              </div>
+            )}
 
             <p className="text-xs text-zinc-400">A data e a hora de criação são registradas automaticamente.</p>
             {/* Vencimento opcional */}
