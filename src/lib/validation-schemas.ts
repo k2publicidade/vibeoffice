@@ -21,7 +21,7 @@ export const CreateTaskSchema = z.object({
     .max(2000, 'Descrição muito longa (máx. 2000 caracteres)')
     .optional(),
 
-  status: z.enum(['todo', 'in_progress', 'done']),
+  status: z.enum(['todo', 'in_progress', 'inspection_failed', 'done']),
 
   priority: z.enum(['low', 'medium', 'high']),
 

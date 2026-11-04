@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 const columnColors: Record<TaskStatus, string> = {
   todo: '#94a3b8', // Gray
   in_progress: '#fc7a67', // Coral
+  inspection_failed: '#ef4444', // Red
   done: '#10b981', // Emerald
 }
 
@@ -44,6 +45,12 @@ function tasksToPremiumColumns(tasks: Task[]): KanbanColumnData[] {
       title: 'Em Progresso',
       color: columnColors.in_progress,
       tasks: tasks.filter(t => t.status === 'in_progress'),
+    },
+    {
+      id: 'inspection_failed',
+      title: 'Falha na Inspeção',
+      color: columnColors.inspection_failed,
+      tasks: tasks.filter(t => t.status === 'inspection_failed'),
     },
     {
       id: 'done',
@@ -162,11 +169,13 @@ function TasksPageContent() {
       const statusEmoji = {
         todo: '📝',
         in_progress: '⚡',
+        inspection_failed: '⚠️',
         done: '✅'
       }
       const statusText = {
         todo: 'A Fazer',
         in_progress: 'Em Progresso',
+        inspection_failed: 'Falha na Inspeção',
         done: 'Concluído'
       }
       const task = filteredTasks.find(t => t.id === taskId)

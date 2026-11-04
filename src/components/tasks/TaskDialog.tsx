@@ -342,6 +342,7 @@ function TaskDialogForm({
                         Em Progresso
                       </div>
                     </SelectItem>
+                    <SelectItem value="inspection_failed">Falha na Inspeção</SelectItem>
                     <SelectItem value="done">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-green-400"></span>

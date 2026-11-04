@@ -32,7 +32,7 @@ export function TaskFilters({filters,onFiltersChange,stats}:Props) {
    <Separator className="bg-[#2a2a2a]"/>
    <FilterMultiSelect label="Setor" placeholder="Todos os setores" value={filters.sector} onChange={value=>change('sector',value)} options={sectors.map(value=>({value,label:value}))}/>
    <FilterMultiSelect label="Prioridade" placeholder="Todas as prioridades" value={filters.priority} onChange={value=>change('priority',value)} options={[{value:'low',label:'Baixa'},{value:'medium',label:'Média'},{value:'high',label:'Alta',className:'text-red-400'}]}/>
-   <FilterMultiSelect label="Status" placeholder="Todos os status" value={filters.status} onChange={value=>change('status',value)} options={[{value:'todo',label:'A Fazer'},{value:'in_progress',label:'Em Progresso'},{value:'done',label:'Concluído'}]}/>
+   <FilterMultiSelect label="Status" placeholder="Todos os status" value={filters.status} onChange={value=>change('status',value)} options={[{value:'todo',label:'A Fazer'},{value:'in_progress',label:'Em Progresso'},{value:'inspection_failed',label:'Falha na Inspeção'},{value:'done',label:'Concluído'}]}/>
    <FilterMultiSelect label="Responsável" placeholder="Todas as pessoas" value={filters.assignees} onChange={value=>change('assignees',value)} options={(users||[]).map(user=>({value:user.id,label:user.name}))}/>
         {/* Stats Summary */}
         {stats && (

@@ -1085,7 +1085,7 @@ export type Database = {
         | "Atendimento ao Artista"
         | "Análise de fonogramas"
       share_permission: "view" | "edit" | "manage"
-      task_status: "todo" | "in_progress" | "done"
+      task_status: "todo" | "in_progress" | "inspection_failed" | "done"
       ticket_status: "open" | "analyzing" | "in_progress" | "completed"
     }
     CompositeTypes: {

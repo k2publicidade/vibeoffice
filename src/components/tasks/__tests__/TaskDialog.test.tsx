@@ -69,6 +69,17 @@ describe('task editor lifecycle and persistence', () => {
     expect(screen.getByLabelText(/Título/)).toHaveValue('Segunda')
   })
 
+  it('keeps the failed inspection status when saving a phonogram', async () => {
+    const save = jest.fn()
+    const task: Task = { ...first, sector: 'Análise de fonogramas', status: 'inspection_failed' }
+    render(<TaskDialog hideTrigger isOpen task={task} onSave={save} />)
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveTextContent('Falha na Inspeção')
+    fireEvent.submit(screen.getByLabelText(/Título/).closest('form')!)
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'inspection_failed',
+    })))
+  })
+
   it('creates a task without requiring a deadline or time selection', async () => {
     const save = jest.fn()
     render(<TaskDialog hideTrigger isOpen onSave={save} />)

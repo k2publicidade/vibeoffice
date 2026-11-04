@@ -23,6 +23,7 @@ const priorityConfig = {
 const statusConfig = {
   todo: { label: 'A Fazer' },
   in_progress: { label: 'Em Progresso' },
+  inspection_failed: { label: 'Falha na Inspeção' },
   done: { label: 'Concluído' },
 }
 
