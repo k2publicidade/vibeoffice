@@ -2,6 +2,8 @@
 import { matchesFilterSelection, type FilterSelection } from '@/lib/filter-selection'
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { format } from 'date-fns'
+import { requestTypeLabel } from '@/lib/request-types'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 import { Ticket, TicketComment } from '@/types/tickets'
@@ -10,6 +12,7 @@ import { CreateTicketSchema, UpdateTicketSchema, CreateTicketCommentSchema, form
 function formatLocalDate(date: Date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}` }
 
 type TicketRow = {
+  archived_at?: string | null
   request_decision?: Ticket['requestDecision'] | null
   request_type?: string | null
   request_start_date?: string | null
@@ -52,6 +55,7 @@ export function canCurrentUserSeeTicket(
 
 function mapTicketRow(ticket: TicketRow): Ticket {
   return {
+    archivedAt: ticket.archived_at ? new Date(ticket.archived_at) : undefined,
     requestDecision: ticket.request_decision || undefined,
     requestType: ticket.request_type || undefined,
     requestStartDate: ticket.request_start_date ? new Date(ticket.request_start_date + 'T12:00:00') : undefined,
@@ -73,6 +77,7 @@ function mapTicketRow(ticket: TicketRow): Ticket {
 }
 
 export interface TicketFilters {
+  archived?: boolean
   status?: string[]  // Suporta multi-seleção
   priority?: FilterSelection
   category?: FilterSelection
@@ -98,6 +103,8 @@ export interface AddCommentInput {
 
 export interface UseTicketsReturn {
   tickets: Ticket[]
+  allTickets: Ticket[]
+  setTicketArchived: (id: string, archived: boolean) => Promise<void>
   filteredTickets: Ticket[]
   comments: TicketComment[]
   filters: TicketFilters
@@ -219,21 +226,38 @@ export function useTickets(): UseTicketsReturn {
     }
   }
 
+  const activeTickets = useMemo(() => tickets.filter(ticket => !ticket.archivedAt), [tickets])
+
+  const setTicketArchived = useCallback(async (id: string, archived: boolean) => {
+    const { data, error } = await supabase
+      .from('tickets')
+      .update({ archived_at: archived ? new Date().toISOString() : null })
+      .eq('id', id)
+      .select('archived_at')
+      .single()
+
+    if (error) throw error
+    setTickets(previous => previous.map(ticket => ticket.id === id
+      ? { ...ticket, archivedAt: data.archived_at ? new Date(data.archived_at) : undefined }
+      : ticket))
+  }, [supabase])
+
   // Calcular estatísticas
   const stats = useMemo((): TicketStats => {
     return {
-      total: tickets.length,
-      open: tickets.filter(t => t.status === 'open').length,
-      analyzing: tickets.filter(t => t.status === 'analyzing').length,
-      inProgress: tickets.filter(t => t.status === 'in_progress').length,
-      completed: tickets.filter(t => t.status === 'completed').length,
-      highPriority: tickets.filter(t => t.priority === 'high' && t.status !== 'completed').length,
+      total: activeTickets.length,
+      open: activeTickets.filter(t => t.status === 'open').length,
+      analyzing: activeTickets.filter(t => t.status === 'analyzing').length,
+      inProgress: activeTickets.filter(t => t.status === 'in_progress').length,
+      completed: activeTickets.filter(t => t.status === 'completed').length,
+      highPriority: activeTickets.filter(t => t.priority === 'high' && t.status !== 'completed').length,
     }
-  }, [tickets])
+  }, [activeTickets])
 
   // Filtrar tickets baseado nos filtros selecionados
   const filteredTickets = useMemo(() => {
     return tickets.filter(ticket => {
+      if (Boolean(ticket.archivedAt) !== Boolean(filters.archived)) return false
       // Status: multi-seleção - verifica se o status está no array
       if (filters.status && filters.status.length > 0) {
         if (!filters.status.includes(ticket.status)) return false
@@ -260,7 +284,11 @@ export function useTickets(): UseTicketsReturn {
       if (!user) throw new Error('User not authenticated')
 
       // ✅ Validação com Zod antes de inserir no banco
-      const validation = CreateTicketSchema.safeParse({ ...ticketData, requester: user.id })
+      const { requestType, requestStartDate, requestEndDate } = ticketData
+      const description = !ticketData.description && requestType && requestStartDate && requestEndDate
+        ? `${requestTypeLabel(requestType)}: ${format(requestStartDate, 'dd/MM/yyyy')} a ${format(requestEndDate, 'dd/MM/yyyy')}`
+        : ticketData.description
+      const validation = CreateTicketSchema.safeParse({ ...ticketData, description, requester: user.id })
       if (!validation.success) {
         const errors = formatZodErrors(validation.error)
         throw new Error(`Dados inválidos: ${errors.join(', ')}`)
@@ -271,7 +299,7 @@ export function useTickets(): UseTicketsReturn {
         .from('tickets')
         .insert({
           title: ticketData.title,
-          description: ticketData.description,
+          description,
           category: ticketData.category,
           status: ticketData.status,
           priority: ticketData.priority,
@@ -285,6 +313,9 @@ export function useTickets(): UseTicketsReturn {
         .select()
         .single()
 
+      if (error?.code === '23505' && error.message.includes('Já existe um ticket igual')) {
+        throw new Error(error.message)
+      }
       if (error) throw error
 
       const insertedTicket = data as TicketRow
@@ -466,8 +497,8 @@ export function useTickets(): UseTicketsReturn {
 
   // Obter tickets por status
   const getTicketsByStatus = useCallback((status: string) => {
-    return tickets.filter(t => t.status === status)
-  }, [tickets])
+    return tickets.filter(t => t.status === status && Boolean(t.archivedAt) === Boolean(filters.archived))
+  }, [tickets, filters.archived])
 
   // Obter comentários por ID do ticket
   const getCommentsByTicketId = useCallback((ticketId: string) => {
@@ -584,7 +615,9 @@ export function useTickets(): UseTicketsReturn {
   }, [supabase])
 
   return {
-    tickets,
+    tickets: activeTickets,
+    allTickets: tickets,
+    setTicketArchived,
     filteredTickets,
     comments,
     filters,

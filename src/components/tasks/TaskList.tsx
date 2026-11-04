@@ -30,6 +30,7 @@ const priorityConfig = {
 const statusConfig = {
   todo: { label: 'A Fazer', color: 'bg-gray-100 text-gray-800' },
   in_progress: { label: 'Em Progresso', color: 'bg-blue-100 text-blue-800' },
+  inspection_failed: { label: 'Falha na Inspeção', color: 'bg-red-100 text-red-800' },
   done: { label: 'Concluído', color: 'bg-green-100 text-green-800' },
 }
 

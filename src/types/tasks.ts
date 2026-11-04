@@ -5,7 +5,7 @@
 
 import { Sector } from './auth'
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done'
+export type TaskStatus = 'todo' | 'in_progress' | 'inspection_failed' | 'done'
 export type TaskPriority = 'low' | 'medium' | 'high'
 
 
@@ -13,6 +13,7 @@ export interface Task {
   id: string
   title: string
   description: string
+  resolution?: string | null
   status: TaskStatus
   priority: TaskPriority
   dueDate?: Date

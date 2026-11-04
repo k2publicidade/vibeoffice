@@ -74,15 +74,23 @@ function getInitialFormData(
   task?: Task,
   defaultStatus?: TaskStatus,
   currentUser?: TaskDialogProps['currentUser']
-): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
+) {
   const isCollaborator = currentUser?.role === 'Colaborador'
+  const sector: Sector = task?.sector || currentUser?.sector || 'A&R'
+  const description = task?.description || ''
+  const releaseDetails = sector === 'Análise de fonogramas'
+    ? /^Nome do artista:[ \t]*([^\r\n]*)\r?\nID de Release:[ \t]*([^\r\n]*)(?:\r?\n\r?\n|$)/.exec(description)
+    : null
 
   return {
     title: task?.title || '',
-    description: task?.description || '',
+    resolution: task?.resolution ?? '',
+    description: releaseDetails ? description.slice(releaseDetails[0].length) : description,
+    artistName: releaseDetails?.[1] ?? '',
+    releaseId: releaseDetails?.[2] ?? '',
     status: task?.status || defaultStatus || 'todo',
     priority: task?.priority || 'medium',
-    sector: task?.sector || currentUser?.sector || 'A&R',
+    sector,
     assignees: isCollaborator && currentUser ? [currentUser.id] : (task?.assignees || []),
     createdBy: task?.createdBy || currentUser?.id || 'user-001',
     dueDate: task?.dueDate,
@@ -107,6 +115,9 @@ function TaskDialogForm({
   const isCollaborator = currentUser?.role === 'Colaborador'
   const [open, setOpen] = useState(isOpen || false)
   const [formData, setFormData] = useState(() => getInitialFormData(task, defaultStatus, currentUser))
+  const canWriteResolution = isCollaborator && currentUser?.sector === 'Análise de fonogramas'
+    && formData.sector === 'Análise de fonogramas'
+  const canReadResolution = currentUser?.role === 'Admin' || currentUser?.role === 'Gerente'
   const [assigneeSearch, setAssigneeSearch] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -133,9 +144,17 @@ function TaskDialogForm({
     setIsSaving(true)
     setSaveError(null)
     try {
+      const { artistName, releaseId, resolution, ...fields } = formData
+      const taskData = {
+        ...fields,
+        ...(canWriteResolution && resolution.trim() !== (task?.resolution ?? '') && { resolution: resolution.trim() || null }),
+      }
+      if (artistName.trim() || releaseId.trim()) {
+        taskData.description = `Nome do artista: ${artistName.trim()}\nID de Release: ${releaseId.trim()}\n\n${taskData.description}`
+      }
       await onSave(isCollaborator && currentUser
-        ? { ...formData, assignees: [currentUser.id], createdBy: currentUser.id, sector: task ? formData.sector : currentUser.sector }
-        : formData
+        ? { ...taskData, assignees: [currentUser.id], createdBy: currentUser.id, sector: task ? taskData.sector : currentUser.sector }
+        : taskData
       )
       setOpen(false)
       onOpenChange?.(false)
@@ -242,6 +261,31 @@ function TaskDialogForm({
               />
             </div>
 
+            {formData.sector === 'Análise de fonogramas' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="task-artist">Nome do artista</Label>
+                  <Input
+                    id="task-artist"
+                    maxLength={160}
+                    value={formData.artistName}
+                    onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
+                    className="bg-zinc-800/50 border-zinc-700 focus:border-[#fc7a67] transition-colors h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-release">ID de Release</Label>
+                  <Input
+                    id="task-release"
+                    maxLength={120}
+                    value={formData.releaseId}
+                    onChange={(e) => setFormData({ ...formData, releaseId: e.target.value })}
+                    className="bg-zinc-800/50 border-zinc-700 focus:border-[#fc7a67] transition-colors h-11"
+                  />
+                </div>
+              </>
+            )}
+
             {/* Descrição */}
             <div className="space-y-2">
               <Label htmlFor="description">Descrição</Label>
@@ -306,6 +350,7 @@ function TaskDialogForm({
                         Em Progresso
                       </div>
                     </SelectItem>
+                    <SelectItem value="inspection_failed">Falha na Inspeção</SelectItem>
                     <SelectItem value="done">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-green-400"></span>
@@ -478,6 +523,25 @@ function TaskDialogForm({
                 Prioridade {formData.priority === 'high' ? 'Alta' : formData.priority === 'medium' ? 'Média' : 'Baixa'}
               </span>
             </div>
+
+            {canWriteResolution && (
+              <div className="space-y-2">
+                <Label htmlFor="task-resolution">Resolução (opcional)</Label>
+                <Textarea
+                  id="task-resolution"
+                  className="bg-zinc-800/50 border-zinc-700"
+                  placeholder="Descreva como o problema foi resolvido"
+                  value={formData.resolution}
+                  onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
+                />
+              </div>
+            )}
+            {canReadResolution && task?.resolution && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Resolução</h3>
+                <p className="whitespace-pre-wrap break-words text-sm text-zinc-300">{task.resolution}</p>
+              </div>
+            )}
 
             <p className="text-xs text-zinc-400">A data e a hora de criação são registradas automaticamente.</p>
             {/* Vencimento opcional */}

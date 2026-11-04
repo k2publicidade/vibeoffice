@@ -47,6 +47,7 @@ import { useUsers } from '@/hooks/useUsers'
 import { useAuth } from '@/hooks/useAuth'
 
 interface TicketDetailModalProps {
+  onSetArchived?: (id: string, archived: boolean) => Promise<void>
   onRespond?: (id: string, decision: 'accepted' | 'rejected') => Promise<void>
   ticket: Ticket | null
   open: boolean
@@ -101,7 +102,9 @@ export function TicketDetailModal({
   onAddComment,
   onDeleteComment,
   onRespond,
+  onSetArchived,
 }: TicketDetailModalProps) {
+  const [savingArchive, setSavingArchive] = useState(false)
   const [responding, setResponding] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [isInternal, setIsInternal] = useState(false)
@@ -190,6 +193,25 @@ export function TicketDetailModal({
           animate="visible"
           className="space-y-6 flex-1 overflow-hidden flex flex-col"
         >
+          {onSetArchived && (
+            <div className="flex items-center gap-3">
+              {ticket.archivedAt && <Badge variant="outline">Arquivado</Badge>}
+              <Button variant="outline" size="sm" disabled={savingArchive} onClick={async () => {
+                const archived = !ticket.archivedAt
+                setSavingArchive(true)
+                try {
+                  await onSetArchived(ticket.id, archived)
+                  toast.success(archived ? 'Ticket arquivado' : 'Ticket restaurado')
+                } catch {
+                  toast.error('Não foi possível alterar o arquivamento do ticket')
+                } finally {
+                  setSavingArchive(false)
+                }
+              }}>
+                {ticket.archivedAt ? 'Restaurar ticket' : 'Arquivar ticket'}
+              </Button>
+            </div>
+          )}
           {ticket.requestType && (
             <div className="space-y-2 rounded-xl border border-zinc-700 p-3">
               <p>Setor de destino: {ticket.category}</p>

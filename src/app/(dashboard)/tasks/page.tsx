@@ -27,15 +27,16 @@ import { toast } from 'sonner'
 const columnColors: Record<TaskStatus, string> = {
   todo: '#94a3b8', // Gray
   in_progress: '#fc7a67', // Coral
+  inspection_failed: '#ef4444', // Red
   done: '#10b981', // Emerald
 }
 
 // Converter Task[] em KanbanColumnData[]
-function tasksToPremiumColumns(tasks: Task[]): KanbanColumnData[] {
+function tasksToPremiumColumns(tasks: Task[], isAnalyst: boolean): KanbanColumnData[] {
   return [
     {
       id: 'todo',
-      title: 'A Fazer',
+      title: isAnalyst ? 'Estacionado' : 'A Fazer',
       color: columnColors.todo,
       tasks: tasks.filter(t => t.status === 'todo'),
     },
@@ -44,6 +45,12 @@ function tasksToPremiumColumns(tasks: Task[]): KanbanColumnData[] {
       title: 'Em Progresso',
       color: columnColors.in_progress,
       tasks: tasks.filter(t => t.status === 'in_progress'),
+    },
+    {
+      id: 'inspection_failed',
+      title: 'Falha na Inspeção',
+      color: columnColors.inspection_failed,
+      tasks: tasks.filter(t => t.status === 'inspection_failed'),
     },
     {
       id: 'done',
@@ -61,6 +68,7 @@ export default function TasksPage() {
 function TasksPageContent() {
   const { user, isLoading: authLoading } = useAuth()
   const isCollaborator = user?.role === 'Colaborador'
+  const isAnalyst = isCollaborator && user?.sector === 'Análise de fonogramas'
 
 
   const {
@@ -89,8 +97,8 @@ function TasksPageContent() {
 
   // Converter tasks para colunas do Kanban Premium
   const kanbanColumns = useMemo(
-    () => tasksToPremiumColumns(filteredTasks),
-    [filteredTasks]
+    () => tasksToPremiumColumns(filteredTasks, isAnalyst),
+    [filteredTasks, isAnalyst]
   )
 
   const handleCreateTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -162,11 +170,13 @@ function TasksPageContent() {
       const statusEmoji = {
         todo: '📝',
         in_progress: '⚡',
+        inspection_failed: '⚠️',
         done: '✅'
       }
       const statusText = {
         todo: 'A Fazer',
         in_progress: 'Em Progresso',
+        inspection_failed: 'Falha na Inspeção',
         done: 'Concluído'
       }
       const task = filteredTasks.find(t => t.id === taskId)

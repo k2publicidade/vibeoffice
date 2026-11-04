@@ -30,6 +30,7 @@ export function TaskDetailsModal({ open, onClose, task, onMarkAsDone }: TaskDeta
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'done': return 'bg-green-500/10 text-green-500 border-green-500/20'
+            case 'inspection_failed': return 'bg-red-500/10 text-red-500 border-red-500/20'
             case 'in_progress': return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
             case 'todo': return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20'
             default: return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20'
@@ -40,6 +41,7 @@ export function TaskDetailsModal({ open, onClose, task, onMarkAsDone }: TaskDeta
         switch (status) {
             case 'done': return 'Concluída'
             case 'in_progress': return 'Em Progresso'
+            case 'inspection_failed': return 'Falha na Inspeção'
             case 'todo': return 'A Fazer'
             default: return status
         }

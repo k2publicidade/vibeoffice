@@ -47,6 +47,7 @@ const itemVariants = {
 const statusLabels = {
   todo: 'A fazer',
   in_progress: 'Em progresso',
+  inspection_failed: 'Falha na Inspeção',
   done: 'Concluída',
   open: 'Aberto',
   analyzing: 'Em análise',

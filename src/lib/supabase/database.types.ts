@@ -605,6 +605,7 @@ export type Database = {
           id: string
           title: string
           description: string | null
+          resolution: string | null
           status: Database["public"]["Enums"]["task_status"]
           priority: Database["public"]["Enums"]["priority_type"]
           due_date: string | null
@@ -619,6 +620,7 @@ export type Database = {
           id?: string
           title: string
           description?: string | null
+          resolution?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           priority?: Database["public"]["Enums"]["priority_type"]
           due_date?: string | null
@@ -633,6 +635,7 @@ export type Database = {
           id?: string
           title?: string
           description?: string | null
+          resolution?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           priority?: Database["public"]["Enums"]["priority_type"]
           due_date?: string | null
@@ -765,6 +768,7 @@ export type Database = {
       }
       tickets: {
         Row: {
+          archived_at: string | null
           request_decision: "pending" | "accepted" | "rejected" | null
           request_type: string | null
           request_start_date: string | null
@@ -782,6 +786,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           request_decision?: "pending" | "accepted" | "rejected" | null
           request_type?: string | null
           request_start_date?: string | null
@@ -799,6 +804,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           request_decision?: "pending" | "accepted" | "rejected" | null
           request_type?: string | null
           request_start_date?: string | null
@@ -1085,7 +1091,7 @@ export type Database = {
         | "Atendimento ao Artista"
         | "Análise de fonogramas"
       share_permission: "view" | "edit" | "manage"
-      task_status: "todo" | "in_progress" | "done"
+      task_status: "todo" | "in_progress" | "inspection_failed" | "done"
       ticket_status: "open" | "analyzing" | "in_progress" | "completed"
     }
     CompositeTypes: {

@@ -64,7 +64,7 @@ function KanbanColumn({
         <div
             ref={setNodeRef}
             className={cn(
-                "flex-1 min-w-[320px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border shadow-inner h-full min-h-[500px] transition-all duration-200",
+                "flex-1 min-w-0 md:min-w-[240px] flex flex-col bg-[#0a0a0a] rounded-xl p-4 border shadow-inner h-full min-h-[500px] transition-all duration-200",
                 isOver
                     ? "border-[#fc7a67] bg-[#fc7a67]/5 ring-2 ring-[#fc7a67]/20 scale-[1.01]"
                     : "border-[#2a2a2a]",

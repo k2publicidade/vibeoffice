@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from "react"
+import Link from "next/link"
 import { Task } from "@/types/tasks"
 import { cn } from "@/lib/utils"
 import { useSortable } from "@dnd-kit/sortable"
@@ -114,8 +115,15 @@ export const PremiumTaskCard = React.memo(({ task, onClick, onDelete }: PremiumT
                                 </Badge>
                             ))}
                             {task.linkedTicketId && (
-                                <Badge className={cn("text-[10px] px-2 py-0.5 font-medium", task.priority === 'high' ? "bg-red-500/15 text-red-300 border-red-500/50" : "bg-blue-500/10 text-blue-400 border-blue-500/30")}>
-                                    🎫 Ticket
+                                <Badge asChild className={cn("text-[10px] px-2 py-0.5 font-medium", task.priority === 'high' ? "bg-red-500/15 text-red-300 border-red-500/50" : "bg-blue-500/10 text-blue-400 border-blue-500/30")}>
+                                    <Link
+                                        href={`/tickets?open=${task.linkedTicketId}`}
+                                        onPointerDown={event => event.stopPropagation()}
+                                        onKeyDown={event => event.stopPropagation()}
+                                        onClick={event => event.stopPropagation()}
+                                    >
+                                        🎫 Ticket
+                                    </Link>
                                 </Badge>
                             )}
                         </div>
