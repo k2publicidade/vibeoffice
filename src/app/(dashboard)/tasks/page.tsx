@@ -210,7 +210,7 @@ function TasksPageContent() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-10">
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-[#fc7a67] to-[#ef5907] bg-clip-text text-transparent">
             {isCollaborator ? 'Minhas Demandas Internas' : 'Fluxo de Trabalho'}
@@ -222,7 +222,7 @@ function TasksPageContent() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2 border-[#2a2a2a] bg-black hover:bg-[#1a1a1a] text-gray-300">
@@ -272,7 +272,7 @@ function TasksPageContent() {
 
       {/* Tabs com Toolbar */}
       <Tabs value={view} onValueChange={(v) => setView(v as 'board' | 'list')} className="w-full">
-        <div className="flex items-center justify-between gap-4 mb-8">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <TabsList className="bg-[#0a0a0a] border border-[#2a2a2a] p-1 h-11">
             <TabsTrigger value="board" className="gap-2 data-[state=active]:bg-[#1a1a1a] data-[state=active]:text-[#fc7a67]">
               <LayoutGrid className="h-4 w-4" />
