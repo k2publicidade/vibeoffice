@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StudioBooking } from '@/types/studio'
 import { toast } from 'sonner'
@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 export function useStudio() {
     const [bookings, setBookings] = useState<StudioBooking[]>([])
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const fetchBookings = useCallback(async () => {
         setLoading(true)
@@ -101,7 +101,7 @@ export function useStudio() {
 
         // Subscribe to realtime changes
         const channel = supabase
-            .channel('studio_bookings_changes')
+            .channel(`studio_bookings_changes:${crypto.randomUUID()}`)
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'studio_bookings' },

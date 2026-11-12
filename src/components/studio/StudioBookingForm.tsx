@@ -3,6 +3,7 @@ import { StudioBooking, Person, SessionType } from '@/types/studio';
 import DynamicPersonList from './DynamicPersonList';
 import { Save, Monitor, Clock, Calendar, Music2, StickyNote, Mic2, Edit, Plus } from 'lucide-react';
 import { useStudio } from '@/hooks/useStudio';
+import { toLocalDateInput } from '@/lib/calendar-time';
 
 interface StudioBookingFormProps {
     onSuccess: () => void;
@@ -20,7 +21,8 @@ const StudioBookingForm: React.FC<StudioBookingFormProps> = ({ onSuccess, onCanc
 
     const [trackTitle, setTrackTitle] = useState('');
     const [studio, setStudio] = useState('Studio A');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    // Data local (toISOString usa UTC e adianta o dia após 21h no Brasil)
+    const [date, setDate] = useState(() => toLocalDateInput());
     const [startTime, setStartTime] = useState('10:00');
     const [endTime, setEndTime] = useState('14:00');
     const [pc, setPc] = useState('');
@@ -74,6 +76,13 @@ const StudioBookingForm: React.FC<StudioBookingFormProps> = ({ onSuccess, onCanc
 
         if (missingFields.length > 0) {
             alert(`Não foi possível salvar. Preencha os seguintes campos obrigatórios:\n\n- ${missingFields.join('\n- ')}`);
+            setSubmitting(false);
+            return;
+        }
+
+        // Término antes do início é permitido (sessão que vira a noite); iguais não.
+        if (startTime.slice(0, 5) === endTime.slice(0, 5)) {
+            alert('O horário de término deve ser diferente do horário de início.');
             setSubmitting(false);
             return;
         }

@@ -5,6 +5,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { createSharedResource, useSharedStore } from '@/lib/shared-resource'
 import { createClient } from '@/lib/supabase/client'
 import { Role, Sector, User } from '@/types/auth'
 import { useRouter } from 'next/navigation'
@@ -29,59 +30,97 @@ export interface UseAuthReturn {
   updateProfile: (updates: { name: string; sector?: Sector; avatar?: string | null }) => Promise<void>
 }
 
-export function useAuth(): UseAuthReturn {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
-  // [C05] Client criado por hook para evitar sessão stale
-  const supabase = useMemo(() => createClient(), [])
+type AuthState = { user: User | null; isLoading: boolean }
 
-  useEffect(() => {
-    let active = true
+function mapProfile(data: {
+  id: string; email: string; name: string; avatar: string | null; sector: unknown; role: unknown
+  created_at: string; updated_at: string
+}): User {
+  return {
+    id: data.id, email: data.email, name: data.name, avatar: data.avatar,
+    sector: data.sector as Sector, role: data.role as Role,
+    createdAt: new Date(data.created_at), updatedAt: new Date(data.updated_at),
+  }
+}
+
+/**
+ * Sessão compartilhada: uma única leitura de sessão, uma única busca de perfil e
+ * um único listener de auth para todo o app (antes cada componente que chamava
+ * useAuth repetia tudo isso).
+ */
+// Incrementado no signOut para descartar buscas de perfil que ainda estavam em andamento
+let authEpoch = 0
+
+const authResource = createSharedResource<AuthState, ReturnType<typeof createClient>>(
+  { user: null, isLoading: true },
+  (supabase, store, isCurrent) => {
     let authTimer: ReturnType<typeof setTimeout> | undefined
     let currentUserId: string | null = null
+    let active = true
+    const alive = () => active && isCurrent()
 
     async function loadProfile(userId: string | null) {
       currentUserId = userId
+      const epoch = authEpoch
       if (!userId) {
-        if (active) { setUser(null); setIsLoading(false) }
+        if (alive()) store.set({ user: null, isLoading: false })
         return
       }
       try {
         const { data, error } = await supabase.from('users').select('*').eq('id', userId).single()
-        if (!active || currentUserId !== userId) return
-        setUser(!error && data ? {
-          id: data.id, email: data.email, name: data.name, avatar: data.avatar,
-          sector: data.sector, role: data.role,
-          createdAt: new Date(data.created_at), updatedAt: new Date(data.updated_at),
-        } : null)
+        if (!alive() || currentUserId !== userId || epoch !== authEpoch) return
+        const nextUser = !error && data ? mapProfile(data) : null
+        const prev = store.get().user
+        // Mantém a mesma referência quando nada mudou, evitando refetch em cascata nos hooks
+        const same = prev && nextUser && prev.id === nextUser.id && prev.name === nextUser.name &&
+          prev.avatar === nextUser.avatar && prev.sector === nextUser.sector && prev.role === nextUser.role &&
+          prev.email === nextUser.email
+        store.set({ user: same ? prev : nextUser, isLoading: false })
       } catch {
-        if (active && currentUserId === userId) setUser(null)
-      } finally {
-        if (active && currentUserId === userId) setIsLoading(false)
+        if (alive() && currentUserId === userId && epoch === authEpoch) store.set({ user: null, isLoading: false })
       }
     }
-    // Obter sessão inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active) void loadProfile(session?.user.id ?? null)
-    }).catch(() => { if (active) { setUser(null); setIsLoading(false) } })
 
-    // Escutar mudanças de auth
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (alive()) void loadProfile(session?.user.id ?? null)
+    }).catch(() => { if (alive()) store.set({ user: null, isLoading: false }) })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       // Defer Supabase calls until the auth callback has released its session lock.
       if (authTimer) clearTimeout(authTimer)
-      currentUserId = session?.user.id ?? null
-      authTimer = setTimeout(() => { if (active) void loadProfile(session?.user.id ?? null) }, 0)
+      const nextId = session?.user.id ?? null
+      // Renovação de token (mesmo usuário) não precisa rebuscar o perfil
+      if (nextId && nextId === currentUserId && store.get().user?.id === nextId) return
+      currentUserId = nextId
+      authTimer = setTimeout(() => { if (alive()) void loadProfile(nextId) }, 0)
     })
 
-    return () => {
-      active = false
-      if (authTimer) clearTimeout(authTimer)
-      subscription.unsubscribe()
+    return {
+      cleanup: () => {
+        active = false
+        if (authTimer) clearTimeout(authTimer)
+        subscription.unsubscribe()
+      },
+      refresh: async () => {
+        const { data: { session } } = await supabase.auth.getSession()
+        await loadProfile(session?.user.id ?? null)
+      },
     }
-  }, [supabase])
+  }
+)
+
+export function useAuth(): UseAuthReturn {
+  const shared = useSharedStore(authResource.store)
+  const user = shared.user
+  const setUser = (next: User | null) => authResource.store.set(prev => ({ ...prev, user: next }))
+  // Loading de ações (signIn, updateProfile...) fica local para não afetar o resto do app
+  const [actionLoading, setIsLoading] = useState(false)
+  const isLoading = shared.isLoading || actionLoading
+  const router = useRouter()
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => authResource.acquire('auth', supabase), [supabase])
 
   async function fetchUserProfile(userId: string) {
     const { data, error } = await supabase
@@ -91,16 +130,7 @@ export function useAuth(): UseAuthReturn {
       .single()
 
     if (!error && data) {
-      setUser({
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        avatar: data.avatar,
-        sector: data.sector,
-        role: data.role,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      })
+      authResource.store.set({ user: mapProfile(data), isLoading: false })
     }
     setIsLoading(false)
   }
@@ -181,7 +211,8 @@ export function useAuth(): UseAuthReturn {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      setUser(null)
+      authEpoch++
+      authResource.store.set({ user: null, isLoading: false })
       router.push('/login')
     } catch (error: unknown) {
       throw new Error(getErrorMessage(error))
@@ -229,16 +260,7 @@ export function useAuth(): UseAuthReturn {
       if (error) throw error
       if (!data) throw new Error('Perfil não encontrado no banco de dados')
 
-      setUser({
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        avatar: data.avatar,
-        sector: data.sector as Sector,
-        role: data.role as Role,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      })
+      setUser(mapProfile(data))
     } catch (error: unknown) {
       throw new Error(getErrorMessage(error))
     } finally {

@@ -27,6 +27,7 @@ interface CalendarFilter {
   color: string
   checked: boolean
   count?: number
+  hours?: number
 }
 
 interface Project {
@@ -76,19 +77,20 @@ export function CalendarSidebar({
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1))
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 pb-1">
       {/* Mini Calendar */}
-      <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700/50 p-4 text-foreground">
+      <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700/50 p-3 xl:p-4 text-foreground">
         {/* Month Navigation */}
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-semibold capitalize">
             {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
           </h3>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-foreground hover:bg-orange-500/20 hover:text-orange-400 transition-colors"
+              className="h-9 w-9 text-foreground hover:bg-orange-500/20 hover:text-orange-400 transition-colors"
+              aria-label="Mês anterior"
               onClick={handlePrevMonth}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -96,7 +98,8 @@ export function CalendarSidebar({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-foreground hover:bg-orange-500/20 hover:text-orange-400 transition-colors"
+              className="h-9 w-9 text-foreground hover:bg-orange-500/20 hover:text-orange-400 transition-colors"
+              aria-label="Próximo mês"
               onClick={handleNextMonth}
             >
               <ChevronRight className="h-4 w-4" />
@@ -105,7 +108,7 @@ export function CalendarSidebar({
         </div>
 
         {/* Week days header */}
-        <div className="mb-2 grid grid-cols-7 text-center text-xs text-muted-foreground">
+        <div className="mb-1 grid grid-cols-7 text-center text-xs text-muted-foreground">
           {weekDays.map((day) => (
             <div key={day} className="py-1">
               {day.charAt(0)}
@@ -114,7 +117,7 @@ export function CalendarSidebar({
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5">
           {days.map((day) => {
             const isCurrentMonth = isSameMonth(day, currentMonth)
             const isSelected = isSameDay(day, selectedDate)
@@ -125,7 +128,7 @@ export function CalendarSidebar({
                 key={day.toISOString()}
                 onClick={() => onDateSelect(day)}
                 className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-full text-sm transition-all duration-200',
+                  'mx-auto flex aspect-square w-full max-w-9 items-center justify-center rounded-full text-sm transition-all duration-200',
                   !isCurrentMonth && 'text-zinc-600',
                   isCurrentMonth && 'text-foreground',
                   isSelected && 'bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/30',
@@ -143,13 +146,13 @@ export function CalendarSidebar({
       </div>
 
       {/* Meus Calendários */}
-      <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700/50 p-4">
-        <h3 className="mb-3 font-semibold text-foreground">Meus Calendários</h3>
-        <div className="space-y-3">
+      <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700/50 p-3 xl:p-4">
+        <h3 className="mb-2 font-semibold text-foreground">Meus Calendários</h3>
+        <div className="space-y-0.5">
           {filters.map((filter) => (
             <label
               key={filter.id}
-              className="flex items-center justify-between cursor-pointer group"
+              className="flex min-h-10 items-center justify-between cursor-pointer group -mx-2 px-2 rounded-lg hover:bg-zinc-700/40"
             >
               <div className="flex items-center gap-3">
                 <Checkbox
@@ -159,13 +162,19 @@ export function CalendarSidebar({
                   }
                   className="border-zinc-600 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-[#fe6e5b] data-[state=checked]:to-[#ff0300] data-[state=checked]:border-[#ff0300]"
                 />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: filter.color }} />
                 <span className="text-sm text-foreground group-hover:text-orange-400 transition-colors">{filter.name}</span>
               </div>
-              {filter.count !== undefined && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-700 text-xs text-zinc-300">
-                  {filter.count}
-                </span>
-              )}
+              <span className="flex items-center gap-2">
+                {filter.hours !== undefined && filter.hours > 0 && (
+                  <span className="text-xs tabular-nums text-muted-foreground">{Math.round(filter.hours)}h</span>
+                )}
+                {filter.count !== undefined && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-zinc-700 px-1.5 text-xs text-zinc-300">
+                    {filter.count}
+                  </span>
+                )}
+              </span>
             </label>
           ))}
         </div>
@@ -198,7 +207,7 @@ export function CalendarSidebar({
       {/* Active Task Card */}
       {activeTask && (
         <>
-          <div className="rounded-2xl bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] p-4 text-white shadow-lg shadow-[#ff0300]/30 transition-all duration-300">
+          <div className="rounded-2xl bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] p-3 xl:p-4 text-white shadow-lg shadow-[#ff0300]/30 transition-all duration-300">
             <div className="mb-2 flex items-center justify-between text-sm text-white/80">
               {activeTask.dueDate ? (
                 <span>{format(new Date(activeTask.dueDate), "dd 'de' MMMM", { locale: ptBR })}</span>
@@ -213,11 +222,11 @@ export function CalendarSidebar({
               </div>
             </div>
 
-            <h4 className="font-semibold text-white line-clamp-2 min-h-[3rem]">
+            <h4 className="font-semibold text-white line-clamp-2">
               {activeTask.title}
             </h4>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-3 flex gap-2">
               <Button
                 size="sm"
                 variant="secondary"

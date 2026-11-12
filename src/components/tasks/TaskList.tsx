@@ -64,8 +64,8 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
             const assignee = users?.find(u => task.assignees?.includes(u.id))
             const priority = priorityConfig[task.priority as keyof typeof priorityConfig]
             const status = statusConfig[task.status as keyof typeof statusConfig]
-            const dueDate = new Date(task.dueDate || new Date())
-            const isOverdue = task.dueDate && dueDate < new Date() && task.status !== 'done'
+            const dueDate = task.dueDate ? new Date(task.dueDate) : null
+            const isOverdue = !!dueDate && dueDate < new Date() && task.status !== 'done'
 
             const initials = assignee?.name
               .split(' ')
@@ -108,7 +108,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
                   <div className="flex items-center gap-2">
                     <Calendar className={`h-4 w-4 ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`} />
                     <span className={isOverdue ? 'text-red-500 font-medium' : 'text-sm'}>
-                      {dueDate.toLocaleDateString('pt-BR')}
+                      {dueDate ? dueDate.toLocaleDateString('pt-BR') : 'Sem data'}
                     </span>
                   </div>
                 </TableCell>

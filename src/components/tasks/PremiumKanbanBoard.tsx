@@ -276,6 +276,8 @@ export function PremiumKanbanBoard({
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
+            // Drag cancelado (Esc, troca de aba): libera o board para voltar a sincronizar com as props
+            onDragCancel={() => { setActiveId(null); setOriginalContainer(null); setColumns(initialColumns) }}
         >
             <div className={cn("grid grid-cols-1 items-start gap-4 pb-6 sm:grid-cols-2 lg:grid-cols-4", className)}>
                 {columns.map((column) => (

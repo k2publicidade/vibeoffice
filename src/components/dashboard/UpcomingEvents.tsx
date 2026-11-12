@@ -50,7 +50,7 @@ export function UpcomingEvents({ eventGroups, newCount = 0 }: UpcomingEventsProp
           <div key={group.date} className="space-y-4">
             {/* Date header */}
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              {format(new Date(group.date), "d 'de' MMMM", { locale: ptBR })}
+              {format(new Date(`${group.date}T00:00:00`), "d 'de' MMMM", { locale: ptBR })}
             </p>
 
             {/* Events */}

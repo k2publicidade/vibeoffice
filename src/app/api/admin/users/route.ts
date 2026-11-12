@@ -49,7 +49,9 @@ export async function PATCH(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
   if (parsed.data.id === user.id && (!parsed.data.active || parsed.data.role !== 'Admin')) return NextResponse.json({ error: 'Você não pode remover seu próprio acesso de ADMIN' }, { status: 400 })
   const { id, ...values } = parsed.data
-  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) return NextResponse.json({ error: 'Edição indisponível: configuração administrativa ausente' }, { status: 503 })
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false } })
   const { error } = await admin.from('users').update(values).eq('id', id)
   if (error) return NextResponse.json({ error: 'Não foi possível atualizar o funcionário' }, { status: 400 })
   return NextResponse.json({ updated: true })

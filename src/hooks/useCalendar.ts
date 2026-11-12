@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { createSharedResource, useSharedStore } from '@/lib/shared-resource'
 import { useAuth } from './useAuth'
 import type { CalendarEvent } from '@/types/calendar'
 import type { Sector } from '@/types/auth'
@@ -36,59 +37,93 @@ export interface UseCalendarReturn {
   getMonthDays: (date: Date) => Date[]
 }
 
-export function useCalendar(): UseCalendarReturn {
-  const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { user } = useAuth()
-  // [C05] Client criado por hook para evitar sessão stale
-  const supabase = useMemo(() => createClient(), [])
+type CalendarState = { events: CalendarEvent[]; isLoading: boolean }
 
-  // Fetch inicial de events
-  useEffect(() => {
-    if (!user) { setEvents([]); setIsLoading(false); return }
-    fetchEvents()
-    const channel = supabase.channel(`calendar-${user.id}`).on('postgres_changes',
-      { event: '*', schema: 'public', table: 'calendar_events' }, () => { fetchEvents() }).subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [user, supabase])
+function mapEventRow(event: any): CalendarEvent {
+  return {
+    id: event.id,
+    title: event.title,
+    description: event.description || '',
+    startTime: new Date(event.start_time),
+    endTime: new Date(event.end_time),
+    type: event.type as 'personal' | 'sector' | 'company',
+    sector: event.sector || undefined,
+    location: event.location,
+    attendees: event.attendees || [],
+    createdBy: event.created_by,
+    createdAt: new Date(event.created_at),
+    updatedAt: new Date(event.created_at),
+    linkedTaskId: event.linked_task_id || undefined,
+    generatedByTask: event.generated_by_task ?? false,
+    generatedByRelease: event.generated_by_release ?? false,
+    linkedTicketId: event.linked_ticket_id || undefined,
+    linkedReleaseId: event.linked_release_id || undefined,
+  }
+}
 
-  async function fetchEvents() {
-    setIsLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .order('start_time', { ascending: true })
+/** Eventos compartilhados entre agenda, dashboard e perfil: uma busca e um canal. */
+const calendarResource = createSharedResource<CalendarState, { userId: string }>(
+  { events: [], isLoading: true },
+  ({ userId }, store, isCurrent) => {
+    const supabase = createClient()
+    let active = true
+    const alive = () => active && isCurrent()
 
-      if (error) throw error
+    async function fetchEvents() {
+      if (!alive()) return
+      store.set(prev => prev.isLoading ? prev : { ...prev, isLoading: true })
+      try {
+        const { data, error } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .order('start_time', { ascending: true })
 
-      setEvents(
-        data.map((event: any) => ({
-          id: event.id,
-          title: event.title,
-          description: event.description || '',
-          startTime: new Date(event.start_time),
-          endTime: new Date(event.end_time),
-          type: event.type as 'personal' | 'sector' | 'company',
-          sector: event.sector || undefined,
-          location: event.location,
-          attendees: event.attendees || [],
-          createdBy: event.created_by,
-          createdAt: new Date(event.created_at),
-          updatedAt: new Date(event.created_at),
-          linkedTaskId: event.linked_task_id || undefined,
-          generatedByTask: event.generated_by_task ?? false,
-          generatedByRelease: event.generated_by_release ?? false,
-          linkedTicketId: event.linked_ticket_id || undefined,
-          linkedReleaseId: event.linked_release_id || undefined,
-        }))
-      )
-    } catch (error) {
-      console.error('Error fetching calendar events:', error)
-    } finally {
-      setIsLoading(false)
+        if (error) throw error
+        if (!alive()) return
+
+        store.set({ events: data.map(mapEventRow), isLoading: false })
+      } catch (error) {
+        console.error('Error fetching calendar events:', error)
+        if (alive()) store.set(prev => ({ ...prev, isLoading: false }))
+      }
+    }
+
+    void fetchEvents()
+    const channel = supabase.channel(`calendar-${userId}`).on('postgres_changes',
+      { event: '*', schema: 'public', table: 'calendar_events' }, () => { void fetchEvents() }).subscribe()
+
+    return {
+      cleanup: () => {
+        active = false
+        void supabase.removeChannel(channel)
+      },
+      refresh: fetchEvents,
     }
   }
+)
+
+const EMPTY_EVENTS: CalendarEvent[] = []
+const fetchEvents = () => calendarResource.refresh()
+
+// Setter estável (fora do hook) para a lista compartilhada
+function setEvents(updater: (prev: CalendarEvent[]) => CalendarEvent[]) {
+  calendarResource.store.set(prev => ({ ...prev, events: updater(prev.events) }))
+}
+
+export function useCalendar(): UseCalendarReturn {
+  const { user } = useAuth()
+  const shared = useSharedStore(calendarResource.store)
+  const events = user ? shared.events : EMPTY_EVENTS
+  const isLoading = user ? shared.isLoading : false
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = useMemo(() => createClient(), [])
+  const userId = user?.id
+
+  // Fetch inicial de events + realtime (compartilhados)
+  useEffect(() => {
+    if (!userId) return
+    return calendarResource.acquire(userId, { userId })
+  }, [userId])
 
   const getEventsByDate = useCallback(
     (date: Date) => {

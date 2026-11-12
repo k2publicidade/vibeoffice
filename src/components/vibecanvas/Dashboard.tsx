@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SavedProject, GenerationConfig } from '@/types/vibecanvas';
 import { getProjects, deleteProject, restoreProject, getLocalProjects, importLocalProjects } from '@/lib/vibecanvas/storageService';
 import { createClient } from '@/lib/supabase/client';
@@ -18,12 +18,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onEdit, onCreateNew }) => {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(false);
 
+    // Descarta respostas antigas (troca de aba ativos/arquivados durante um fetch do realtime)
+    const loadVersion = useRef(0);
     const loadProjects = useCallback(async () => {
+        const version = ++loadVersion.current;
         setLoading(true);
         setError(false);
-        try { setProjects(await getProjects(archived)); setLocalCount(getLocalProjects().length); }
-        catch { setError(true); toast.error('Não foi possível carregar os projetos'); }
-        finally { setLoading(false); }
+        try {
+            const data = await getProjects(archived);
+            if (version !== loadVersion.current) return;
+            setProjects(data); setLocalCount(getLocalProjects().length);
+        }
+        catch { if (version === loadVersion.current) { setError(true); toast.error('Não foi possível carregar os projetos'); } }
+        finally { if (version === loadVersion.current) setLoading(false); }
     }, [archived]);
 
     useEffect(() => {

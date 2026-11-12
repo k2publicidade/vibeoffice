@@ -92,7 +92,7 @@ export function useReleases() {
     fetchReleases()
 
     const channel = supabase
-      .channel('releases-changes')
+      .channel(`releases-changes:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'releases' },

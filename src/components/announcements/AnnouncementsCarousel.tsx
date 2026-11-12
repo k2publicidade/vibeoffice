@@ -25,7 +25,7 @@ export function AnnouncementsCarousel({
 }: AnnouncementsCarouselProps) {
   const { announcements, isLoading, archiveAnnouncement } = useAnnouncements()
   const { user } = useAuth()
-  const [currentPage, setCurrentPage] = useState(0)
+  const [requestedPage, setCurrentPage] = useState(0)
 
   // Determinar quantos cards mostrar por página baseado no tamanho da tela
   // Mobile: 1, Tablet: 2, Desktop: 3
@@ -49,6 +49,8 @@ export function AnnouncementsCarousel({
 
   // Calcular total de páginas
   const totalPages = Math.ceil(announcements.length / cardsPerPage)
+  // Limita a página quando avisos somem ou cardsPerPage muda (evita carrossel vazio)
+  const currentPage = Math.min(requestedPage, Math.max(0, totalPages - 1))
 
   // Avisos da página atual
   const startIndex = currentPage * cardsPerPage
@@ -59,11 +61,11 @@ export function AnnouncementsCarousel({
 
   // Handlers de navegação
   const handlePrevious = () => {
-    setCurrentPage((prev) => (prev > 0 ? prev - 1 : totalPages - 1))
+    setCurrentPage(() => (currentPage > 0 ? currentPage - 1 : totalPages - 1))
   }
 
   const handleNext = () => {
-    setCurrentPage((prev) => (prev < totalPages - 1 ? prev + 1 : 0))
+    setCurrentPage(() => (currentPage < totalPages - 1 ? currentPage + 1 : 0))
   }
 
   const handleArchive = async (id: string) => {

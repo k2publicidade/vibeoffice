@@ -321,3 +321,17 @@
     background: #52525b;
   }
 }
+/* Áreas roláveis sem barra visível (toque, roda do mouse e trackpad continuam funcionando) */
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    overscroll-behavior: contain;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}

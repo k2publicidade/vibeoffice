@@ -5,6 +5,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import { format } from 'date-fns'
 import { requestTypeLabel } from '@/lib/request-types'
 import { createClient } from '@/lib/supabase/client'
+import { createSharedResource, useSharedStore } from '@/lib/shared-resource'
 import { useAuth } from './useAuth'
 import { Ticket, TicketComment } from '@/types/tickets'
 import { CreateTicketSchema, UpdateTicketSchema, CreateTicketCommentSchema, formatZodErrors } from '@/lib/validation-schemas'
@@ -126,105 +127,133 @@ export interface UseTicketsReturn {
   isLoading: boolean
 }
 
+type TicketsState = { tickets: Ticket[]; comments: TicketComment[]; isLoading: boolean }
+type TicketsContext = NonNullable<ReturnType<typeof useAuth>['user']>
+
+const EMPTY_TICKETS: Ticket[] = []
+const EMPTY_COMMENTS: TicketComment[] = []
+
+/**
+ * Tickets e comentários compartilhados entre dashboard, página de tickets e modais
+ * da agenda: uma única busca e um único canal realtime para todos.
+ */
+const ticketsResource = createSharedResource<TicketsState, TicketsContext>(
+  { tickets: [], comments: [], isLoading: true },
+  (currentUser, store, isCurrent) => {
+    const supabase = createClient()
+    let active = true
+    const alive = () => active && isCurrent()
+
+    async function fetchTickets() {
+      if (!alive()) return
+      store.set(prev => prev.isLoading ? prev : { ...prev, isLoading: true })
+      try {
+        const selectColumns = '*, tasks!tickets_linked_task_id_fkey(task_assignees(user_id))'
+        const query = supabase
+          .from('tickets')
+          .select(selectColumns)
+          .order('created_at', { ascending: false })
+
+        const { data, error } = await query
+
+        if (error) throw error
+        if (!alive()) return
+
+        const visibleTickets = ((data ?? []) as TicketRow[])
+          .map(mapTicketRow)
+          .filter((ticket) => canCurrentUserSeeTicket(ticket, currentUser))
+
+        store.set(prev => ({ ...prev, tickets: visibleTickets, isLoading: false }))
+      } catch (error) {
+        console.error('Error fetching tickets:', error)
+        if (alive()) store.set(prev => ({ ...prev, isLoading: false }))
+      }
+    }
+
+    async function fetchComments() {
+      try {
+        const { data, error } = await supabase
+          .from('ticket_comments')
+          .select('*')
+          .order('created_at', { ascending: true })
+
+        if (error) throw error
+        if (!alive()) return
+
+        store.set(prev => ({
+          ...prev,
+          comments: data.map((c) => ({
+            id: c.id,
+            ticketId: c.ticket_id,
+            userId: c.user_id,
+            content: c.content,
+            isInternal: c.is_internal,
+            attachments: c.attachments,
+            createdAt: new Date(c.created_at),
+            updatedAt: c.updated_at ? new Date(c.updated_at) : undefined,
+            editedBy: c.edited_by ?? undefined,
+          })),
+        }))
+      } catch (error) {
+        console.error('Error fetching comments:', error)
+      }
+    }
+
+    void fetchTickets()
+    void fetchComments()
+
+    // Tickets são espelhos das tarefas do Kanban. Como o payload realtime
+    // não traz a task vinculada nem seus responsáveis, rebuscamos para
+    // manter a regra: colaborador só vê ticket cuja task está atribuída a ele.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const scheduleFetch = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { void fetchTickets() }, 150)
+    }
+    const channel = supabase
+      .channel(`tickets-changes:${currentUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, scheduleFetch)
+      .subscribe()
+
+    return {
+      cleanup: () => {
+        active = false
+        if (timer) clearTimeout(timer)
+        void supabase.removeChannel(channel)
+      },
+      refresh: async () => { await Promise.all([fetchTickets(), fetchComments()]) },
+    }
+  }
+)
+
+// Setter estável (fora do hook) para a lista compartilhada
+function setTickets(updater: (prev: Ticket[]) => Ticket[]) {
+  ticketsResource.store.set(prev => ({ ...prev, tickets: updater(prev.tickets) }))
+}
+
+// Setter estável (fora do hook) para a lista compartilhada
+function setComments(updater: (prev: TicketComment[]) => TicketComment[]) {
+  ticketsResource.store.set(prev => ({ ...prev, comments: updater(prev.comments) }))
+}
+
 export function useTickets(): UseTicketsReturn {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [comments, setComments] = useState<TicketComment[]>([])
-  const [filters, setFilters] = useState<TicketFilters>({})
-  const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
+  const shared = useSharedStore(ticketsResource.store)
+  const tickets = user ? shared.tickets : EMPTY_TICKETS
+  const comments = user ? shared.comments : EMPTY_COMMENTS
+  const isLoading = user ? shared.isLoading : true
+  const [filters, setFilters] = useState<TicketFilters>({})
   // [C05] Client criado por hook para evitar sessão stale
   const supabase = useMemo(() => createClient(), [])
 
-  // Fetch inicial de tickets
+  // Fetch inicial de tickets + realtime (compartilhados). A chave inclui os campos
+  // usados na regra de visibilidade para refazer a busca se o perfil mudar.
+  const ticketsKey = user ? `${user.id}:${user.role}:${user.sector}` : null
   useEffect(() => {
-    if (!user) return
-
-    fetchTickets()
-    fetchComments()
-
-    // Setup Realtime subscription
-    const channel = supabase
-      .channel('tickets-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'tickets',
-        },
-        () => {
-          // Tickets são espelhos das tarefas do Kanban. Como o payload realtime
-          // não traz a task vinculada nem seus responsáveis, rebuscamos para
-          // manter a regra: colaborador só vê ticket cuja task está atribuída a ele.
-          fetchTickets()
-        }
-      )
-      .subscribe()
-
-    // Cleanup subscription on unmount
-    return () => {
-      channel.unsubscribe()
-    }
-  }, [user, supabase])
-
-  async function fetchTickets() {
-    if (!user) {
-      setIsLoading(false)
-      return
-    }
-
-    const currentUser = user
-
-    setIsLoading(true)
-    try {
-      const selectColumns = '*, tasks!tickets_linked_task_id_fkey(task_assignees(user_id))'
-      const query = supabase
-        .from('tickets')
-        .select(selectColumns)
-        .order('created_at', { ascending: false })
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      const visibleTickets = ((data ?? []) as TicketRow[])
-        .map(mapTicketRow)
-        .filter((ticket) => canCurrentUserSeeTicket(ticket, currentUser))
-
-      setTickets(visibleTickets)
-    } catch (error) {
-      console.error('Error fetching tickets:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  async function fetchComments() {
-    try {
-      const { data, error } = await supabase
-        .from('ticket_comments')
-        .select('*')
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      setComments(
-        data.map((c) => ({
-          id: c.id,
-          ticketId: c.ticket_id,
-          userId: c.user_id,
-          content: c.content,
-          isInternal: c.is_internal,
-          attachments: c.attachments,
-          createdAt: new Date(c.created_at),
-          updatedAt: c.updated_at ? new Date(c.updated_at) : undefined,
-          editedBy: c.edited_by ?? undefined,
-        }))
-      )
-    } catch (error) {
-      console.error('Error fetching comments:', error)
-    }
-  }
+    if (!ticketsKey || !user) return
+    return ticketsResource.acquire(ticketsKey, user)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketsKey])
 
   const activeTickets = useMemo(() => tickets.filter(ticket => !ticket.archivedAt), [tickets])
 

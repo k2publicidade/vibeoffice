@@ -38,9 +38,13 @@ try {
   console.log('PASS sessão visível de outro colaborador não pode ser excluída ou editada');
   const insert = "insert into public.studio_bookings(track_title,studio_name,booking_date,start_time,end_time,created_by) values('Reserva própria',$1,'2035-10-20',$2,$3,$4) returning id";
   await rejected(insert, [studio, '13:30', '14:30', owner], '23P01');
-  await rejected(insert, [studio, '15:00', '14:00', owner], '23514');
+  await rejected(insert, [studio, '15:00', '15:00', owner], '23514');
   const own = (await db.query(insert, [studio, '14:00', '15:00', owner])).rows[0];
   console.log('PASS conflito e intervalo inválido negados; horários adjacentes permitidos');
+  const overnight = (await db.query(insert, [studio, '22:00', '05:00', owner])).rows[0];
+  await rejected("insert into public.studio_bookings(track_title,studio_name,booking_date,start_time,end_time,created_by) values('Madrugada',$1,'2035-10-21','04:00','06:00',$2)", [studio, owner], '23P01');
+  assert.equal((await db.query('delete from public.studio_bookings where id=$1 returning id', [overnight.id])).rowCount, 1);
+  console.log('PASS sessão 22:00 → 05:00 permitida e bloqueia conflito no dia seguinte');
   await rejected('update public.studio_bookings set start_time=$2 where id=$1', [own.id, '13:45'], '23P01');
   assert.equal((await db.query('select start_time from public.studio_bookings where id=$1', [own.id])).rows[0].start_time, '14:00:00');
   assert.equal((await db.query('delete from public.studio_bookings where id=$1 returning id', [own.id])).rowCount, 1);

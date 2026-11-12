@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CalendarIcon, Info, AlertTriangle, AlertCircle } from 'lucide-react'
-import { format, addDays } from 'date-fns'
+import { format, addDays, endOfDay, startOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
@@ -263,8 +263,9 @@ export function CreateAnnouncementModal({
                 <Calendar
                   mode="single"
                   selected={expiresAt}
-                  onSelect={(date) => date && setExpiresAt(date)}
-                  disabled={(date) => date < new Date() || date > addDays(new Date(), 90)}
+                  // Vale até o fim do dia escolhido (antes expirava às 00:00 desse dia e hoje ficava bloqueado)
+                  onSelect={(date) => date && setExpiresAt(endOfDay(date))}
+                  disabled={(date) => date < startOfDay(new Date()) || date > addDays(new Date(), 90)}
                   initialFocus
                 />
               </PopoverContent>

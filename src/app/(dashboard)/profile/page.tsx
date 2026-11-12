@@ -109,7 +109,10 @@ export default function ProfilePage() {
     }, [user])
 
     const recentActivity = useMemo(() => {
-        const taskActivities = tasks.map((task) => ({
+        // Atividade pessoal: só tarefas do próprio usuário (Admin/Gerente enxergam todas)
+        const taskActivities = tasks
+            .filter((task) => user && (task.assignees?.includes(user.id) || task.createdBy === user.id))
+            .map((task) => ({
             id: `task-${task.id}`,
             title: task.status === 'done'
                 ? `Concluiu a tarefa "${task.title}"`

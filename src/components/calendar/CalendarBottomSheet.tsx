@@ -89,7 +89,7 @@ export function CalendarBottomSheet({
       <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
         <SheetContent
           side="bottom"
-          className="bg-black border-t border-[#262626] rounded-t-3xl max-h-[85vh] overflow-y-auto pb-safe"
+          className="bg-black border-t border-[#262626] rounded-t-3xl max-h-[85dvh] overflow-y-auto no-scrollbar pb-safe [&>button:not([data-slot=sheet-close])]:hidden"
         >
           {/* Custom Close Button - Bigger for touch */}
           <SheetClose className="absolute right-4 top-4 h-11 w-11 flex items-center justify-center rounded-xl bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#262626] transition-colors">

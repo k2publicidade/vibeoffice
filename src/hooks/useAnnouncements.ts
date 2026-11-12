@@ -133,7 +133,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
 
     // Setup Realtime subscription
     const channel = supabase
-      .channel('announcements-changes')
+      .channel(`announcements-changes:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
@@ -159,7 +159,7 @@ export function useAnnouncements(): UseAnnouncementsReturn {
     // Cleanup subscription on unmount
     return () => {
       window.removeEventListener(ANNOUNCEMENT_CHANGED_EVENT, handleLocalChange)
-      channel.unsubscribe()
+      void supabase.removeChannel(channel)
     }
   }, [fetchAnnouncements, supabase, user])
 

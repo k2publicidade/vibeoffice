@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useAuth } from './useAuth'
@@ -30,9 +30,12 @@ export function useNotifications(): UseNotificationsReturn {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
   const supabase = useMemo(() => createClient(), [])
+  // Descarta respostas antigas quando várias cargas se sobrepõem (rajadas realtime, logout)
+  const loadVersion = useRef(0)
 
   // Carregar notificações
   const loadNotifications = useCallback(async () => {
+    const version = ++loadVersion.current
     if (!user) {
       setNotifications([])
       setLoading(false)
@@ -41,14 +44,19 @@ export function useNotifications(): UseNotificationsReturn {
 
     try {
       setError(null)
-      const { data, error: fetchError } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('archived', false)
-        .order('created_at', { ascending: false })
-        .limit(50)
+      // Notificações e preferências são independentes: buscadas em paralelo
+      const [{ data, error: fetchError }, { data: preferences, error: preferenceError }] = await Promise.all([
+        supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('archived', false)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase.from('notification_preferences').select('notification_type, enable_in_app').eq('user_id', user.id),
+      ])
 
+      if (version !== loadVersion.current) return
       if (fetchError) throw fetchError
 
       // Transform data from Supabase to app type
@@ -68,16 +76,16 @@ export function useNotifications(): UseNotificationsReturn {
         created_at: row.created_at,
       }))
 
-      const { data: preferences, error: preferenceError } = await supabase.from('notification_preferences').select('notification_type, enable_in_app').eq('user_id', user.id)
       if (preferenceError) throw preferenceError
       const disabled = new Set((preferences || []).filter(pref => !pref.enable_in_app).map(pref => pref.notification_type))
       setNotifications(transformedData.filter(notification => !disabled.has(notification.type)))
     } catch (err) {
+      if (version !== loadVersion.current) return
       const message = err instanceof Error ? err.message : 'Erro ao carregar notificações'
       setError(message)
       toast.error(message)
     } finally {
-      setLoading(false)
+      if (version === loadVersion.current) setLoading(false)
     }
   }, [user, supabase])
 
