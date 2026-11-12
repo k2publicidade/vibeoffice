@@ -351,7 +351,7 @@ export default function DashboardPage() {
         open={isMeetingModalOpen}
         onClose={() => setIsMeetingModalOpen(false)}
         onSave={handleSaveMeeting}
-        availableParticipants={users?.slice(0, 6).map((u) => ({
+        availableParticipants={users?.filter((u) => u.active !== false && u.id !== user?.id).map((u) => ({
           id: u.id,
           name: u.name,
           avatar: u.avatar ?? undefined,

@@ -378,7 +378,8 @@ export function ChatListPremium({
         open={showCreateProjectModal}
         onClose={() => setShowCreateProjectModal(false)}
         onCreateGroup={async (data) => {
-          await createProjectGroup(data)
+          // createProjectGroup retorna null em erro (já com toast); lança para o modal manter o formulário
+          if (!(await createProjectGroup(data))) throw new Error('Não foi possível criar o grupo')
         }}
       />
     </div>

@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { useUsers } from '@/hooks/useUsers'
 import { useTasks } from '@/hooks/useTasks'
 import { toast } from 'sonner'
+import { resolveEventRange } from '@/lib/calendar-time'
 import { addDays, subDays, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns'
 
 export default function CalendarPage() {
@@ -164,35 +165,12 @@ export default function CalendarPage() {
     linkedTicketId?: string
   }) => {
     try {
-      // Combinar data + hora em Date objects
-      const [startHour, startMin] = eventData.startTime.split(':')
-      const [endHour, endMin] = eventData.endTime.split(':')
-
-      // Normalizar a data base para meia-noite local (evita problemas de timezone)
-      const baseDate = new Date(eventData.date)
-      baseDate.setHours(0, 0, 0, 0)
-
-      const startTime = new Date(baseDate)
-      startTime.setHours(parseInt(startHour), parseInt(startMin), 0, 0)
-
-      const endTime = new Date(baseDate)
-      endTime.setHours(parseInt(endHour), parseInt(endMin), 0, 0)
-
-      // Debug logging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[CalendarPage] handleCreateEvent:', {
-          eventData,
-          baseDate: baseDate.toISOString(),
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          isEndAfterStart: endTime > startTime,
-        })
-      }
-
-      // Validação extra antes de enviar
-      if (endTime <= startTime) {
-        throw new Error('A hora de término deve ser após a hora de início.')
-      }
+      // Combinar data + hora; término antes do início vai para o dia seguinte
+      const { start: startTime, end: endTime } = resolveEventRange(
+        new Date(eventData.date),
+        eventData.startTime,
+        eventData.endTime
+      )
 
       await createEvent({
         title: eventData.title,
@@ -218,7 +196,7 @@ export default function CalendarPage() {
   }
 
   // Available attendees for create modal
-  const availableAttendees = (users || []).slice(0, 8).map(u => ({
+  const availableAttendees = (users || []).filter(u => u.active !== false).map(u => ({
     id: u.id,
     name: u.name,
     avatar: u.avatar ?? undefined,

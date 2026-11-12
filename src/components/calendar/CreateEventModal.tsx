@@ -30,6 +30,7 @@ import { ptBR } from 'date-fns/locale'
 import { useTasks } from '@/hooks/useTasks'
 import { useTickets } from '@/hooks/useTickets'
 import { toast } from 'sonner'
+import { endsNextDay, parseTimeToMinutes } from '@/lib/calendar-time'
 import type { EventType } from '@/types/calendar'
 import type { Sector } from '@/types/auth'
 
@@ -124,6 +125,7 @@ export function CreateEventModal({
   const [selectedTaskId, setSelectedTaskId] = useState<string>()
   const [selectedTicketId, setSelectedTicketId] = useState<string>()
   const [isSaving, setIsSaving] = useState(false)
+  const [showAllAttendees, setShowAllAttendees] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   // Resetar e sincronizar tudo quando o modal abre
@@ -155,9 +157,9 @@ export function CreateEventModal({
       // Definir hora baseada no slot clicado
       if (selectedHour !== undefined && selectedHour !== null) {
         const hour = Math.max(0, Math.min(23, selectedHour))
-        const endHour = Math.min(23, hour + 1)
+        const endHour = (hour + 1) % 24
         setStartTime(`${hour.toString().padStart(2, '0')}:00`)
-        setEndTime(hour === 23 ? '23:30' : `${endHour.toString().padStart(2, '0')}:00`)
+        setEndTime(`${endHour.toString().padStart(2, '0')}:00`)
       } else {
         setStartTime('09:00')
         setEndTime('10:00')
@@ -194,15 +196,16 @@ export function CreateEventModal({
       return
     }
 
-    // Validar que hora de fim é após hora de início
-    const [startHour, startMin] = startTime.split(':').map(Number)
-    const [endHour, endMin] = endTime.split(':').map(Number)
-    const startMinutes = startHour * 60 + startMin
-    const endMinutes = endHour * 60 + endMin
+    // Término antes do início = evento que termina no dia seguinte (ex.: 22:00 → 05:00)
+    const startMinutes = parseTimeToMinutes(startTime)
+    const endMinutes = parseTimeToMinutes(endTime)
 
-    if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes) || endMinutes <= startMinutes) {
-      toast.error('A hora de término deve ser após a hora de início')
-      console.error('[CreateEventModal] Validação falhou: endMinutes <= startMinutes', { startMinutes, endMinutes })
+    if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) {
+      toast.error('Horário inválido')
+      return
+    }
+    if (endMinutes === startMinutes) {
+      toast.error('A hora de término deve ser diferente da hora de início')
       return
     }
 
@@ -345,6 +348,11 @@ export function CreateEventModal({
               </Select>
             </div>
           </motion.div>
+          {endsNextDay(startTime, endTime) && date && !isNaN(date.getTime()) && (
+            <p className="-mt-3 pl-14 md:pl-[52px] text-xs text-muted-foreground">
+              Termina no dia seguinte ({format(new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1), "d 'de' MMMM", { locale: ptBR })})
+            </p>
+          )}
 
           {/* Location */}
           <motion.div variants={itemVariants} className="flex items-center gap-3">
@@ -463,7 +471,7 @@ export function CreateEventModal({
                 Participantes
               </Label>
               <div className="flex flex-wrap gap-2">
-                {availableAttendees.slice(0, 6).map((attendee, index) => (
+                {(showAllAttendees ? availableAttendees : availableAttendees.slice(0, 6)).map((attendee, index) => (
                   <motion.button
                     key={attendee.id}
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -490,6 +498,10 @@ export function CreateEventModal({
                   </motion.button>
                 ))}
                 <motion.button
+                  type="button"
+                  onClick={() => setShowAllAttendees(value => !value)}
+                  title={showAllAttendees ? 'Mostrar menos' : 'Mostrar todos os participantes'}
+                  aria-label={showAllAttendees ? 'Mostrar menos' : 'Mostrar todos os participantes'}
                   whileTap={{ scale: 0.95 }}
                   className="flex h-11 w-11 md:h-10 md:w-10 items-center justify-center rounded-full border-2 border-dashed border-zinc-600 text-zinc-500 hover:border-orange-500 hover:text-orange-500 transition-colors"
                 >

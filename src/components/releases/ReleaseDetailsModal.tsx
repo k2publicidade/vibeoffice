@@ -1,6 +1,5 @@
 import DOMPurify from 'isomorphic-dompurify'
 import { useCallback } from 'react'
-import html2canvas from 'html2canvas'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -178,6 +177,8 @@ export function ReleaseDetailsModal({
       }
 
       const cardEl = container.querySelector('#card-export') as HTMLElement
+      // Import sob demanda: html2canvas só é usado ao exportar o card
+      const { default: html2canvas } = await import('html2canvas')
       const canvas = await html2canvas(cardEl, {
         backgroundColor: '#0a0a0a',
         scale: 2,

@@ -192,8 +192,12 @@ export default function CourseEditorPage() {
 
     const handleDeleteModule = async (moduleId: string) => {
         if (confirm('Excluir módulo e todas as aulas?')) {
-            await deleteModule(moduleId)
-            toast.success('Módulo excluído.')
+            try {
+                await deleteModule(moduleId)
+                toast.success('Módulo excluído.')
+            } catch {
+                toast.error('Erro ao excluir módulo.')
+            }
         }
     }
 
@@ -249,8 +253,12 @@ export default function CourseEditorPage() {
 
     const handleDeleteLesson = async (lessonId: string) => {
         if (confirm('Excluir aula?')) {
-            await deleteLesson(lessonId)
-            toast.success('Aula excluída.')
+            try {
+                await deleteLesson(lessonId)
+                toast.success('Aula excluída.')
+            } catch {
+                toast.error('Erro ao excluir aula.')
+            }
         }
     }
 

@@ -101,7 +101,7 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
     const upcomingEventsCount = events.filter(e => {
       const eventDate = new Date(e.startTime)
       return eventDate >= now && eventDate <= weekEnd &&
-        (e.type === 'sector' || e.attendees.some(a => teamMemberIds.includes(a)))
+        ((e.type === 'sector' && e.sector === userSector) || e.attendees.some(a => teamMemberIds.includes(a)))
     }).length
 
     return {
@@ -166,11 +166,11 @@ export function ManagerDashboard({ userName, userSector }: ManagerDashboardProps
       .filter(e => {
         const eventDate = new Date(e.startTime)
         return eventDate >= now &&
-          (e.type === 'sector' || e.attendees.some(a => teamMemberIds.includes(a)))
+          ((e.type === 'sector' && e.sector === userSector) || e.attendees.some(a => teamMemberIds.includes(a)))
       })
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
       .slice(0, 4)
-  }, [events, teamMemberIds])
+  }, [events, teamMemberIds, userSector])
 
   const getDateLabel = (date: Date) => {
     if (isToday(date)) return 'Hoje'

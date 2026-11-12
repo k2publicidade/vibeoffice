@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
@@ -134,6 +135,8 @@ export function useDrive(): UseDriveReturn {
       if (version === readVersion.current) setItems(mappedItems)
     } catch (error) {
       console.error('Error fetching drive items:', error)
+      // Sem isso, uma falha de rede/permissão aparecia como "pasta vazia"
+      if (version === readVersion.current) toast.error('Não foi possível carregar o Drive. Tente novamente.')
     } finally {
       if (version === readVersion.current) setIsLoading(false)
     }

@@ -1,5 +1,6 @@
 'use client'
 
+import { clipEventToDay, eventOverlapsDay } from '@/lib/calendar-time'
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,8 +29,6 @@ import {
   subDays,
   setHours,
   setMinutes,
-  getHours,
-  getMinutes,
   differenceInMinutes,
   isToday,
 } from 'date-fns'
@@ -166,18 +165,16 @@ export function WeekView({
   const handleNextDays = () => onDateChange(addDays(selectedDate, 3))
 
   const getEventsForDay = (day: Date) => {
-    return events.filter((event) => isSameDay(event.startTime, day))
+    // Inclui eventos que começaram no dia anterior e atravessam a meia-noite
+    return events.filter((event) => eventOverlapsDay(event, day))
   }
 
-  const getEventStyle = (event: CalendarEvent) => {
-    const startHour = getHours(event.startTime)
-    const startMinute = getMinutes(event.startTime)
-    const duration = differenceInMinutes(event.endTime, event.startTime)
+  const getEventStyle = (event: CalendarEvent, day: Date) => {
+    // Recorta ao dia exibido: eventos 22:00 → 05:00 aparecem em ambos os dias
+    const { startMinute: clippedStart, durationMinutes: duration } = clipEventToDay(event, day)
 
     const hourPercentage = 100 / HOURS.length
-    const hoursFromStart = startHour // Full day starts at 0
-    const minuteFraction = startMinute / 60
-    const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
+    const topPercentage = (clippedStart / 60) * hourPercentage
     const durationHours = duration / 60
     const heightPercentage = Math.max(durationHours * hourPercentage, 2) // Minimum 2%
 
@@ -292,7 +289,7 @@ export function WeekView({
                         <DraggableEvent
                           key={event.id}
                           event={event}
-                          style={getEventStyle(event)}
+                          style={getEventStyle(event, day)}
                           onClick={() => onEventClick?.(event)}
                           isMobile={true}
                         >
@@ -469,7 +466,7 @@ export function WeekView({
                     <DraggableEvent
                       key={event.id}
                       event={event}
-                      style={getEventStyle(event)}
+                      style={getEventStyle(event, day)}
                       onClick={() => onEventClick?.(event)}
                     >
                       <EventBlock event={event} />

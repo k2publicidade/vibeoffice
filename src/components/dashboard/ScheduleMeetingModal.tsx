@@ -91,6 +91,8 @@ export function ScheduleMeetingModal({
   availableParticipants = [],
 }: ScheduleMeetingModalProps) {
   const [title, setTitle] = useState('')
+  // O "+" ao lado dos avatares expande a lista (antes era um botão sem ação e só 6 pessoas apareciam)
+  const [showAllParticipants, setShowAllParticipants] = useState(false)
   const [date, setDate] = useState<Date | undefined>()
   const [startTime, setStartTime] = useState('09:00')
   const [duration, setDuration] = useState('60')
@@ -302,7 +304,7 @@ export function ScheduleMeetingModal({
               )}
             </Label>
             <div className="flex flex-wrap gap-2 mt-2">
-              {availableParticipants.slice(0, 6).map((participant, index) => (
+              {(showAllParticipants ? availableParticipants : availableParticipants.slice(0, 6)).map((participant, index) => (
                 <motion.button
                   key={participant.id}
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -331,6 +333,10 @@ export function ScheduleMeetingModal({
                 </motion.button>
               ))}
               <motion.button
+                type="button"
+                onClick={() => setShowAllParticipants(value => !value)}
+                title={showAllParticipants ? 'Mostrar menos' : 'Mostrar todos os participantes'}
+                aria-label={showAllParticipants ? 'Mostrar menos' : 'Mostrar todos os participantes'}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-zinc-700 text-zinc-600 hover:border-orange-500 hover:text-orange-500 transition-colors"

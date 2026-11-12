@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Bell, CheckSquare, Ticket, MessageSquare, RefreshCw, Plus, AtSign, X } from 'lucide-react'
@@ -55,11 +55,14 @@ export function NotificationToast() {
   const { notifications, markAsRead } = useNotifications()
   const router = useRouter()
   const displayedNotificationsRef = useRef<Set<string>>(new Set())
+  // Só notificações que chegaram depois da abertura viram toast (com som).
+  // Antes, as não lidas antigas "pipocavam" uma a uma a cada carregamento de página.
+  const [mountedAt] = useState(() => Date.now())
 
   useEffect(() => {
-    // Procurar notificações não lidas que ainda não foram exibidas
+    // Procurar notificações não lidas, novas, que ainda não foram exibidas
     const unreadNotifications = notifications
-      .filter(n => !n.read && !displayedNotificationsRef.current.has(n.id))
+      .filter(n => !n.read && !displayedNotificationsRef.current.has(n.id) && new Date(n.created_at).getTime() >= mountedAt - 10_000)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
     // Exibir apenas a mais recente por vez
@@ -123,7 +126,7 @@ export function NotificationToast() {
         }
       )
     }
-  }, [notifications, router, markAsRead])
+  }, [notifications, router, markAsRead, mountedAt])
 
   return null // Este componente não renderiza nada
 }

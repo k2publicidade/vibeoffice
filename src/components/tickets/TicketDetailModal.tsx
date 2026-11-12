@@ -53,7 +53,7 @@ interface TicketDetailModalProps {
   open: boolean
   onClose: () => void
   comments: TicketComment[]
-  onAddComment: (content: string, isInternal: boolean) => void
+  onAddComment: (content: string, isInternal: boolean) => void | Promise<void>
   onDeleteComment: (commentId: string) => void
   /**
    * @deprecated Cache de usuarios agora vem de useUsers() diretamente no modal.
@@ -135,13 +135,16 @@ export function TicketDetailModal({
   const PriorityIcon = priority.icon
 
   const handleSubmitComment = async () => {
-    if (!newComment.trim()) return
+    if (!newComment.trim() || isSubmitting) return
 
     setIsSubmitting(true)
     try {
-      onAddComment(newComment.trim(), isInternal)
+      // Só limpa o texto depois de salvar; em erro o comentário fica no campo
+      await onAddComment(newComment.trim(), isInternal)
       setNewComment('')
       setIsInternal(false)
+    } catch {
+      // O erro já é exibido via toast pela página
     } finally {
       setIsSubmitting(false)
     }

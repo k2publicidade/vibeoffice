@@ -3,6 +3,7 @@ import { matchesFilterSelection, selectedFilterValues, type FilterSelection } fr
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { createSharedResource, useSharedStore } from '@/lib/shared-resource'
 import { useAuth } from './useAuth'
 import { Task } from '@/types/tasks'
 import { CreateTaskSchema, UpdateTaskSchema, formatZodErrors } from '@/lib/validation-schemas'
@@ -93,6 +94,8 @@ function getAssigneeIds(task: TaskRow): string[] {
   return []
 }
 
+const EMPTY_TASKS: Task[] = []
+
 export function canCurrentUserSeeTask(
   currentUser: { id: string; role: string } | null | undefined,
   task: { assignees: string[] }
@@ -134,92 +137,111 @@ function mapTaskRow(task: TaskRow): Task {
   }
 }
 
-export function useTasks(): UseTasksReturn {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [filters, setFilters] = useState<TaskFilters>({})
-  const [isLoading, setIsLoading] = useState(true)
-  const { user } = useAuth()
-  // [C05] Client criado por hook para evitar sessão stale
-  const supabase = useMemo(() => createClient(), [])
+type TasksState = { tasks: Task[]; isLoading: boolean }
+type TasksContext = { id: string; role: string }
 
-  const fetchTasks = useCallback(async () => {
-    if (!user) {
-      setIsLoading(false)
-      return
-    }
+/**
+ * Lista de tarefas compartilhada: dashboard, gráficos, agenda e modais usam useTasks
+ * ao mesmo tempo. Uma única busca + um único canal realtime atendem todos eles
+ * (antes, ao fechar um modal, o canal compartilhado era encerrado para todos).
+ */
+const tasksResource = createSharedResource<TasksState, TasksContext>(
+  { tasks: [], isLoading: true },
+  (currentUser, store, isCurrent) => {
+    const supabase = createClient()
+    let active = true
+    const alive = () => active && isCurrent()
 
-    const currentUser = user
+    async function fetchTasks() {
+      if (!alive()) return
+      store.set(prev => prev.isLoading ? prev : { ...prev, isLoading: true })
+      try {
+        const selectColumns = currentUser.role !== 'Colaborador'
+          ? `
+            *,
+            task_assignees (
+              user_id
+            )
+          `
+          : `
+            *,
+            task_assignees!inner (
+              user_id
+            )
+          `
 
-    setIsLoading(true)
-    try {
-      const selectColumns = currentUser.role !== 'Colaborador'
-        ? `
-          *,
-          task_assignees (
-            user_id
-          )
-        `
-        : `
-          *,
-          task_assignees!inner (
-            user_id
-          )
-        `
+        let query = (supabase
+          .from('tasks')
+          .select(selectColumns) as any)
 
-      let query = (supabase
-        .from('tasks')
-        .select(selectColumns) as any)
-
-      if (currentUser.role === 'Colaborador') {
-        query = query.eq('task_assignees.user_id', currentUser.id)
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const visibleTasks = (data || [])
-        .map(mapTaskRow)
-        .filter((task: Task) => canCurrentUserSeeTask(currentUser, task))
-
-      setTasks(visibleTasks)
-    } catch (error) {
-      console.error('Error fetching tasks:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user, supabase])
-
-  // Fetch inicial de tarefas + Realtime subscription
-  useEffect(() => {
-    if (!user) return
-
-    fetchTasks()
-
-    // Setup Realtime subscription
-    const channel = supabase
-      .channel('tasks-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'tasks',
-        },
-        () => {
-          // O payload realtime de `tasks` não traz o join `task_assignees`.
-          // Rebuscar garante que colaboradores só recebam tarefas em que são responsáveis
-          // e que tarefas sem responsável continuem visíveis apenas para Admin.
-          fetchTasks()
+        if (currentUser.role === 'Colaborador') {
+          query = query.eq('task_assignees.user_id', currentUser.id)
         }
-      )
+
+        const { data, error } = await query.order('created_at', { ascending: false })
+
+        if (error) throw error
+        if (!alive()) return
+
+        const visibleTasks = (data || [])
+          .map(mapTaskRow)
+          .filter((task: Task) => canCurrentUserSeeTask(currentUser, task))
+
+        store.set({ tasks: visibleTasks, isLoading: false })
+      } catch (error) {
+        console.error('Error fetching tasks:', error)
+        if (alive()) store.set(prev => ({ ...prev, isLoading: false }))
+      }
+    }
+
+    void fetchTasks()
+
+    // O payload realtime de `tasks` não traz o join `task_assignees`.
+    // Rebuscar garante que colaboradores só recebam tarefas em que são responsáveis
+    // e que tarefas sem responsável continuem visíveis apenas para Admin.
+    // Debounce agrupa rajadas de eventos (ex.: mover vários cards) em uma busca.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const scheduleFetch = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { void fetchTasks() }, 150)
+    }
+    const channel = supabase
+      .channel(`tasks-changes:${currentUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, scheduleFetch)
       .subscribe()
 
-    // Cleanup subscription on unmount
-    return () => {
-      channel.unsubscribe()
+    return {
+      cleanup: () => {
+        active = false
+        if (timer) clearTimeout(timer)
+        void supabase.removeChannel(channel)
+      },
+      refresh: fetchTasks,
     }
-  }, [user, supabase, fetchTasks])
+  }
+)
+
+// Setter estável (fora do hook) para a lista compartilhada
+function setTasks(updater: (prev: Task[]) => Task[]) {
+  tasksResource.store.set(prev => ({ ...prev, tasks: updater(prev.tasks) }))
+}
+
+export function useTasks(): UseTasksReturn {
+  const { user } = useAuth()
+  const shared = useSharedStore(tasksResource.store)
+  const tasks = user ? shared.tasks : EMPTY_TASKS
+  const isLoading = user ? shared.isLoading : true
+  const [filters, setFilters] = useState<TaskFilters>({})
+  // [C05] Client criado por hook para evitar sessão stale
+  const supabase = useMemo(() => createClient(), [])
+  const userId = user?.id
+  const userRole = user?.role
+
+  // Fetch inicial de tarefas + Realtime subscription (compartilhados)
+  useEffect(() => {
+    if (!userId || !userRole) return
+    return tasksResource.acquire(`${userId}:${userRole}`, { id: userId, role: userRole })
+  }, [userId, userRole])
 
   // Função auxiliar para verificar se tarefa está atrasada
   const isOverdue = useCallback((task: Task): boolean => {

@@ -129,13 +129,15 @@ export default function AnnouncementsAdminPage() {
       message: original.message,
       priority: original.priority,
       target_sectors: original.target_sectors,
-      expires_at: original.expires_at,
+      // Cópia de um aviso já vencido nasceria expirada: garante pelo menos 7 dias
+      expires_at: new Date(Math.max(new Date(original.expires_at).getTime(), Date.now() + 7 * 24 * 60 * 60 * 1000)).toISOString(),
       active: false, // Criar como rascunho
       metadata: original.metadata,
     }
 
-    await createAnnouncement(duplicateData)
-    toast.success('Aviso duplicado como rascunho')
+    // O hook retorna null em caso de erro (e já mostra o toast de erro)
+    const saved = await createAnnouncement(duplicateData)
+    if (saved) toast.success('Aviso duplicado como rascunho')
   }
 
   // Loading state

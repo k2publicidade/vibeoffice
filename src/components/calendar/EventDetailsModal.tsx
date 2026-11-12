@@ -18,6 +18,7 @@ import {
     ClipboardList,
     Save
 } from 'lucide-react'
+import { alignEndToStart, parseTimeToMinutes } from '@/lib/calendar-time'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -141,7 +142,7 @@ export function EventDetailsModal({
         if (event.id && !isSaving) {
             if (!editedEvent.title?.trim()) { setSaveError('O título do evento é obrigatório.'); return }
             if (!editedEvent.startTime || !editedEvent.endTime || !Number.isFinite(editedEvent.startTime.getTime()) || !Number.isFinite(editedEvent.endTime.getTime()) || editedEvent.endTime <= editedEvent.startTime) {
-                setSaveError('A hora de término deve ser após a hora de início.'); return
+                setSaveError('A hora de término deve ser diferente da hora de início.'); return
             }
             if (editedEvent.type === 'sector' && !editedEvent.sector) {
                 setSaveError('Selecione o setor do evento.'); return
@@ -302,6 +303,7 @@ export function EventDetailsModal({
                                 </p>
                                 <p className="text-sm text-zinc-400">
                                     {format(new Date(event.startTime), "HH:mm")} - {format(new Date(event.endTime), "HH:mm")}
+                                    {new Date(event.endTime).toDateString() !== new Date(event.startTime).toDateString() && ` (${format(new Date(event.endTime), "d 'de' MMM", { locale: ptBR })})`}
                                 </p>
                             </div>
                         </div>
@@ -402,10 +404,11 @@ export function EventDetailsModal({
                                     type="time"
                                     value={editedEvent.startTime ? format(new Date(editedEvent.startTime), 'HH:mm') : ''}
                                     onChange={e => {
-                                        const [hours, minutes] = e.target.value.split(':').map(Number);
+                                        const minutes = parseTimeToMinutes(e.target.value);
+                                        if (!Number.isFinite(minutes)) return;
                                         const newDate = new Date(editedEvent.startTime || new Date());
-                                        newDate.setHours(hours, minutes);
-                                        setEditedEvent({ ...editedEvent, startTime: newDate });
+                                        newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+                                        setEditedEvent({ ...editedEvent, startTime: newDate, endTime: editedEvent.endTime ? alignEndToStart(newDate, new Date(editedEvent.endTime)) : editedEvent.endTime });
                                     }}
                                     className="bg-zinc-800/50 border-zinc-700"
                                 />
@@ -417,10 +420,12 @@ export function EventDetailsModal({
                                     type="time"
                                     value={editedEvent.endTime ? format(new Date(editedEvent.endTime), 'HH:mm') : ''}
                                     onChange={e => {
-                                        const [hours, minutes] = e.target.value.split(':').map(Number);
-                                        const newDate = new Date(editedEvent.endTime || new Date());
-                                        newDate.setHours(hours, minutes);
-                                        setEditedEvent({ ...editedEvent, endTime: newDate });
+                                        const minutes = parseTimeToMinutes(e.target.value);
+                                        if (!Number.isFinite(minutes)) return;
+                                        const newDate = new Date(editedEvent.endTime || editedEvent.startTime || new Date());
+                                        newDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+                                        // Término antes do início = termina no dia seguinte
+                                        setEditedEvent({ ...editedEvent, endTime: editedEvent.startTime ? alignEndToStart(new Date(editedEvent.startTime), newDate) : newDate });
                                     }}
                                     className="bg-zinc-800/50 border-zinc-700"
                                 />

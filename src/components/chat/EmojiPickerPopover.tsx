@@ -1,10 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react'
+import dynamic from 'next/dynamic'
+import type { EmojiClickData, Theme } from 'emoji-picker-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Smile } from 'lucide-react'
+
+// Carregado sob demanda: o picker (e sua base de emojis) só é necessário ao abrir o popover
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), {
+  ssr: false,
+  loading: () => <div style={{ height: 400 }} />,
+})
 
 interface EmojiPickerPopoverProps {
   onEmojiSelect: (emoji: string) => void
@@ -47,7 +54,7 @@ export function EmojiPickerPopover({
       >
         <EmojiPicker
           onEmojiClick={handleEmojiClick}
-          theme={Theme.DARK}
+          theme={'dark' as Theme}
           searchPlaceHolder="Buscar emoji..."
           previewConfig={{ showPreview: false }}
           width="100%"

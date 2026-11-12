@@ -13,7 +13,10 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
   const { data: notification, error } = await admin.from('notifications').select('*').eq('id', parsed.data.id).single()
-  if (error) return NextResponse.json({ error: 'Notification not found' }, { status: 404 })
+  // 404 só quando a notificação não existe; falha transitória do banco vira 503 (o chamador pode tentar de novo)
+  if (error) return error.code === 'PGRST116'
+    ? NextResponse.json({ error: 'Notification not found' }, { status: 404 })
+    : NextResponse.json({ error: 'Notification lookup failed' }, { status: 503 })
   const { data: recipient, error: recipientError } = await admin.from('users').select('email,active').eq('id', notification.user_id).maybeSingle()
   if (recipientError) return NextResponse.json({ error: 'Recipient lookup failed' }, { status: 503 })
   if (notification.archived || !recipient?.active) return NextResponse.json({ delivered: false, skipped: 'inactive_or_archived' })

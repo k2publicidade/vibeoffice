@@ -1,5 +1,6 @@
 'use client'
 
+import { clipEventToDay, eventOverlapsDay } from '@/lib/calendar-time'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -9,8 +10,6 @@ import {
   isToday,
   addDays,
   subDays,
-  getHours,
-  getMinutes,
   differenceInMinutes,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -69,7 +68,7 @@ export function DayView({
   const handleNextDay = () => onDateChange(addDays(selectedDate, 1))
   const handleToday = () => onDateChange(new Date())
 
-  const dayEvents = events.filter((event) => isSameDay(new Date(event.startTime), selectedDate))
+  const dayEvents = events.filter((event) => eventOverlapsDay(event, selectedDate))
   const isTodayDate = isToday(selectedDate)
 
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
@@ -155,16 +154,13 @@ export function DayView({
   }
 
   const getEventStyle = (event: CalendarEvent) => {
-    const startHour = getHours(new Date(event.startTime))
-    const startMinute = getMinutes(new Date(event.startTime))
-    const duration = differenceInMinutes(new Date(event.endTime), new Date(event.startTime))
+    // Recorta ao dia exibido: eventos que atravessam a meia-noite aparecem nos dois dias
+    const { startMinute: clippedStart, durationMinutes: duration } = clipEventToDay(event, selectedDate)
 
     const hourPercentage = 100 / HOURS.length
 
-    // Posição: hora + fração de minutos (full day starts at 0)
-    const hoursFromStart = startHour
-    const minuteFraction = startMinute / 60
-    const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
+    // Posição: minutos desde 00:00 (full day starts at 0)
+    const topPercentage = (clippedStart / 60) * hourPercentage
 
     // Altura: duração em horas * porcentagem por hora (mínimo 1.5%)
     const durationHours = duration / 60

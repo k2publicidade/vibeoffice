@@ -62,8 +62,16 @@ export async function proxy(request: NextRequest) {
     return requireAuthentication('/login')
   }
 
-  if (user && request.nextUrl.pathname !== '/auth/mfa' && !request.nextUrl.pathname.startsWith('/auth/callback')) {
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  const checksMfa = !!user && request.nextUrl.pathname !== '/auth/mfa' && !request.nextUrl.pathname.startsWith('/auth/callback')
+  const needsProfile = isProtectedRoute && !!user
+  // MFA e perfil são independentes: buscamos em paralelo (antes eram round-trips em série)
+  const [assuranceResult, profileResult] = await Promise.all([
+    checksMfa ? supabase.auth.mfa.getAuthenticatorAssuranceLevel() : Promise.resolve(null),
+    needsProfile ? supabase.from('users').select('role, active').eq('id', user!.id).single() : Promise.resolve(null),
+  ])
+
+  if (checksMfa) {
+    const assurance = assuranceResult?.data
     if (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') {
       return requireAuthentication('/auth/mfa')
     }
@@ -73,9 +81,9 @@ export async function proxy(request: NextRequest) {
     return redirect(new URL(destination, request.url))
   }
 
-  if (isProtectedRoute && user) {
-    const { data: profile } = await supabase.from('users').select('role, active').eq('id', user.id).single()
-    if (!profile || !(profile as { active: boolean }).active) {
+  const profile = profileResult?.data as { role?: string; active?: boolean } | null | undefined
+  if (needsProfile) {
+    if (!profile || !profile.active) {
       await supabase.auth.signOut()
       return redirect(new URL('/login', request.url))
     }
@@ -87,13 +95,8 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/admin/')
 
   if (isAdminOnlyRoute && user) {
-    // A autorização vem do banco. user_metadata é editável pelo próprio usuário.
-    const { data } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-    if (data?.role !== 'Admin') {
+    // A autorização vem do banco (perfil já carregado acima). user_metadata é editável pelo próprio usuário.
+    if (profile?.role !== 'Admin') {
       const redirectUrl = new URL('/', request.url)
       redirectUrl.searchParams.set('access', 'denied')
       return redirect(redirectUrl)

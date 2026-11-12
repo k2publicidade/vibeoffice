@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 
 const sectors = ['A&R', 'Marketing', 'Financeiro', 'Jurídico', 'Administrativo', 'TI/Suporte', 'Atendimento ao Artista', 'Análise de fonogramas']
 export default function EmployeesPage() {
-  const { users } = useUsers()
+  const { users, refresh } = useUsers()
   const [saving, setSaving] = useState(false)
   const [created, setCreated] = useState<string[]>([])
   async function updateEmployee(event: React.FormEvent<HTMLFormElement>, id: string) {
@@ -21,6 +21,7 @@ export default function EmployeesPage() {
       const body = await result.json()
       if (!result.ok) throw new Error(body.error)
       toast.success('Funcionário atualizado')
+      void refresh()
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Erro ao atualizar') } finally { setSaving(false) }
   }
   async function createEmployee(event: React.FormEvent<HTMLFormElement>) {
@@ -34,6 +35,7 @@ export default function EmployeesPage() {
       if (!response.ok) throw new Error(result.error)
       setCreated(previous => [...previous, result.email])
       form.reset()
+      void refresh()
       toast.success('Funcionário cadastrado. Ele já pode entrar com o e-mail e a senha definidos.')
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Erro no cadastro') }
     finally { setSaving(false) }

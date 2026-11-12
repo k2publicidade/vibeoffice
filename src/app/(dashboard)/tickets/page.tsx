@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AlertCircle, LayoutGrid, List, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useMemo, useCallback, Suspense } from 'react'
+import { useState, useMemo, useCallback, useRef, Suspense } from 'react'
 import { useRecordLink } from '@/hooks/useRecordLink'
 import { toast } from 'sonner'
 import {
@@ -75,7 +75,10 @@ function TicketsPageContent() {
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
   // S-P1-21: sidebar de filtros vira Sheet em mobile/tablet
   const [filtersOpen, setFiltersOpen] = useState(false)
+  // Timer da animação de fechamento; cancelado se outro ticket abrir antes de 300ms
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleSelectTicket = useCallback((ticket: Ticket) => {
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null }
     setSelectedTicket(ticket)
     setIsDetailModalOpen(true)
   }, [])
@@ -101,7 +104,9 @@ function TicketsPageContent() {
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false)
     clearLink()
-    setTimeout(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null
       setSelectedTicket(null)
     }, 300)
   }
@@ -119,6 +124,7 @@ function TicketsPageContent() {
     } catch (error) {
       console.error('Erro ao adicionar comentário:', error)
       toast.error('Erro ao adicionar comentário')
+      throw error
     }
   }
 

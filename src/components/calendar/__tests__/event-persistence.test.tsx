@@ -91,8 +91,21 @@ it('prepares a valid creation time for the final hour of the day', async () => {
   const save = jest.fn()
   render(<CreateEventModal open selectedDate={date} selectedHour={23} onSave={save} onClose={jest.fn()} />)
   fireEvent.change(screen.getByLabelText('Título do evento'), { target: { value: 'Último horário' } })
+  expect(screen.getByText(/Termina no dia seguinte/)).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Criar evento' }))
-  await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ startTime: '23:00', endTime: '23:30' })))
+  await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ startTime: '23:00', endTime: '00:00' })))
+})
+
+it('moves the end of an overnight edit to the next day', async () => {
+  const update = jest.fn().mockResolvedValue(undefined)
+  render(<EventDetailsModal open event={{ ...event, startTime: new Date(2026, 9, 10, 22), endTime: new Date(2026, 9, 10, 23) }} onUpdate={update} onDelete={jest.fn()} onClose={jest.fn()} />)
+  fireEvent.click(screen.getByTitle('Editar evento'))
+  fireEvent.change(screen.getByLabelText('Fim'), { target: { value: '05:00' } })
+  fireEvent.click(screen.getByRole('button', { name: /Salvar/ }))
+  await waitFor(() => expect(update).toHaveBeenCalledWith('event-1', expect.objectContaining({
+    startTime: new Date(2026, 9, 10, 22),
+    endTime: new Date(2026, 9, 11, 5),
+  })))
 })
 
 it('allows editing the sector of a sector event', () => {
