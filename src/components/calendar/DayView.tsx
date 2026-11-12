@@ -1,19 +1,10 @@
 'use client'
 
-import { clipEventToDay, eventOverlapsDay } from '@/lib/calendar-time'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { eventOverlapsDay } from '@/lib/calendar-time'
 import { cn } from '@/lib/utils'
-import {
-  format,
-  isSameDay,
-  isToday,
-  addDays,
-  subDays,
-  differenceInMinutes,
-} from 'date-fns'
+import { format, isToday, addDays, subDays, differenceInMinutes } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
+import { motion, PanInfo } from 'framer-motion'
 import {
   DndContext,
   DragEndEvent,
@@ -22,11 +13,21 @@ import {
   useSensors,
   MouseSensor,
   TouchSensor,
-  useDraggable,
-  useDroppable,
   DragStartEvent,
 } from '@dnd-kit/core'
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useState, useId } from 'react'
+import {
+  HOURS,
+  HOUR_HEIGHT,
+  HourLabels,
+  HourSlot,
+  NowIndicator,
+  TimedEvent,
+  DragPreview,
+  getEventBox,
+  layoutOverlaps,
+  useScrollToWorkingHours,
+} from './TimeGridParts'
 
 export interface CalendarEvent {
   id: string
@@ -51,8 +52,6 @@ interface DayViewProps {
   isMobile?: boolean
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i) // 0am to 11pm (full day)
-
 export function DayView({
   selectedDate,
   events,
@@ -60,538 +59,115 @@ export function DayView({
   onEventClick,
   onSlotClick,
   onEventDrop,
-  view = 'day',
-  onViewChange,
   isMobile = false,
 }: DayViewProps) {
-  const handlePrevDay = () => onDateChange(subDays(selectedDate, 1))
-  const handleNextDay = () => onDateChange(addDays(selectedDate, 1))
-  const handleToday = () => onDateChange(new Date())
-
-  const dayEvents = events.filter((event) => eventOverlapsDay(event, selectedDate))
+  const dayEvents = events
+    .filter(event => eventOverlapsDay(event, selectedDate))
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  const lanes = layoutOverlaps(dayEvents, selectedDate)
   const isTodayDate = isToday(selectedDate)
+  const hourHeight = isMobile ? HOUR_HEIGHT.mobile : HOUR_HEIGHT.desktop
 
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mobileScrollRef = useRef<HTMLDivElement>(null)
-  const desktopScrollRef = useRef<HTMLDivElement>(null)
-  const controls = useAnimation()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useScrollToWorkingHours(scrollRef, hourHeight, isTodayDate, selectedDate.toDateString())
 
-  // Auto-scroll to current hour or 8am on mount/date change
-  useEffect(() => {
-    const scrollToHour = () => {
-      const now = new Date()
-      const targetHour = isTodayDate ? Math.max(now.getHours() - 1, 0) : 8
-      const scrollPercentage = targetHour / 24
-
-      if (mobileScrollRef.current) {
-        const scrollHeight = mobileScrollRef.current.scrollHeight
-        mobileScrollRef.current.scrollTop = scrollHeight * scrollPercentage
-      }
-      if (desktopScrollRef.current) {
-        const scrollHeight = desktopScrollRef.current.scrollHeight
-        desktopScrollRef.current.scrollTop = scrollHeight * scrollPercentage
-      }
-    }
-    const timer = setTimeout(scrollToHour, 100)
-    return () => clearTimeout(timer)
-  }, [selectedDate, isTodayDate])
-
+  const dndId = useId()
   const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-      },
-    })
+    useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   )
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event
-    const draggedEvent = events.find(e => e.id === active.id)
-    if (draggedEvent) {
-      setActiveEvent(draggedEvent)
-    }
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveEvent(events.find(e => e.id === active.id) ?? null)
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveEvent(null)
-
     if (!over) return
-
     const draggedEvent = events.find(e => e.id === active.id)
     if (!draggedEvent) return
-
     const [dateStr, hourStr] = String(over.id).split('|')
-    const hour = parseInt(hourStr, 10)
-
-    const targetDay = new Date(dateStr)
-    const newStartTime = new Date(targetDay)
-    newStartTime.setHours(hour, 0, 0, 0)
-
+    const newStartTime = new Date(dateStr)
+    newStartTime.setHours(parseInt(hourStr, 10), 0, 0, 0)
     const duration = differenceInMinutes(new Date(draggedEvent.endTime), new Date(draggedEvent.startTime))
-    const newEndTime = new Date(newStartTime.getTime() + duration * 60000)
-
-    onEventDrop?.(active.id as string, newStartTime, newEndTime)
+    onEventDrop?.(active.id as string, newStartTime, new Date(newStartTime.getTime() + duration * 60000))
   }
 
-  // Swipe gesture handler for mobile
-  const handleSwipe = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const threshold = 100
-    if (info.offset.x > threshold) {
-      // Swipe right - go to previous day
-      handlePrevDay()
-    } else if (info.offset.x < -threshold) {
-      // Swipe left - go to next day
-      handleNextDay()
-    }
+  // Swipe horizontal (mobile) troca de dia
+  const handleSwipe = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (Math.abs(info.offset.x) < 80 || Math.abs(info.offset.y) > Math.abs(info.offset.x)) return
+    onDateChange(info.offset.x > 0 ? subDays(selectedDate, 1) : addDays(selectedDate, 1))
   }
 
-  const getEventStyle = (event: CalendarEvent) => {
-    // Recorta ao dia exibido: eventos que atravessam a meia-noite aparecem nos dois dias
-    const { startMinute: clippedStart, durationMinutes: duration } = clipEventToDay(event, selectedDate)
-
-    const hourPercentage = 100 / HOURS.length
-
-    // Posição: minutos desde 00:00 (full day starts at 0)
-    const topPercentage = (clippedStart / 60) * hourPercentage
-
-    // Altura: duração em horas * porcentagem por hora (mínimo 1.5%)
-    const durationHours = duration / 60
-    const heightPercentage = Math.max(durationHours * hourPercentage, 1.5)
-
-    return { top: `${topPercentage}%`, height: `${heightPercentage}%` }
-  }
-
-  // Mobile-optimized layout
-  if (isMobile) {
-    return (
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+  const firstEvent = dayEvents[0]
+  const summary = (
+    <div className="flex flex-shrink-0 items-center gap-3 border-b border-[#262626] bg-[#0a0a0a] px-4 py-2.5">
+      <div
+        className={cn(
+          'flex h-11 w-11 flex-col items-center justify-center rounded-xl leading-none',
+          isTodayDate ? 'bg-[#fc7a67] text-black' : 'bg-[#1a1a1a] text-white'
+        )}
       >
-        <motion.div
-          ref={containerRef}
-          className="flex flex-col h-full bg-black overflow-hidden"
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={handleSwipe}
-        >
-          {/* Day Summary - Mobile Compact */}
-          <div className="px-4 py-3 border-b border-[#262626] bg-[#0a0a0a]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    'flex items-center justify-center w-12 h-12 rounded-xl text-xl font-bold',
-                    isTodayDate
-                      ? 'bg-[#fc7a67] text-black'
-                      : 'bg-[#1a1a1a] text-white'
-                  )}
-                >
-                  {format(selectedDate, 'd')}
-                </div>
-                <div>
-                  <p className="font-medium text-white text-sm">
-                    {dayEvents.length}{' '}
-                    {dayEvents.length === 1 ? 'evento' : 'eventos'}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {dayEvents.length === 0
-                      ? 'Dia livre'
-                      : `Primeiro às ${format(
-                          new Date(dayEvents[0]?.startTime),
-                          'HH:mm'
-                        )}`}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <span className="text-[10px] uppercase opacity-80">{format(selectedDate, 'EEE', { locale: ptBR })}</span>
+        <span className="text-lg font-bold">{format(selectedDate, 'd')}</span>
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-white">
+          {dayEvents.length} {dayEvents.length === 1 ? 'evento' : 'eventos'}
+          {!isMobile && ' agendados'}
+        </p>
+        <p className="truncate text-xs text-zinc-400">
+          {firstEvent ? `Primeiro às ${format(new Date(firstEvent.startTime), 'HH:mm')} · ${firstEvent.title}` : 'Dia livre'}
+        </p>
+      </div>
+    </div>
+  )
 
-          {/* Time Grid - Mobile Optimized */}
-          <div ref={mobileScrollRef} className="flex-1 overflow-y-auto">
-            <div className="relative min-h-[1600px]">
-              {/* Hour Lines - Droppable Slots */}
-              {HOURS.map((hour) => (
-                <DroppableSlot
+  return (
+    <DndContext id={dndId} sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <motion.div
+        className="flex h-full flex-col"
+        {...(isMobile
+          ? { drag: 'x' as const, dragConstraints: { left: 0, right: 0 }, dragElastic: 0.15, dragDirectionLock: true, onDragEnd: handleSwipe }
+          : {})}
+      >
+        {summary}
+
+        <div ref={scrollRef} className="no-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="flex pt-2">
+            <HourLabels hourHeight={hourHeight} className={isMobile ? 'w-14' : 'w-16'} />
+            <div className="relative min-w-0 flex-1 border-l border-[#262626] pr-2 md:pr-4" style={{ height: hourHeight * 24 }}>
+              {HOURS.map(hour => (
+                <HourSlot
                   key={hour}
                   day={selectedDate}
                   hour={hour}
-                  maxHours={HOURS.length}
+                  hourHeight={hourHeight}
                   onClick={() => onSlotClick?.(selectedDate, hour)}
-                  isMobile={true}
-                >
-                  <div className="w-14 flex-shrink-0 pr-2 py-3 text-right">
-                    <span className="text-xs text-gray-500 font-medium">
-                      {hour.toString().padStart(2, '0')}:00
-                    </span>
-                  </div>
-                </DroppableSlot>
+                  showAddHint={!isMobile}
+                />
               ))}
-
-              {/* Current Time Indicator */}
-              {isTodayDate && <CurrentTimeIndicator />}
-
-              {/* Events - Draggable */}
-              <div className="absolute left-14 right-4 top-0 bottom-0 pointer-events-none">
-                <AnimatePresence>
-                  {dayEvents.map((event) => {
-                    const style = getEventStyle(event)
-                    return (
-                      <DraggableEvent
-                        key={event.id}
-                        event={event}
-                        style={{
-                          ...style,
-                          backgroundColor: event.color || '#fc7a67',
-                        }}
-                        onClick={() => onEventClick?.(event)}
-                        isMobile={true}
-                      />
-                    )
-                  })}
-                </AnimatePresence>
+              <div className="pointer-events-none absolute inset-y-0 left-0 right-2 md:right-4">
+                {dayEvents.map(event => (
+                  <div key={event.id} className="pointer-events-auto">
+                    <TimedEvent
+                      event={event}
+                      box={getEventBox(event, selectedDate, hourHeight)}
+                      lane={lanes.get(event.id)}
+                      onClick={() => onEventClick?.(event)}
+                      detailed
+                    />
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
-        </motion.div>
-
-        <DragOverlay>
-          {activeEvent ? (
-            <div
-              className="p-3 rounded-xl text-left shadow-xl"
-              style={{
-                backgroundColor: activeEvent.color || '#fc7a67',
-                height: '70px',
-                width: '280px',
-              }}
-            >
-              <div className="font-medium text-white text-sm truncate">
-                {activeEvent.title}
-              </div>
-              <div className="text-xs text-white/80 mt-1">
-                {format(new Date(activeEvent.startTime), 'HH:mm')} -{' '}
-                {format(new Date(activeEvent.endTime), 'HH:mm')}
-              </div>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-    )
-  }
-
-  // Desktop layout (original)
-  return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex flex-col h-full bg-black rounded-2xl border border-[#262626] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#262626]">
-          <div className="flex items-center gap-4">
-            <div>
-              <h2 className="text-xl font-bold">
-                {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
-              </h2>
-              <p className="text-sm text-gray-400">
-                {format(selectedDate, 'yyyy', { locale: ptBR })}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePrevDay}
-                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToday}
-                className={cn(
-                  'h-8 px-3 text-sm hover:bg-[#1a1a1a]',
-                  isTodayDate ? 'text-[#fc7a67]' : 'text-gray-400 hover:text-white'
-                )}
-              >
-                Hoje
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNextDay}
-                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg p-1">
-            {(['month', 'week', 'day', 'agenda'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => onViewChange?.(v)}
-                className={cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
-                  view === v
-                    ? 'bg-[#fc7a67] text-black'
-                    : 'text-gray-400 hover:text-white'
-                )}
-              >
-                {v === 'month' ? 'Mês' : v === 'week' ? 'Semana' : v === 'day' ? 'Dia' : 'Agenda'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Day Summary */}
-        <div className="px-4 py-3 border-b border-[#262626] bg-[#0a0a0a]">
-          <div className="flex items-center gap-4">
-            <div className={cn(
-              'flex items-center justify-center w-14 h-14 rounded-xl text-2xl font-bold',
-              isTodayDate ? 'bg-[#fc7a67] text-black' : 'bg-[#1a1a1a] text-white'
-            )}>
-              {format(selectedDate, 'd')}
-            </div>
-            <div>
-              <p className="font-medium text-white">
-                {dayEvents.length} {dayEvents.length === 1 ? 'evento' : 'eventos'} agendados
-              </p>
-              <p className="text-sm text-gray-400">
-                {dayEvents.length === 0
-                  ? 'Nenhum compromisso para este dia'
-                  : `Primeiro às ${format(new Date(dayEvents[0]?.startTime), 'HH:mm')}`
-                }
-              </p>
-            </div>
-            <Button
-              onClick={() => onSlotClick?.(selectedDate, 9)}
-              className="ml-auto gap-2 bg-[#fc7a67] text-black hover:bg-[#ff0300]"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Evento
-            </Button>
-          </div>
-        </div>
-
-        {/* Time Grid */}
-        <div ref={desktopScrollRef} className="flex-1 overflow-y-auto">
-          <div className="relative min-h-[1600px] flex flex-col">
-            {/* Hour Lines - Droppable Slots */}
-            {HOURS.map((hour) => (
-              <DroppableSlot
-                key={hour}
-                day={selectedDate}
-                hour={hour}
-                maxHours={HOURS.length}
-                onClick={() => onSlotClick?.(selectedDate, hour)}
-              >
-                <div className="w-16 flex-shrink-0 pr-2 pt-1 text-right">
-                  <span className="text-xs text-gray-500">
-                    {hour.toString().padStart(2, '0')}:00
-                  </span>
-                </div>
-              </DroppableSlot>
-            ))}
-
-            {/* Current Time Indicator */}
-            {isTodayDate && <CurrentTimeIndicator />}
-
-            {/* Events - Draggable */}
-            <div className="absolute left-16 right-4 top-0 bottom-0 pointer-events-none">
-              {dayEvents.map((event, index) => {
-                const style = getEventStyle(event)
-                return (
-                  <DraggableEvent
-                    key={event.id}
-                    event={event}
-                    style={{
-                      ...style,
-                      backgroundColor: event.color || '#fc7a67',
-                    }}
-                    onClick={() => onEventClick?.(event)}
-                  />
-                )
-              })}
+              {isTodayDate && <NowIndicator hourHeight={hourHeight} />}
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <DragOverlay>
-        {activeEvent ? (
-          <div
-            className="p-3 rounded-lg text-left"
-            style={{
-              backgroundColor: activeEvent.color || '#fc7a67',
-              height: '60px',
-              width: '300px'
-            }}
-          >
-            <div className="font-medium text-white text-sm truncate">
-              {activeEvent.title}
-            </div>
-          </div>
-        ) : null}
-      </DragOverlay>
+      <DragOverlay>{activeEvent ? <DragPreview event={activeEvent} /> : null}</DragOverlay>
     </DndContext>
-  )
-}
-
-function CurrentTimeIndicator() {
-  const now = new Date()
-  const currentHour = now.getHours()
-  const currentMinute = now.getMinutes()
-  const hourPercentage = 100 / HOURS.length
-  const hoursFromStart = currentHour // Full day starts at 0
-  const minuteFraction = currentMinute / 60
-  const topPercentage = (hoursFromStart + minuteFraction) * hourPercentage
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="absolute left-14 md:left-16 right-0 flex items-center pointer-events-none z-10"
-      style={{
-        top: `${topPercentage}%`,
-      }}
-    >
-      <div className="w-3 h-3 rounded-full bg-[#ff0300] -ml-1.5" />
-      <div className="flex-1 h-0.5 bg-[#ff0300]" />
-    </motion.div>
-  )
-}
-
-function DraggableEvent({
-  event,
-  onClick,
-  style,
-  isMobile = false,
-}: {
-  event: CalendarEvent
-  onClick?: () => void
-  style: React.CSSProperties
-  isMobile?: boolean
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: event.id,
-    data: event,
-  })
-
-  return (
-    <motion.div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      onClick={(e) => {
-        onClick?.()
-      }}
-      className={cn(
-        'absolute left-0 right-0 rounded-xl text-left transition-transform overflow-hidden cursor-grab active:cursor-grabbing pointer-events-auto',
-        isMobile ? 'p-3 min-h-[60px]' : 'p-3 hover:scale-[1.02]',
-        isDragging ? 'opacity-30 z-50' : 'z-10'
-      )}
-      style={style}
-    >
-      <div
-        className={cn(
-          'font-medium text-white truncate',
-          isMobile ? 'text-sm' : 'text-sm'
-        )}
-      >
-        {event.title}
-      </div>
-      <div className="text-xs text-white/80 mt-1">
-        {format(new Date(event.startTime), 'HH:mm')} -{' '}
-        {format(new Date(event.endTime), 'HH:mm')}
-      </div>
-      {event.attendees && event.attendees.length > 0 && !isMobile && (
-        <div className="flex -space-x-2 mt-2">
-          {event.attendees.slice(0, 3).map((attendee) => (
-            <div
-              key={attendee.id}
-              className="w-6 h-6 rounded-full bg-black/30 border-2 border-white/20 flex items-center justify-center text-xs text-white font-medium"
-            >
-              {attendee.name.charAt(0)}
-            </div>
-          ))}
-          {event.attendees.length > 3 && (
-            <div className="w-6 h-6 rounded-full bg-black/50 border-2 border-white/20 flex items-center justify-center text-xs text-white">
-              +{event.attendees.length - 3}
-            </div>
-          )}
-        </div>
-      )}
-      {/* Linked entity badges */}
-      {(event.linkedTaskId || event.linkedTicketId) && (
-        <div className="flex gap-1 mt-2">
-          {event.linkedTaskId && (
-            <span className="text-xs bg-white/20 rounded px-1.5 py-0.5">📋</span>
-          )}
-          {event.linkedTicketId && (
-            <span className="text-xs bg-white/20 rounded px-1.5 py-0.5">🎫</span>
-          )}
-        </div>
-      )}
-    </motion.div>
-  )
-}
-
-function DroppableSlot({
-  day,
-  hour,
-  children,
-  onClick,
-  maxHours,
-  isMobile = false,
-}: {
-  day: Date
-  hour: number
-  children: React.ReactNode
-  onClick?: () => void
-  maxHours: number
-  isMobile?: boolean
-}) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `${day.toISOString()}|${hour}`,
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'flex border-b border-[#1a1a1a] relative transition-colors',
-        isMobile ? 'min-h-[64px]' : 'flex-1',
-        isOver && 'bg-[#fc7a67]/20'
-      )}
-    >
-      {children}
-      <div
-        className={cn(
-          'flex-1 cursor-pointer',
-          isMobile
-            ? 'active:bg-[#1a1a1a]/70 min-h-[48px]'
-            : 'hover:bg-[#1a1a1a]/50'
-        )}
-        onClick={onClick}
-      />
-    </div>
   )
 }

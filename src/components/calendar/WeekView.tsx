@@ -1,9 +1,7 @@
 'use client'
 
-import { clipEventToDay, eventOverlapsDay } from '@/lib/calendar-time'
-import { useMemo, useState, useRef, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { eventOverlapsDay } from '@/lib/calendar-time'
+import { useRef, useState, useId } from 'react'
 import { cn } from '@/lib/utils'
 import {
   DndContext,
@@ -13,29 +11,22 @@ import {
   useSensors,
   MouseSensor,
   TouchSensor,
-  useDraggable,
-  useDroppable,
   DragStartEvent,
 } from '@dnd-kit/core'
-import {
-  format,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameDay,
-  addWeeks,
-  subWeeks,
-  addDays,
-  subDays,
-  setHours,
-  setMinutes,
-  differenceInMinutes,
-  isToday,
-} from 'date-fns'
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, differenceInMinutes, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { EventBlock } from './EventBlock'
-import { useIsMobile } from '@/hooks/useMediaQuery'
-import { motion, AnimatePresence } from 'framer-motion'
+import {
+  HOURS,
+  HOUR_HEIGHT,
+  HourLabels,
+  HourSlot,
+  NowIndicator,
+  TimedEvent,
+  DragPreview,
+  getEventBox,
+  layoutOverlaps,
+  useScrollToWorkingHours,
+} from './TimeGridParts'
 
 export interface CalendarEvent {
   id: string
@@ -43,6 +34,7 @@ export interface CalendarEvent {
   startTime: Date
   endTime: Date
   color?: string
+  location?: string
   attendees?: { id: string; name: string; avatar?: string }[]
   linkedTaskId?: string
   linkedTicketId?: string
@@ -58,9 +50,8 @@ interface WeekViewProps {
   view?: 'month' | 'week' | 'day' | 'agenda'
   onViewChange?: (view: 'month' | 'week' | 'day' | 'agenda') => void
   onEventDrop?: (eventId: string, newStartTime: Date, newEndTime: Date) => void
+  isMobile?: boolean
 }
-
-const HOURS = Array.from({ length: 24 }, (_, i) => i) // 0am to 11pm (full day)
 
 export function WeekView({
   dayColors = {},
@@ -70,408 +61,149 @@ export function WeekView({
   onEventClick,
   onEventDrop,
   onSlotClick,
-  view = 'week',
-  onViewChange,
+  isMobile = false,
 }: WeekViewProps) {
-  const isMobile = useIsMobile()
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 })
-  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 0 })
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
+  const weekDays = eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 0 }) })
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const desktopScrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const hourHeight = isMobile ? HOUR_HEIGHT.mobile : HOUR_HEIGHT.desktop
 
-  // Auto-scroll to current hour or 8am on mount
-  useEffect(() => {
-    const scrollToHour = () => {
-      const now = new Date()
-      const targetHour = isToday(selectedDate) ? Math.max(now.getHours() - 1, 0) : 8
-      const scrollPercentage = targetHour / 24
+  // Mobile: 3 dias visíveis, centrados no dia selecionado
+  const selectedIndex = weekDays.findIndex(d => isSameDay(d, selectedDate))
+  const mobileStart = Math.max(0, Math.min(selectedIndex - 1, weekDays.length - 3))
+  const displayDays = isMobile ? weekDays.slice(mobileStart, mobileStart + 3) : weekDays
 
-      if (scrollContainerRef.current) {
-        const scrollHeight = scrollContainerRef.current.scrollHeight
-        scrollContainerRef.current.scrollTop = scrollHeight * scrollPercentage
-      }
-      if (desktopScrollRef.current) {
-        const scrollHeight = desktopScrollRef.current.scrollHeight
-        desktopScrollRef.current.scrollTop = scrollHeight * scrollPercentage
-      }
-    }
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(scrollToHour, 100)
-    return () => clearTimeout(timer)
-  }, [selectedDate])
+  const weekHasToday = weekDays.some(d => isToday(d))
+  useScrollToWorkingHours(scrollRef, hourHeight, weekHasToday, weekStart.toDateString())
 
-  // Para mobile, mostrar apenas 3 dias de cada vez centrados no dia selecionado
-  const mobileDays = useMemo(() => {
-    const selectedIndex = weekDays.findIndex((d) => isSameDay(d, selectedDate))
-    // Centralizar o dia selecionado, mostrando anterior e próximo
-    const startIdx = Math.max(0, Math.min(selectedIndex - 1, weekDays.length - 3))
-    return weekDays.slice(startIdx, startIdx + 3)
-  }, [weekDays, selectedDate])
-
+  const dndId = useId()
   const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-      },
-    })
+    useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   )
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event
-    const draggedEvent = events.find((e) => e.id === active.id)
-    if (draggedEvent) {
-      setActiveEvent(draggedEvent)
-    }
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveEvent(events.find(e => e.id === active.id) ?? null)
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveEvent(null)
-
     if (!over) return
-
-    const draggedEvent = events.find((e) => e.id === active.id)
+    const draggedEvent = events.find(e => e.id === active.id)
     if (!draggedEvent) return
-
     const [dateStr, hourStr] = String(over.id).split('|')
-    const hour = parseInt(hourStr, 10)
-
-    const targetDay = new Date(dateStr)
-
-    const newStartTime = new Date(targetDay)
-    newStartTime.setHours(hour, 0, 0, 0)
-
+    const newStartTime = new Date(dateStr)
+    newStartTime.setHours(parseInt(hourStr, 10), 0, 0, 0)
     const duration = differenceInMinutes(draggedEvent.endTime, draggedEvent.startTime)
-    const newEndTime = new Date(newStartTime.getTime() + duration * 60000)
-
-    onEventDrop?.(active.id as string, newStartTime, newEndTime)
+    onEventDrop?.(active.id as string, newStartTime, new Date(newStartTime.getTime() + duration * 60000))
   }
 
-  const handlePrevWeek = () => onDateChange(subWeeks(selectedDate, 1))
-  const handleNextWeek = () => onDateChange(addWeeks(selectedDate, 1))
-  const handleToday = () => onDateChange(new Date())
+  const gridCols = { gridTemplateColumns: `${isMobile ? 44 : 56}px repeat(${displayDays.length}, minmax(0, 1fr))` }
 
-  // Mobile navigation
-  const handlePrevDays = () => onDateChange(subDays(selectedDate, 3))
-  const handleNextDays = () => onDateChange(addDays(selectedDate, 3))
-
-  const getEventsForDay = (day: Date) => {
-    // Inclui eventos que começaram no dia anterior e atravessam a meia-noite
-    return events.filter((event) => eventOverlapsDay(event, day))
-  }
-
-  const getEventStyle = (event: CalendarEvent, day: Date) => {
-    // Recorta ao dia exibido: eventos 22:00 → 05:00 aparecem em ambos os dias
-    const { startMinute: clippedStart, durationMinutes: duration } = clipEventToDay(event, day)
-
-    const hourPercentage = 100 / HOURS.length
-    const topPercentage = (clippedStart / 60) * hourPercentage
-    const durationHours = duration / 60
-    const heightPercentage = Math.max(durationHours * hourPercentage, 2) // Minimum 2%
-
-    return { top: `${topPercentage}%`, height: `${heightPercentage}%` }
-  }
-
-  // Mobile Week View - Horizontal scroll com 3 dias visíveis
-  if (isMobile) {
-    const displayDays = mobileDays
-
-    return (
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex flex-col h-full bg-black overflow-hidden">
-          {/* Week Days Header - Horizontal scroll */}
-          <div className="px-2 py-2 border-b border-[#262626] overflow-x-auto">
-            <div className="flex gap-1 min-w-max">
-              {weekDays.map((day) => {
-                const isTodayDate = isToday(day)
-                const isSelected = isSameDay(day, selectedDate)
-
-                return (
-                  <button
-                    key={day.toISOString()}
-                    onClick={() => onDateChange(day)}
-                style={{ borderBottom: dayColors[format(day, 'yyyy-MM-dd')] ? `5px solid ${dayColors[format(day, 'yyyy-MM-dd')]}` : undefined }}
+  return (
+    <DndContext id={dndId} sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex h-full flex-col">
+        {/* Cabeçalho dos dias (fixo) */}
+        {isMobile ? (
+          <div className="grid flex-shrink-0 grid-cols-7 gap-1 border-b border-[#262626] px-2 py-2">
+            {weekDays.map(day => {
+              const isSelected = isSameDay(day, selectedDate)
+              const color = dayColors[format(day, 'yyyy-MM-dd')]
+              const visible = displayDays.some(d => isSameDay(d, day))
+              return (
+                <button
+                  key={day.toISOString()}
+                  onClick={() => onDateChange(day)}
+                  className={cn(
+                    'relative flex min-h-12 min-w-0 flex-col items-center justify-center rounded-xl transition-all',
+                    isSelected
+                      ? 'bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/30'
+                      : visible
+                        ? 'bg-[#1a1a1a] text-white'
+                        : 'text-zinc-500 active:bg-[#1a1a1a]',
+                    !isSelected && isToday(day) && 'ring-2 ring-inset ring-[#fc7a67]'
+                  )}
+                >
+                  <span className={cn('text-[10px] uppercase', isSelected ? 'text-white/80' : 'text-zinc-500')}>
+                    {format(day, 'EEEEE', { locale: ptBR })}
+                  </span>
+                  <span className="text-base font-bold leading-tight">{format(day, 'd')}</span>
+                  {color && <span className="absolute bottom-1 h-1 w-4 rounded-full" style={{ backgroundColor: color }} />}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="grid flex-shrink-0 border-b border-[#262626]" style={gridCols}>
+            <div />
+            {weekDays.map(day => {
+              const isSelected = isSameDay(day, selectedDate)
+              const todayDate = isToday(day)
+              const color = dayColors[format(day, 'yyyy-MM-dd')]
+              return (
+                <button
+                  key={day.toISOString()}
+                  onClick={() => onDateChange(day)}
+                  className="group relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 border-l border-[#262626] py-2 transition-colors hover:bg-zinc-900"
+                  style={color ? { backgroundColor: `${color}1f` } : undefined}
+                >
+                  <span className={cn('text-[11px] uppercase tracking-wide', todayDate ? 'text-[#fc7a67]' : 'text-zinc-500')}>
+                    {format(day, 'EEE', { locale: ptBR })}
+                  </span>
+                  <span
                     className={cn(
-                      'flex flex-col items-center py-2 px-3 rounded-xl transition-all min-w-[48px]',
-                      isSelected &&
-                        'bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/30',
-                      !isSelected &&
-                        isTodayDate &&
-                        'ring-2 ring-[#fc7a67] bg-[#1a1a1a]',
-                      !isSelected &&
-                        !isTodayDate &&
-                        'hover:bg-[#1a1a1a] active:bg-[#262626]'
+                      'flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold transition-all',
+                      isSelected
+                        ? 'bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/30'
+                        : todayDate
+                          ? 'text-[#fc7a67] ring-2 ring-[#fc7a67]'
+                          : 'text-white group-hover:text-orange-400'
                     )}
                   >
-                    <span
-                      className={cn(
-                        'text-xs uppercase',
-                        isSelected ? 'text-white/80' : 'text-gray-500'
-                      )}
-                    >
-                      {format(day, 'EEE', { locale: ptBR })}
-                    </span>
-                    <span
-                      className={cn(
-                        'text-lg font-bold',
-                        !isSelected && !isTodayDate && 'text-white'
-                      )}
-                    >
-                      {format(day, 'd')}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Calendar Grid - Mobile 3-column */}
-          <div
-            ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto overflow-x-hidden"
-          >
-            <div className="flex h-full min-h-[500px]">
-              {/* Time Column */}
-              <div className="w-12 flex-shrink-0 flex flex-col border-r border-[#262626]">
-                {HOURS.map((hour) => (
-                  <div
-                    key={hour}
-                    className="flex-1 text-xs text-gray-500 text-right pr-2 flex items-start pt-2 font-medium min-h-[60px]"
-                  >
-                    {hour.toString().padStart(2, '0')}
-                  </div>
-                ))}
-              </div>
-
-              {/* Day Columns */}
-              <AnimatePresence mode="popLayout">
-                {displayDays.map((day) => {
-                  const dayEvents = getEventsForDay(day)
-                  const isTodayDate = isToday(day)
-
-                  return (
-                    <motion.div
-                      key={day.toISOString()}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className={cn(
-                        'flex-1 relative border-r border-[#262626] flex flex-col min-w-0',
-                        isTodayDate && 'bg-[#fc7a67]/5'
-                      )}
-                    >
-                      {/* Hour slots */}
-                      {HOURS.map((hour) => (
-                        <DroppableSlot
-                          key={hour}
-                          day={day}
-                          hour={hour}
-                          onClick={() => onSlotClick?.(day, hour)}
-                          isMobile={true}
-                        />
-                      ))}
-
-                      {/* Events */}
-                      {dayEvents.map((event) => (
-                        <DraggableEvent
-                          key={event.id}
-                          event={event}
-                          style={getEventStyle(event, day)}
-                          onClick={() => onEventClick?.(event)}
-                          isMobile={true}
-                        >
-                          <MobileEventBlock event={event} />
-                        </DraggableEvent>
-                      ))}
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
-
-        <DragOverlay>
-          {activeEvent ? (
-            <div className="h-[60px] w-[100px] opacity-80 cursor-grabbing">
-              <MobileEventBlock event={activeEvent} />
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-    )
-  }
-
-  // Desktop Week View (original)
-  return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold">
-            {format(selectedDate, 'MMMM, yyyy', { locale: ptBR })}
-          </h2>
-
-          <div className="flex items-center gap-4">
-            {/* View Toggle */}
-            <div className="flex items-center rounded-full bg-zinc-800/50 border border-zinc-700/50 p-1">
-              {(['month', 'week', 'day', 'agenda'] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => onViewChange?.(v)}
-                  className={cn(
-                    'px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200',
-                    view === v
-                      ? 'bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/30'
-                      : 'text-muted-foreground hover:text-orange-400 hover:bg-zinc-700/50'
-                  )}
-                >
-                  {v === 'month'
-                    ? 'Mês'
-                    : v === 'week'
-                      ? 'Semana'
-                      : v === 'day'
-                        ? 'Dia'
-                        : 'Agenda'}
+                    {format(day, 'd')}
+                  </span>
+                  {color && <span className="absolute inset-x-0 bottom-0 h-1" style={{ backgroundColor: color }} />}
                 </button>
-              ))}
-            </div>
-
-            {/* Navigation */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full border-zinc-700 bg-zinc-800/50 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/50 transition-all"
-                onClick={handlePrevWeek}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-full border-zinc-700 bg-zinc-800/50 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/50 transition-all"
-                onClick={handleToday}
-              >
-                Hoje
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full border-zinc-700 bg-zinc-800/50 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/50 transition-all"
-                onClick={handleNextWeek}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+              )
+            })}
           </div>
-        </div>
+        )}
 
-        {/* Week Header with Days */}
-        <div className="grid grid-cols-8 gap-2 mb-4">
-          <div className="w-16" /> {/* Time column spacer */}
-          {weekDays.map((day) => {
-            const isTodayDate = isToday(day)
-            const isSelected = isSameDay(day, selectedDate)
-
-            return (
-              <button
-                key={day.toISOString()}
-                onClick={() => onDateChange(day)}
-                style={{ borderBottom: dayColors[format(day, 'yyyy-MM-dd')] ? `5px solid ${dayColors[format(day, 'yyyy-MM-dd')]}` : undefined }}
-                className={cn(
-                  'flex flex-col items-center py-3 rounded-xl transition-all duration-200',
-                  isSelected &&
-                    'bg-gradient-to-br from-[#fe6e5b] to-[#ff0300] text-white shadow-lg shadow-[#ff0300]/30',
-                  !isSelected &&
-                    isTodayDate &&
-                    'ring-2 ring-orange-500 bg-zinc-800/50',
-                  !isSelected &&
-                    !isTodayDate &&
-                    'hover:bg-zinc-800 hover:text-orange-400'
-                )}
-              >
-                <span
-                  className={cn(
-                    'text-xs uppercase tracking-wide',
-                    isSelected ? 'text-white/80' : 'text-muted-foreground'
-                  )}
-                >
-                  {format(day, 'EEE', { locale: ptBR })}
-                </span>
-                <span className="text-xl font-bold mt-0.5">
-                  {format(day, 'd')}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Calendar Grid */}
-        <div ref={desktopScrollRef} className="flex-1 rounded-2xl bg-zinc-800/30 border border-zinc-700/50 p-2 overflow-y-auto">
-          <div className="grid grid-cols-8 gap-1 min-h-[1600px]">
-            {/* Time Column */}
-            <div className="w-16 flex flex-col">
-              {HOURS.map((hour) => (
-                <div
-                  key={hour}
-                  className="flex-1 text-xs text-muted-foreground text-right pr-3 flex items-start pt-1 font-medium"
-                >
-                  {hour.toString().padStart(2, '0')}:00
-                </div>
-              ))}
-            </div>
-
-            {/* Day Columns */}
-            {weekDays.map((day) => {
-              const dayEvents = getEventsForDay(day)
-              const isTodayDate = isToday(day)
-
+        {/* Grade de horários — única área rolável, sem barra visível */}
+        <div ref={scrollRef} className="no-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="grid pt-2" style={gridCols}>
+            <HourLabels hourHeight={hourHeight} />
+            {displayDays.map(day => {
+              const dayEvents = events.filter(event => eventOverlapsDay(event, day))
+              const lanes = layoutOverlaps(dayEvents, day)
+              const todayDate = isToday(day)
               return (
                 <div
                   key={day.toISOString()}
-                  className={cn(
-                    'relative border-l border-zinc-700/50 rounded-lg flex flex-col',
-                    isTodayDate && 'bg-orange-500/5'
-                  )}
+                  className={cn('relative min-w-0 border-l border-[#262626]', todayDate && 'bg-orange-500/[0.04]')}
+                  style={{ height: hourHeight * 24 }}
                 >
-                  {/* Hour grid lines - Droppable Slots */}
-                  {HOURS.map((hour) => (
-                    <DroppableSlot
+                  {HOURS.map(hour => (
+                    <HourSlot
                       key={hour}
                       day={day}
                       hour={hour}
+                      hourHeight={hourHeight}
                       onClick={() => onSlotClick?.(day, hour)}
+                      showAddHint={!isMobile}
                     />
                   ))}
-
-                  {/* Events - Draggable */}
-                  {dayEvents.map((event) => (
-                    <DraggableEvent
+                  {dayEvents.map(event => (
+                    <TimedEvent
                       key={event.id}
                       event={event}
-                      style={getEventStyle(event, day)}
+                      box={getEventBox(event, day, hourHeight)}
+                      lane={lanes.get(event.id)}
                       onClick={() => onEventClick?.(event)}
-                    >
-                      <EventBlock event={event} />
-                    </DraggableEvent>
+                    />
                   ))}
+                  {todayDate && <NowIndicator hourHeight={hourHeight} />}
                 </div>
               )
             })}
@@ -479,115 +211,7 @@ export function WeekView({
         </div>
       </div>
 
-      <DragOverlay>
-        {activeEvent ? (
-          <div
-            className="h-full w-full opacity-80 cursor-grabbing"
-            style={{
-              height: '60px',
-            }}
-          >
-            <EventBlock event={activeEvent} />
-          </div>
-        ) : null}
-      </DragOverlay>
+      <DragOverlay>{activeEvent ? <DragPreview event={activeEvent} /> : null}</DragOverlay>
     </DndContext>
-  )
-}
-
-// Mobile Event Block - Compact version
-function MobileEventBlock({ event }: { event: CalendarEvent }) {
-  return (
-    <div
-      className="h-full w-full rounded-lg p-1.5 overflow-hidden"
-      style={{ backgroundColor: event.color || '#fc7a67' }}
-    >
-      <div className="font-medium text-white text-xs truncate">
-        {event.title}
-      </div>
-      <div className="text-[10px] text-white/70 truncate">
-        {format(new Date(event.startTime), 'HH:mm')}
-      </div>
-    </div>
-  )
-}
-
-function DraggableEvent({
-  event,
-  onClick,
-  style,
-  children,
-  isMobile = false,
-}: {
-  event: CalendarEvent
-  onClick?: () => void
-  style: React.CSSProperties
-  children: React.ReactNode
-  isMobile?: boolean
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: event.id,
-    data: event,
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={cn(
-        'absolute cursor-grab active:cursor-grabbing',
-        isMobile ? 'left-0.5 right-0.5' : 'left-1 right-1',
-        isDragging && 'opacity-30'
-      )}
-      style={{
-        ...style,
-        zIndex: isDragging ? 50 : 10,
-      }}
-      onClick={onClick}
-    >
-      {children}
-    </div>
-  )
-}
-
-function DroppableSlot({
-  day,
-  hour,
-  onClick,
-  isMobile = false,
-}: {
-  day: Date
-  hour: number
-  onClick?: () => void
-  isMobile?: boolean
-}) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `${day.toISOString()}|${hour}`,
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'flex-1 border-b border-zinc-700/30 transition-colors group relative',
-        isMobile ? 'min-h-[60px]' : '',
-        isOver
-          ? 'bg-orange-500/20'
-          : isMobile
-            ? 'active:bg-orange-500/10'
-            : 'cursor-pointer hover:bg-orange-500/10'
-      )}
-      onClick={onClick}
-    >
-      {/* Add button on hover - desktop only */}
-      {!isMobile && (
-        <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center shadow-lg">
-            <Plus className="h-3 w-3 text-white" />
-          </div>
-        </div>
-      )}
-    </div>
   )
 }

@@ -1,8 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Calendar } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useLayoutEffect, useRef, useState, useId } from 'react'
+import { Calendar, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   format,
@@ -14,8 +13,6 @@ import {
   isSameDay,
   isSameMonth,
   isToday,
-  addMonths,
-  subMonths,
   differenceInMinutes,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -32,7 +29,6 @@ import {
   useDroppable,
   DragStartEvent,
 } from '@dnd-kit/core'
-import { useIsMobile } from '@/hooks/useMediaQuery'
 
 export interface CalendarEvent {
   id: string
@@ -55,9 +51,13 @@ interface MonthViewProps {
   view?: 'month' | 'week' | 'day' | 'agenda'
   onViewChange?: (view: 'month' | 'week' | 'day' | 'agenda') => void
   onEventDrop?: (eventId: string, newStartTime: Date, newEndTime: Date) => void
+  isMobile?: boolean
 }
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const CHIP_HEIGHT = 20
+const CHIP_GAP = 2
+const DAY_HEADER = 30
 
 export function MonthView({
   dayColors = {},
@@ -67,304 +67,190 @@ export function MonthView({
   onEventClick,
   onDayClick,
   onEventDrop,
-  view = 'month',
-  onViewChange,
+  isMobile = false,
 }: MonthViewProps) {
-  const isMobile = useIsMobile()
   const monthStart = startOfMonth(selectedDate)
-  const monthEnd = endOfMonth(selectedDate)
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
-  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+  const calendarDays = eachDayOfInterval({
+    start: startOfWeek(monthStart, { weekStartsOn: 0 }),
+    end: endOfWeek(endOfMonth(selectedDate), { weekStartsOn: 0 }),
+  })
+  const weeks = calendarDays.length / 7
 
-  // Para mobile, mostrar apenas dias do mês atual
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
+  const getEventsForDay = (day: Date) =>
+    events
+      .filter(event => isSameDay(new Date(event.startTime), day))
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
-  const handlePrevMonth = () => onDateChange(subMonths(selectedDate, 1))
-  const handleNextMonth = () => onDateChange(addMonths(selectedDate, 1))
-  const handleToday = () => onDateChange(new Date())
-
-  const getEventsForDay = (day: Date) => {
-    return events.filter((event) => isSameDay(new Date(event.startTime), day))
-  }
+  // Quantos eventos cabem em cada célula sem cortar nem rolar
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [maxChips, setMaxChips] = useState(2)
+  useLayoutEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const update = () => {
+      const cellHeight = el.clientHeight / weeks
+      setMaxChips(Math.max(0, Math.floor((cellHeight - DAY_HEADER - 6) / (CHIP_HEIGHT + CHIP_GAP))))
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [weeks, isMobile])
 
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null)
-
+  const dndId = useId()
   const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-      },
-    })
+    useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   )
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event
-    const draggedEvent = events.find((e) => e.id === active.id)
-    if (draggedEvent) {
-      setActiveEvent(draggedEvent)
-    }
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveEvent(events.find(e => e.id === active.id) ?? null)
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveEvent(null)
-
     if (!over) return
-
-    const draggedEvent = events.find((e) => e.id === active.id)
+    const draggedEvent = events.find(e => e.id === active.id)
     if (!draggedEvent) return
-
-    const targetDateStr = String(over.id)
-    const targetDate = new Date(targetDateStr)
-
-    const oldStartTime = new Date(draggedEvent.startTime)
-
-    const newStartTime = new Date(targetDate)
-    newStartTime.setHours(oldStartTime.getHours(), oldStartTime.getMinutes())
-
-    const duration = differenceInMinutes(
-      new Date(draggedEvent.endTime),
-      new Date(draggedEvent.startTime)
-    )
-    const newEndTime = new Date(newStartTime.getTime() + duration * 60000)
-
-    onEventDrop?.(active.id as string, newStartTime, newEndTime)
+    const oldStart = new Date(draggedEvent.startTime)
+    const newStartTime = new Date(String(over.id))
+    newStartTime.setHours(oldStart.getHours(), oldStart.getMinutes())
+    const duration = differenceInMinutes(new Date(draggedEvent.endTime), oldStart)
+    onEventDrop?.(active.id as string, newStartTime, new Date(newStartTime.getTime() + duration * 60000))
   }
 
-  function startOfDay(date: Date) {
-    const d = new Date(date)
-    d.setHours(0, 0, 0, 0)
-    return d
-  }
-
-  // Mobile List View
+  // ---------- Mobile: mini-grade do mês + eventos do dia selecionado ----------
   if (isMobile) {
-    // Agrupar eventos por dia
-    const daysWithEvents = monthDays.filter(
-      (day) => getEventsForDay(day).length > 0 || isToday(day)
-    )
-
+    const selectedEvents = getEventsForDay(selectedDate)
     return (
-      <div className="flex flex-col h-full bg-black overflow-hidden">
-        {/* Mobile List */}
-        <div className="flex-1 overflow-y-auto">
-          <AnimatePresence mode="popLayout">
-            {monthDays.map((day, index) => {
+      <div className="flex h-full flex-col">
+        <div className="flex-shrink-0 border-b border-[#262626] px-2 pb-2 pt-1">
+          <div className="grid grid-cols-7">
+            {WEEKDAYS.map(d => (
+              <div key={d} className="py-1 text-center text-[11px] font-medium uppercase text-zinc-500">
+                {d.charAt(0)}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-y-0.5">
+            {calendarDays.map(day => {
               const dayEvents = getEventsForDay(day)
-              const isTodayDate = isToday(day)
-              const hasEvents = dayEvents.length > 0
-
-              // Pular dias vazios exceto hoje
-              if (!hasEvents && !isTodayDate && !dayColors[format(day, 'yyyy-MM-dd')]) return null
-
+              const isSelected = isSameDay(day, selectedDate)
+              const inMonth = isSameMonth(day, selectedDate)
+              const todayDate = isToday(day)
+              const color = dayColors[format(day, 'yyyy-MM-dd')]
               return (
-                <motion.div
+                <button
                   key={day.toISOString()}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.02 }}
-                  className="border-b border-[#262626]"
-                  style={{ borderLeft: dayColors[format(day, 'yyyy-MM-dd')] ? `6px solid ${dayColors[format(day, 'yyyy-MM-dd')]}` : undefined }}
+                  onClick={() => onDateChange(day)}
+                  aria-label={format(day, "d 'de' MMMM", { locale: ptBR })}
+                  aria-pressed={isSelected}
+                  className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl"
+                  style={color && !isSelected ? { backgroundColor: `${color}26` } : undefined}
                 >
-                  {/* Day Header */}
-                  <button
-                    onClick={() => onDayClick?.(day)}
+                  <span
                     className={cn(
-                      'w-full flex items-center gap-3 px-4 py-3 transition-colors',
-                      isTodayDate
-                        ? 'bg-[#fc7a67]/10'
-                        : 'hover:bg-[#1a1a1a] active:bg-[#262626]'
+                      'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-all',
+                      isSelected && 'bg-gradient-to-br from-[#fc7a67] to-[#ff0300] font-bold text-white shadow-md shadow-[#ff0300]/30',
+                      !isSelected && todayDate && 'text-[#fc7a67] ring-2 ring-[#fc7a67]',
+                      !isSelected && !todayDate && (inMonth ? 'text-white' : 'text-zinc-600')
                     )}
                   >
-                    <div
-                      className={cn(
-                        'flex flex-col items-center justify-center w-12 h-12 rounded-xl',
-                        isTodayDate
-                          ? 'bg-[#fc7a67] text-black'
-                          : 'bg-[#1a1a1a] text-white'
-                      )}
-                    >
-                      <span className="text-lg font-bold leading-none">
-                        {format(day, 'd')}
-                      </span>
-                      <span className="text-xs uppercase opacity-80">
-                        {format(day, 'EEE', { locale: ptBR })}
-                      </span>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p
-                        className={cn(
-                          'font-medium capitalize',
-                          isTodayDate ? 'text-[#fc7a67]' : 'text-white'
-                        )}
-                      >
-                        {isTodayDate
-                          ? 'Hoje'
-                          : format(day, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {dayEvents.length}{' '}
-                        {dayEvents.length === 1 ? 'evento' : 'eventos'}
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Events List */}
-                  {dayEvents.length > 0 && (
-                    <div className="px-4 pb-3 space-y-2">
-                      {dayEvents.map((event) => (
-                        <motion.button
-                          key={event.id}
-                          onClick={() => onEventClick?.(event)}
-                          whileTap={{ scale: 0.98 }}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl transition-colors bg-[#1a1a1a] hover:bg-[#262626] active:bg-[#333] text-left"
-                        >
-                          <div
-                            className="w-1 h-10 rounded-full flex-shrink-0"
-                            style={{
-                              backgroundColor: event.color || '#fc7a67',
-                            }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-white truncate">
-                              {event.title}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {format(new Date(event.startTime), 'HH:mm')} -{' '}
-                              {format(new Date(event.endTime), 'HH:mm')}
-                            </p>
-                          </div>
-                          {/* Linked badges */}
-                          {(event.linkedTaskId || event.linkedTicketId) && (
-                            <div className="flex gap-1 flex-shrink-0">
-                              {event.linkedTaskId && (
-                                <span className="text-xs bg-blue-500/20 text-blue-400 rounded px-1.5 py-0.5">
-                                  📋
-                                </span>
-                              )}
-                              {event.linkedTicketId && (
-                                <span className="text-xs bg-orange-500/20 text-orange-400 rounded px-1.5 py-0.5">
-                                  🎫
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
+                    {format(day, 'd')}
+                  </span>
+                  <span className="flex h-1 gap-0.5">
+                    {dayEvents.slice(0, 3).map(e => (
+                      <span key={e.id} className="h-1 w-1 rounded-full" style={{ backgroundColor: e.color || '#fc7a67' }} />
+                    ))}
+                  </span>
+                </button>
               )
             })}
-          </AnimatePresence>
+          </div>
+        </div>
 
-          {/* Empty State */}
-          {events.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-              <Calendar className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhum evento este mês</p>
-              <p className="text-sm">Toque no + para criar um evento</p>
-            </div>
-          )}
+        {/* Eventos do dia selecionado */}
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-24 pt-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-semibold capitalize text-white">
+              {isToday(selectedDate) ? 'Hoje' : format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+            </p>
+            <button
+              onClick={() => onDayClick?.(selectedDate)}
+              className="flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm font-medium text-[#fc7a67] active:bg-[#1a1a1a]"
+            >
+              <Plus className="h-4 w-4" /> Evento
+            </button>
+          </div>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {selectedEvents.length === 0 ? (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#262626] py-8 text-zinc-500"
+              >
+                <Calendar className="mb-2 h-8 w-8 opacity-50" />
+                <p className="text-sm">Nenhum evento neste dia</p>
+              </motion.div>
+            ) : (
+              <div className="space-y-2">
+                {selectedEvents.map(event => (
+                  <motion.button
+                    key={event.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => onEventClick?.(event)}
+                    className="flex w-full items-center gap-3 rounded-xl bg-[#1a1a1a] p-3 text-left active:bg-[#262626]"
+                  >
+                    <span className="h-10 w-1 flex-shrink-0 rounded-full" style={{ backgroundColor: event.color || '#fc7a67' }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-white">{event.title}</span>
+                      <span className="block text-sm text-zinc-500">
+                        {format(new Date(event.startTime), 'HH:mm')} – {format(new Date(event.endTime), 'HH:mm')}
+                      </span>
+                    </span>
+                    {event.linkedTaskId && <span className="text-xs">📋</span>}
+                    {event.linkedTicketId && <span className="text-xs">🎫</span>}
+                  </motion.button>
+                ))}
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     )
   }
 
-  // Desktop Grid View (original)
+  // ---------- Desktop: grade que ocupa exatamente a altura disponível ----------
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex flex-col h-full bg-black rounded-2xl border border-[#262626] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#262626]">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold capitalize">
-              {format(selectedDate, 'MMMM yyyy', { locale: ptBR })}
-            </h2>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePrevMonth}
-                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToday}
-                className="h-8 px-3 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                Hoje
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNextMonth}
-                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg p-1">
-            {(['month', 'week', 'day', 'agenda'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => onViewChange?.(v)}
-                className={cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
-                  view === v
-                    ? 'bg-[#fc7a67] text-black'
-                    : 'text-gray-400 hover:text-white'
-                )}
-              >
-                {v === 'month'
-                  ? 'Mês'
-                  : v === 'week'
-                    ? 'Semana'
-                    : v === 'day'
-                      ? 'Dia'
-                      : 'Agenda'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Weekday Headers */}
-        <div className="grid grid-cols-7 border-b border-[#262626]">
-          {WEEKDAYS.map((day) => (
-            <div
-              key={day}
-              className="py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
+    <DndContext id={dndId} sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex h-full flex-col">
+        <div className="grid flex-shrink-0 grid-cols-7 border-b border-[#262626]">
+          {WEEKDAYS.map(day => (
+            <div key={day} className="py-2.5 text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
               {day}
             </div>
           ))}
         </div>
 
-        {/* Calendar Grid */}
-        <div className="flex-1 grid grid-cols-7 auto-rows-fr">
+        <div
+          ref={gridRef}
+          className="grid min-h-0 flex-1 grid-cols-7"
+          style={{ gridTemplateRows: `repeat(${weeks}, minmax(0, 1fr))` }}
+        >
           {calendarDays.map((day, index) => {
             const dayEvents = getEventsForDay(day)
-            const isCurrentMonth = isSameMonth(day, selectedDate)
+            const inMonth = isSameMonth(day, selectedDate)
             const isSelected = isSameDay(day, selectedDate)
-            const isTodayDate = isToday(day)
+            const todayDate = isToday(day)
+            // Se nem todos cabem, reserva uma linha para o "+N"
+            const fits = dayEvents.length <= maxChips
+            const shown = fits ? dayEvents : dayEvents.slice(0, Math.max(0, maxChips - 1))
+            const hidden = dayEvents.length - shown.length
 
             return (
               <DroppableMonthDay
@@ -373,40 +259,55 @@ export function MonthView({
                 color={dayColors[format(day, 'yyyy-MM-dd')]}
                 onClick={() => onDayClick?.(day)}
                 className={cn(
-                  'min-h-[100px] p-2 border-b border-r border-[#262626] cursor-pointer transition-colors',
-                  !isCurrentMonth && 'bg-[#0a0a0a]',
-                  isSelected && 'bg-[#fc7a67]/5',
-                  'hover:bg-[#1a1a1a]'
+                  'flex min-h-0 cursor-pointer flex-col overflow-hidden border-[#262626] p-1.5 transition-colors hover:bg-[#141414]',
+                  (index + 1) % 7 !== 0 && 'border-r',
+                  index < calendarDays.length - 7 && 'border-b',
+                  !inMonth && 'bg-[#070707]',
+                  isSelected && 'bg-[#fc7a67]/[0.06]'
                 )}
               >
-                {/* Day Number */}
-                <div className="flex items-center justify-between mb-1">
-                  <span
+                <div className="mb-0.5 flex flex-shrink-0 items-center justify-between" style={{ height: DAY_HEADER - 4 }}>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      onDateChange(day)
+                    }}
                     className={cn(
-                      'flex items-center justify-center w-7 h-7 text-sm font-medium rounded-full',
-                      isTodayDate && 'bg-[#fc7a67] text-black',
-                      !isTodayDate && isCurrentMonth && 'text-white',
-                      !isTodayDate && !isCurrentMonth && 'text-gray-600'
+                      'flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium transition-colors',
+                      todayDate && 'bg-[#fc7a67] text-black',
+                      !todayDate && isSelected && 'text-[#fc7a67] ring-1 ring-[#fc7a67]',
+                      !todayDate && !isSelected && (inMonth ? 'text-white hover:bg-zinc-800' : 'text-zinc-600')
                     )}
                   >
                     {format(day, 'd')}
-                  </span>
-                  {dayEvents.length > 3 && (
-                    <span className="text-xs text-gray-500">
-                      +{dayEvents.length - 3}
+                  </button>
+                  {maxChips === 0 && dayEvents.length > 0 && (
+                    <span className="flex gap-0.5 pr-1">
+                      {dayEvents.slice(0, 3).map(e => (
+                        <span key={e.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: e.color || '#fc7a67' }} />
+                      ))}
                     </span>
                   )}
                 </div>
 
-                {/* Events */}
-                <div className="space-y-1">
-                  {dayEvents.slice(0, 3).map((event) => (
-                    <DraggableMonthEvent
-                      key={event.id}
-                      event={event}
-                      onClick={() => onEventClick?.(event)}
-                    />
+                <div className="flex min-h-0 flex-col" style={{ gap: CHIP_GAP }}>
+                  {shown.map(event => (
+                    <DraggableMonthEvent key={event.id} event={event} onClick={() => onEventClick?.(event)} />
                   ))}
+                  {hidden > 0 && maxChips > 0 && (
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation()
+                        onDateChange(day)
+                      }}
+                      className="truncate rounded px-1.5 text-left text-[11px] font-medium text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                      style={{ height: CHIP_HEIGHT }}
+                    >
+                      +{hidden} {hidden === 1 ? 'evento' : 'eventos'}
+                    </button>
+                  )}
                 </div>
               </DroppableMonthDay>
             )
@@ -416,11 +317,8 @@ export function MonthView({
       <DragOverlay>
         {activeEvent ? (
           <div
-            className="w-full text-left px-2 py-1 rounded text-xs font-medium truncate"
-            style={{
-              backgroundColor: activeEvent.color || '#fc7a67',
-              color: 'white',
-            }}
+            className="truncate rounded px-2 py-1 text-xs font-medium text-white shadow-xl"
+            style={{ backgroundColor: activeEvent.color || '#fc7a67' }}
           >
             {format(new Date(activeEvent.startTime), 'HH:mm')} {activeEvent.title}
           </div>
@@ -430,34 +328,26 @@ export function MonthView({
   )
 }
 
-function DraggableMonthEvent({
-  event,
-  onClick,
-}: {
-  event: CalendarEvent
-  onClick?: () => void
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: event.id,
-    data: event,
-  })
-
+function DraggableMonthEvent({ event, onClick }: { event: CalendarEvent; onClick?: () => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: event.id, data: event })
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      title={event.title}
       className={cn(
-        'w-full text-left px-2 py-1 rounded text-xs font-medium truncate transition-opacity cursor-grab active:cursor-grabbing',
-        'text-white',
-        isDragging ? 'opacity-30' : 'hover:opacity-80'
+        'flex flex-shrink-0 cursor-grab items-center gap-1 truncate rounded px-1.5 text-[11px] font-medium text-white transition-opacity active:cursor-grabbing',
+        isDragging ? 'opacity-30' : 'hover:opacity-85'
       )}
-      style={{ backgroundColor: event.color || '#fc7a67' }}
-      onClick={(e) => {
+      style={{ height: CHIP_HEIGHT, backgroundColor: event.color || '#fc7a67' }}
+      onClick={e => {
+        e.stopPropagation()
         onClick?.()
       }}
     >
-      {format(new Date(event.startTime), 'HH:mm')} {event.title}
+      <span className="opacity-80">{format(new Date(event.startTime), 'HH:mm')}</span>
+      <span className="truncate">{event.title}</span>
     </div>
   )
 }
@@ -475,20 +365,18 @@ function DroppableMonthDay({
   onClick?: () => void
   className?: string
 }) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: day.toISOString(),
-  })
-
+  const { isOver, setNodeRef } = useDroppable({ id: day.toISOString() })
   return (
-    <motion.div
+    <div
       ref={setNodeRef}
       className={cn(className, isOver && 'bg-[#fc7a67]/20')}
-      style={{ backgroundColor: color ? `${color}25` : undefined, borderTop: color ? `4px solid ${color}` : undefined }}
+      style={{
+        backgroundColor: color ? `${color}1f` : undefined,
+        boxShadow: color ? `inset 0 3px 0 ${color}` : undefined,
+      }}
       onClick={onClick}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
     >
       {children}
-    </motion.div>
+    </div>
   )
 }

@@ -1,9 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Calendar, Clock, Users, MapPin } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { Calendar, Clock, Users, MapPin } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
@@ -12,7 +10,6 @@ import {
   isToday,
   isTomorrow,
   addDays,
-  subDays,
   startOfDay,
   differenceInMinutes,
 } from 'date-fns'
@@ -44,16 +41,9 @@ interface AgendaViewProps {
 export function AgendaView({
   selectedDate,
   events,
-  onDateChange,
   onEventClick,
-  view = 'agenda',
-  onViewChange,
   isMobile = false,
 }: AgendaViewProps) {
-  const handlePrevWeek = () => onDateChange(subDays(selectedDate, 7))
-  const handleNextWeek = () => onDateChange(addDays(selectedDate, 7))
-  const handleToday = () => onDateChange(new Date())
-
   // Get events for the next 30 days, grouped by date
   const groupedEvents = useMemo(() => {
     const days = Array.from({ length: 30 }, (_, i) => addDays(startOfDay(selectedDate), i))
@@ -88,71 +78,10 @@ export function AgendaView({
   }
 
   return (
-    <div className={cn(
-      "flex flex-col h-full bg-black overflow-hidden",
-      !isMobile && "rounded-2xl border border-[#262626]"
-    )}>
-      {/* Header - Desktop Only */}
-      {!isMobile && (
-        <div className="flex items-center justify-between p-4 border-b border-[#262626]">
-          <div className="flex items-center gap-4">
-            <div>
-              <h2 className="text-xl font-bold">Agenda</h2>
-              <p className="text-sm text-gray-400">
-                Próximos 30 dias a partir de {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePrevWeek}
-                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToday}
-                className="h-8 px-3 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                Hoje
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNextWeek}
-                className="h-8 w-8 text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg p-1">
-            {(['month', 'week', 'day', 'agenda'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => onViewChange?.(v)}
-                className={cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
-                  view === v
-                    ? 'bg-[#fc7a67] text-black'
-                    : 'text-gray-400 hover:text-white'
-                )}
-              >
-                {v === 'month' ? 'Mês' : v === 'week' ? 'Semana' : v === 'day' ? 'Dia' : 'Agenda'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
+    <div className="flex h-full flex-col">
       {/* Events List */}
-      <ScrollArea className="flex-1">
-        <div className={cn("space-y-6", isMobile ? "p-3" : "p-4")}>
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <div className={cn('space-y-5', isMobile ? 'p-3 pb-24' : 'p-4 md:p-5')}>
           <AnimatePresence>
             {groupedEvents.length > 0 ? (
               groupedEvents.map((group, groupIndex) => (
@@ -187,7 +116,7 @@ export function AgendaView({
                   </div>
 
                   {/* Events */}
-                  <div className="ml-15 space-y-2 pl-4 border-l-2 border-[#262626]">
+                  <div className="ml-6 space-y-2 border-l-2 border-[#262626] pl-3 md:pl-4">
                     {group.events.map((event, eventIndex) => (
                       <motion.button
                         key={event.id}
@@ -195,19 +124,19 @@ export function AgendaView({
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: eventIndex * 0.03 }}
                         onClick={() => onEventClick?.(event)}
-                        className="w-full text-left p-4 rounded-xl bg-[#1a1a1a] border border-[#262626] hover:border-[#fc7a67]/50 transition-all group"
+                        className="group w-full rounded-xl border border-[#262626] bg-[#1a1a1a] p-3 text-left transition-all hover:border-[#fc7a67]/50 md:p-4"
                       >
-                        <div className="flex items-start gap-4">
+                        <div className="flex items-stretch gap-3 md:gap-4">
                           {/* Color Indicator */}
                           <div
-                            className="w-1 h-full min-h-[60px] rounded-full flex-shrink-0"
+                            className="w-1 flex-shrink-0 self-stretch rounded-full"
                             style={{ backgroundColor: event.color || '#fc7a67' }}
                           />
 
                           {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-4">
-                              <h3 className="font-semibold text-white group-hover:text-[#fc7a67] transition-colors">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="min-w-0 break-words font-semibold text-white group-hover:text-[#fc7a67] transition-colors">
                                 {event.title}
                               </h3>
                               <Badge
@@ -218,7 +147,7 @@ export function AgendaView({
                               </Badge>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-400">
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-400">
                               <span className="flex items-center gap-1.5">
                                 <Clock className="h-3.5 w-3.5" />
                                 {format(new Date(event.startTime), 'HH:mm')} - {format(new Date(event.endTime), 'HH:mm')}
@@ -284,7 +213,7 @@ export function AgendaView({
             )}
           </AnimatePresence>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }

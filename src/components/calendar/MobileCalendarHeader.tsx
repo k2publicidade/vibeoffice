@@ -1,170 +1,126 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Menu, Calendar, List, Clock, LayoutGrid } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { format, isToday } from 'date-fns'
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { endOfWeek, format, isSameMonth, isToday, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import { VIEW_LABELS, type CalendarViewMode } from './CalendarToolbar'
 
 interface MobileCalendarHeaderProps {
   selectedDate: Date
-  view: 'month' | 'week' | 'day' | 'agenda'
-  onDateChange: (date: Date) => void
-  onViewChange: (view: 'month' | 'week' | 'day' | 'agenda') => void
+  view: CalendarViewMode
+  onDateChange?: (date: Date) => void
+  onViewChange: (view: CalendarViewMode) => void
   onMenuClick: () => void
   onPrevious: () => void
   onNext: () => void
   onToday: () => void
+  /** Slot para o seletor de cor do dia */
+  actions?: React.ReactNode
 }
 
-const viewIcons = {
-  month: LayoutGrid,
-  week: Calendar,
-  day: Clock,
-  agenda: List,
+function getMobileTitle(view: CalendarViewMode, date: Date) {
+  switch (view) {
+    case 'day':
+      return format(date, "EEE, d 'de' MMM", { locale: ptBR })
+    case 'week': {
+      const start = startOfWeek(date, { weekStartsOn: 0 })
+      const end = endOfWeek(date, { weekStartsOn: 0 })
+      return isSameMonth(start, end)
+        ? `${format(start, 'd')}–${format(end, 'd MMM', { locale: ptBR })}`
+        : `${format(start, 'd MMM', { locale: ptBR })} – ${format(end, 'd MMM', { locale: ptBR })}`
+    }
+    case 'agenda':
+      return `Desde ${format(date, 'd MMM', { locale: ptBR })}`
+    default:
+      return format(date, 'MMMM yyyy', { locale: ptBR })
+  }
 }
 
-const viewLabels = {
-  month: 'Mês',
-  week: 'Semana',
-  day: 'Dia',
-  agenda: 'Agenda',
-}
+const iconButton =
+  'flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-[#1a1a1a] hover:text-white active:bg-[#262626]'
 
 export function MobileCalendarHeader({
   selectedDate,
   view,
-  onDateChange,
   onViewChange,
   onMenuClick,
   onPrevious,
   onNext,
   onToday,
+  actions,
 }: MobileCalendarHeaderProps) {
   const isTodayDate = isToday(selectedDate)
-  const ViewIcon = viewIcons[view]
-
-  // Formatar título baseado na view
-  const getTitle = () => {
-    switch (view) {
-      case 'day':
-        return format(selectedDate, "EEEE, d 'de' MMM", { locale: ptBR })
-      case 'week':
-        return format(selectedDate, "'Semana de' d MMM", { locale: ptBR })
-      case 'month':
-        return format(selectedDate, 'MMMM yyyy', { locale: ptBR })
-      case 'agenda':
-        return 'Agenda'
-      default:
-        return format(selectedDate, 'MMMM yyyy', { locale: ptBR })
-    }
-  }
 
   return (
-    <div className="sticky top-0 z-30 bg-black/95 backdrop-blur-sm border-b border-[#262626]">
-      {/* Main Header Row */}
-      <div className="flex items-center justify-between px-3 py-2 gap-2">
-        {/* Menu Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="h-11 w-11 flex-shrink-0 text-gray-400 hover:text-white hover:bg-[#1a1a1a] rounded-xl"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+    <div className="flex-shrink-0 border-b border-[#262626] bg-black px-2 pb-2 pt-1">
+      {/* Linha 1: filtros · navegação · hoje */}
+      <div className="flex items-center gap-1">
+        <button type="button" onClick={onMenuClick} className={iconButton} aria-label="Calendários e filtros">
+          <SlidersHorizontal className="h-5 w-5" />
+        </button>
+        <button type="button" onClick={onPrevious} className={iconButton} aria-label="Período anterior">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
 
-        {/* Title with Animation */}
-        <div className="flex-1 min-w-0 text-center">
-          <AnimatePresence mode="wait">
-            <motion.h1
-              key={selectedDate.toISOString() + view}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="text-base font-semibold text-white truncate capitalize"
-            >
-              {getTitle()}
-            </motion.h1>
-          </AnimatePresence>
+        <div className="min-w-0 flex-1 overflow-hidden text-center">
+          <motion.h1
+            key={selectedDate.toDateString() + view}
+            initial={{ opacity: 0.4, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
+            className="truncate text-base font-semibold text-white first-letter:uppercase"
+          >
+            {view === 'month' ? (
+              <>
+                <span className="min-[360px]:hidden">{format(selectedDate, 'MMM yyyy', { locale: ptBR })}</span>
+                <span className="hidden min-[360px]:inline">{getMobileTitle(view, selectedDate)}</span>
+              </>
+            ) : (
+              getMobileTitle(view, selectedDate)
+            )}
+          </motion.h1>
         </div>
 
-        {/* Today Button */}
-        <Button
-          variant="ghost"
-          size="sm"
+        <button type="button" onClick={onNext} className={iconButton} aria-label="Próximo período">
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
           onClick={onToday}
           className={cn(
-            'h-11 px-3 flex-shrink-0 rounded-xl font-medium text-sm',
+            'h-11 flex-shrink-0 rounded-xl px-3 text-sm font-medium transition-colors',
             isTodayDate
-              ? 'bg-[#fc7a67] text-black hover:bg-[#ff0300]'
-              : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+              ? 'bg-[#fc7a67]/15 text-[#fc7a67]'
+              : 'bg-[#1a1a1a] text-zinc-200 active:bg-[#262626]'
           )}
         >
           Hoje
-        </Button>
+        </button>
       </div>
 
-      {/* Navigation Row */}
-      <div className="flex items-center justify-between px-3 py-2 gap-2">
-        {/* Date Navigation */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onPrevious}
-            className="h-10 w-10 text-gray-400 hover:text-white hover:bg-[#1a1a1a] rounded-xl"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-
-          {/* Date Badge */}
-          <div
-            className={cn(
-              'flex items-center justify-center min-w-[48px] h-10 rounded-xl px-3',
-              isTodayDate
-                ? 'bg-[#fc7a67] text-black font-bold'
-                : 'bg-[#1a1a1a] text-white font-medium'
-            )}
-          >
-            {format(selectedDate, 'd')}
-          </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onNext}
-            className="h-10 w-10 text-gray-400 hover:text-white hover:bg-[#1a1a1a] rounded-xl"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
+      {/* Linha 2: visualização · cor do dia */}
+      <div className="mt-1 flex items-center gap-2">
+        <div role="tablist" aria-label="Visualização" className="grid min-w-0 flex-1 grid-cols-4 gap-1 rounded-xl bg-[#1a1a1a] p-1">
+          {(['day', 'week', 'month', 'agenda'] as const).map(v => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              onClick={() => onViewChange(v)}
+              className={cn(
+                'min-h-9 min-w-0 truncate rounded-lg px-1 text-[13px] font-medium transition-all',
+                view === v
+                  ? 'bg-gradient-to-br from-[#fc7a67] to-[#ff0300] text-white shadow-md shadow-[#ff0300]/30'
+                  : 'text-zinc-400 active:text-white'
+              )}
+            >
+              {VIEW_LABELS[v]}
+            </button>
+          ))}
         </div>
-
-        {/* View Toggle - Compact */}
-        <div className="flex items-center gap-1 bg-[#1a1a1a] rounded-xl p-1">
-          {(['day', 'week', 'agenda'] as const).map((v) => {
-            const Icon = viewIcons[v]
-            const isActive = view === v
-            return (
-              <Button
-                key={v}
-                variant="ghost"
-                size="icon"
-                onClick={() => onViewChange(v)}
-                className={cn(
-                  'h-9 w-9 rounded-lg transition-all',
-                  isActive
-                    ? 'bg-[#fc7a67] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-[#262626]'
-                )}
-                title={viewLabels[v]}
-              >
-                <Icon className="h-4 w-4" />
-              </Button>
-            )
-          })}
-        </div>
+        {actions}
       </div>
     </div>
   )
